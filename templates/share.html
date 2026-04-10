@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Note-Cloud — Shared note</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:      #0e0e10;
+      --surface: #18181c;
+      --border:  rgba(255,255,255,.08);
+      --accent:  #c9a96e;
+      --text:    #e8e6e0;
+      --muted:   #6b6b72;
+      --radius:  14px;
+      --grid-line: rgba(255,255,255,.015);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1.25rem 4rem;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 260px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(201,169,110,.10), transparent 70%);
+      pointer-events: none;
+    }
+
+    header {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 0 2rem;
+    }
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+    .logo span { color: var(--accent); }
+
+    .try-btn {
+      padding: .45rem 1.1rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background .15s, transform .15s;
+    }
+    .try-btn:hover { background: #d9b97e; transform: translateY(-1px); }
+
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: slide-in .45s cubic-bezier(.2,.8,.4,1) both;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      padding: 1.1rem 1.5rem .9rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+    .card-label {
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--accent);
+    }
+    .card-meta {
+      font-size: .75rem;
+      color: var(--muted);
+    }
+
+    .card-text {
+      padding: 1.5rem;
+      font-size: 1rem;
+      line-height: 1.85;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .card-footer {
+      padding: .85rem 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .75rem;
+    }
+    .word-count { font-size: .78rem; color: var(--muted); }
+
+    .copy-btn {
+      padding: .42rem 1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      transition: border-color .15s, background .15s;
+    }
+    .copy-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); }
+    .copy-btn.copied { border-color: #5cb88a; color: #5cb88a; }
+
+    .attribution {
+      margin-top: 2rem;
+      font-size: .8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .attribution a { color: var(--accent); text-decoration: none; }
+    .attribution a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Scrib<span>-</span>d</div>
+    <a class="try-btn" href="/login">Try it free →</a>
+  </header>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">Shared transcription</span>
+      <span class="card-meta">
+        Shared by {{ item.first_name }} {{ item.last_name }}
+        &nbsp;·&nbsp;
+        {{ item.created_at[:10] }}
+      </span>
+    </div>
+
+    <div class="card-text" id="transcription-text">{{ item.text }}</div>
+
+    <div class="card-footer">
+      <span class="word-count">{{ item.word_count }} word{{ 's' if item.word_count != 1 else '' }}</span>
+      <button class="copy-btn" id="copy-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copy text
+      </button>
+    </div>
+  </div>
+
+  <p class="attribution">
+    Transcribed with <a href="/login">Note-Cloud</a> — turn handwritten notes into text instantly.
+  </p>
+
+  <script>
+    document.getElementById("copy-btn").addEventListener("click", function() {
+      const text = document.getElementById("transcription-text").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        this.textContent = "Copied!";
+        this.classList.add("copied");
+        setTimeout(() => {
+          this.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy text`;
+          this.classList.remove("copied");
+        }, 2000);
+      });
+    });
+  </script>
+
+</body>
+</html>

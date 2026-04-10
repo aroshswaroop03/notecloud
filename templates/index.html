@@ -1,0 +1,3395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Note-Cloud — Handwriting Transcriber</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0e0e10;
+      --surface:   #18181c;
+      --border:    rgba(255,255,255,.08);
+      --accent:    #c9a96e;
+      --accent-dim:#8a6e42;
+      --text:      #e8e6e0;
+      --muted:     #6b6b72;
+      --success:   #5cb88a;
+      --error:     #e07070;
+      --radius:    14px;
+
+      /* Direction-sensitive colors that flip in light mode */
+      --grid-line:      rgba(255,255,255,.015);
+      --drop-border:    rgba(255,255,255,.10);
+      --preview-fade:   rgba(14,14,16,.70);
+      --clear-bg:       rgba(14,14,16,.75);
+      --bar-track-bg:   rgba(255,255,255,.07);
+      --item-hover-bg:  rgba(255,255,255,.04);
+      --btn-secondary-bg: rgba(255,255,255,.07);
+    }
+
+    /* ── Light mode overrides ── */
+    body.light {
+      --bg:        #f5f2ec;
+      --surface:   #ffffff;
+      --border:    rgba(0,0,0,.10);
+      --text:      #1a1a1e;
+      --muted:     #8a8a92;
+      --grid-line:      rgba(0,0,0,.04);
+      --drop-border:    rgba(0,0,0,.12);
+      --preview-fade:   rgba(245,242,236,.70);
+      --clear-bg:       rgba(255,255,255,.85);
+      --bar-track-bg:   rgba(0,0,0,.08);
+      --item-hover-bg:  rgba(0,0,0,.04);
+      --btn-secondary-bg: rgba(0,0,0,.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 40px 40px;
+      transition: background-color .3s, color .3s, background-image .3s;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      text-align: center;
+      padding: 4rem 1rem 2.5rem;
+      position: relative;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(201,169,110,.12), transparent 70%);
+      pointer-events: none;
+    }
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.6rem;
+      font-weight: 700;
+      letter-spacing: -2px;
+      color: var(--text);
+      line-height: 1;
+    }
+    .logo span { color: var(--accent); }
+    .tagline {
+      margin-top: .75rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    /* ── Main layout ── */
+    main {
+      width: 100%;
+      max-width: 780px;
+      padding: 0 1.25rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      /* Upload bar sits directly above, so no extra top padding needed */
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    /* ── Drop zone ── */
+    #drop-zone {
+      padding: 3.5rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .25s, background .25s;
+      border: 2px dashed var(--drop-border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      position: relative;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(201,169,110,.05);
+    }
+    #drop-zone.drag-over::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: calc(var(--radius) + 4px);
+      border: 2px solid var(--accent);
+      opacity: 0;
+      animation: pulse-ring .7s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+      0%   { opacity: .6; transform: scale(1);    }
+      100% { opacity: 0;  transform: scale(1.02); }
+    }
+
+    .drop-icon {
+      width: 48px; height: 48px;
+      margin: 0 auto 1.25rem;
+      color: var(--text);
+      opacity: .35;
+      transition: opacity .25s, transform .25s;
+    }
+    #drop-zone:hover .drop-icon, #drop-zone.drag-over .drop-icon {
+      opacity: .75;
+      transform: translateY(-3px) rotate(-5deg);
+    }
+
+    .drop-label {
+      display: inline-block;
+      padding: .55rem 1.4rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    .drop-label:hover { background: #d9b97e; transform: translateY(-1px); }
+    .drop-buttons { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+    .drop-label-camera {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+    }
+    .drop-label-camera:hover { background: rgba(201,169,110,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    #drop-zone p { margin-top: .75rem; color: var(--muted); font-size: .875rem; }
+    #file-input, #gallery-input, #camera-input { display: none; }
+
+    /* On desktop (mouse): hide mobile-only buttons */
+    @media (pointer: fine) and (hover: hover) {
+      #gallery-btn-wrap, #camera-btn-wrap { display: none; }
+    }
+    /* On mobile (touch): hide desktop button and drag hint */
+    @media (pointer: coarse) {
+      #desktop-choose-wrap, #drop-hint { display: none; }
+    }
+
+    /* ── Preview ── */
+    #preview-wrapper {
+      display: none;
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      animation: slide-in .35s cubic-bezier(.2,.8,.4,1);
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+    #preview {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      display: block;
+    }
+    #preview-wrapper::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(transparent, var(--preview-fade));
+      pointer-events: none;
+    }
+    #clear-btn {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: var(--clear-bg);
+      backdrop-filter: blur(6px);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 32px; height: 32px;
+      font-size: .9rem;
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+      z-index: 1;
+      line-height: 1;
+    }
+    #clear-btn:hover { background: rgba(224,112,112,.7); transform: scale(1.1); }
+
+    /* ── Transcribe button ── */
+    #transcribe-btn {
+      width: 100%;
+      padding: .9rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, transform .15s, opacity .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    /* ── Scribble loading overlay ── */
+    #loading-overlay {
+      display: none;
+      margin: .5rem 0;
+      padding: 1.25rem 1.5rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      animation: fadeInUp .25s ease;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    #loading-msg {
+      text-align: center;
+      font-size: .875rem;
+      color: var(--muted);
+      margin-bottom: .9rem;
+      min-height: 1.2em;
+      transition: opacity .25s;
+    }
+    #loading-track {
+      width: 100%;
+      position: relative;
+    }
+    #loading-svg {
+      width: 100%;
+      height: 36px;
+      display: block;
+      overflow: visible;
+    }
+    .scribble-bg {
+      fill: none;
+      stroke: var(--bar-track-bg);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .scribble-fg {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: stroke-dashoffset .35s ease-out;
+    }
+    #loading-pencil {
+      position: absolute;
+      /* top: 50% puts us at the line's vertical center.
+         translate(-100%, -100%) shifts so the bottom-right of the
+         emoji (which is the eraser end) is at that point — meaning
+         the tip (bottom-left of the glyph, rotated -45deg) sits on
+         the drawn line's endpoint. Fine-tuned with extra px offsets. */
+      top: 50%;
+      left: 0%;
+      font-size: 20px;
+      line-height: 1;
+      pointer-events: none;
+      transform-origin: bottom right;
+      transition: left .35s ease-out;
+      animation: pencil-write .28s ease-in-out infinite alternate;
+    }
+    @keyframes pencil-write {
+      from { transform: translate(-95%, -95%) rotate(-40deg); }
+      to   { transform: translate(-95%, -108%) rotate(-55deg); }
+    }
+    #loading-pct {
+      text-align: center;
+      margin-top: .45rem;
+      font-size: .75rem;
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    /* ── History search ── */
+    #history-search {
+      width: 100%;
+      padding: .5rem .75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .85rem;
+      font-family: inherit;
+      outline: none;
+      margin-bottom: .5rem;
+    }
+    #history-search:focus { border-color: var(--accent); }
+    #history-search::placeholder { color: var(--muted); }
+
+    /* ── Multi-file thumbnail strip ── */
+    #multi-preview {
+      display: none;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin-bottom: .5rem;
+    }
+    .multi-thumb-wrap { position: relative; }
+    .multi-thumb {
+      width: 80px; height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      display: block;
+    }
+    .multi-thumb-rm {
+      position: absolute;
+      top: -6px; right: -6px;
+      width: 18px; height: 18px;
+      background: var(--error);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+
+    #transcribe-label { transition: opacity .2s; }
+    #transcribe-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    #transcribe-btn.empty { opacity: .55; }
+    #transcribe-btn.empty:hover { background: var(--accent); transform: none; }
+    #transcribe-btn:not(:disabled):not(.empty):hover { background: #d9b97e; transform: translateY(-1px); }
+
+    /* ── Status ── */
+    #status {
+      text-align: center;
+      min-height: 1.4em;
+      font-size: .9rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+    }
+    .dot-loader { display: inline-flex; gap: 4px; align-items: center; }
+    .dot-loader span {
+      width: 5px; height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: dot-bounce .9s infinite ease-in-out;
+    }
+    .dot-loader span:nth-child(2) { animation-delay: .15s; }
+    .dot-loader span:nth-child(3) { animation-delay: .30s; }
+    @keyframes dot-bounce {
+      0%, 80%, 100% { transform: translateY(0);    opacity: .4; }
+      40%            { transform: translateY(-5px); opacity: 1;  }
+    }
+
+    /* ── Result ── */
+    #result-section { display: none; animation: slide-in .4s cubic-bezier(.2,.8,.4,1); }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-label {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--accent);
+    }
+    #word-count { font-size: .75rem; color: var(--muted); }
+    #result-text {
+      width: 100%;
+      min-height: 180px;
+      padding: 1.1rem 1.25rem;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: .975rem;
+      line-height: 1.75;
+      resize: vertical;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .result-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .6rem;
+      padding: .75rem 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+    #copy-btn {
+      padding: .45rem 1.1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .85rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    #copy-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); }
+    #copy-btn.copied { border-color: var(--success); color: var(--success); }
+    #share-btn {
+      padding: .45rem 1.1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .85rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, color .15s;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    #share-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); color: var(--accent); }
+    #share-btn.copied { border-color: var(--success); color: var(--success); }
+
+    #cleanup-btn {
+      padding: .45rem 1.1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .85rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, color .15s;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    #cleanup-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); color: var(--accent); }
+    #cleanup-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Download buttons sit in a small group to the right of share */
+    #download-group {
+      display: flex;
+      gap: .4rem;
+    }
+    .dl-btn {
+      padding: .45rem .9rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: .8rem;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      transition: border-color .2s, color .2s, background .2s;
+      white-space: nowrap;
+    }
+    .dl-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); color: var(--accent); }
+
+    /* ── History sidebar ── */
+    #sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(3px);
+      z-index: 150;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+    #sidebar-overlay.open { opacity: 1; pointer-events: all; }
+
+    #history-sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 320px;
+      max-width: 85vw;
+      height: 100%;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      z-index: 151;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform .3s cubic-bezier(.2,.8,.4,1);
+    }
+    #history-sidebar.open { transform: translateX(0); }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-style: italic;
+    }
+    #sidebar-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: .25rem;
+      line-height: 1;
+      transition: color .15s;
+    }
+    #sidebar-close:hover { color: var(--text); }
+
+    #history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: .5rem 0;
+    }
+    #history-list::-webkit-scrollbar { width: 4px; }
+    #history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    .history-empty {
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: .875rem;
+    }
+
+    .history-item {
+      padding: .85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .history-item:hover { background: var(--item-hover-bg); }
+    .history-item:last-child { border-bottom: none; }
+
+    .history-item-title {
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: .2rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: text;
+    }
+    .history-item-date {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-bottom: .3rem;
+    }
+    .history-item-preview {
+      font-size: .85rem;
+      color: var(--text);
+      line-height: 1.5;
+      /* Clamp to 2 lines */
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-item-meta {
+      font-size: .7rem;
+      color: var(--muted);
+      margin-top: .3rem;
+    }
+
+    /* Make history items flex so drag handle sits alongside content */
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+    }
+    .history-item-body { flex: 1; min-width: 0; }
+
+    /* Drag handle — only visible on hover */
+    .drag-handle {
+      flex-shrink: 0;
+      color: var(--muted);
+      cursor: grab;
+      font-size: .95rem;
+      opacity: 0;
+      transition: opacity .15s;
+      padding-top: .05rem;
+      line-height: 1.6;
+      user-select: none;
+    }
+    .history-item:hover .drag-handle { opacity: 1; }
+    .history-item.dragging { opacity: .4; }
+
+    /* ── Notebooks section ── */
+    #notebooks-section {
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+      max-height: 45%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #notebooks-section-header {
+      display: flex;
+      align-items: center;
+      padding: .6rem 1.25rem .5rem;
+      flex-shrink: 0;
+    }
+    #notebooks-toggle {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .75rem;
+      font-family: inherit;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      padding: 0;
+      flex: 1;
+      transition: color .15s;
+    }
+    #notebooks-toggle:hover { color: var(--text); }
+    #notebooks-toggle-chevron {
+      display: inline-block;
+      transition: transform .2s;
+      font-style: normal;
+    }
+    #notebooks-section.open #notebooks-toggle-chevron { transform: rotate(90deg); }
+
+    #new-notebook-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .2rem .6rem;
+      font-size: .75rem;
+      font-family: inherit;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+      line-height: 1.5;
+    }
+    #new-notebook-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Collapsible body */
+    #notebooks-body {
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #notebooks-section.open #notebooks-body { display: flex; }
+
+    /* New notebook form */
+    #new-notebook-form {
+      padding: .6rem 1.25rem .5rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: none;
+    }
+    #new-notebook-form.open { display: block; }
+    #notebook-name-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .4rem .7rem;
+      font-size: .85rem;
+      font-family: inherit;
+      color: var(--text);
+      margin-bottom: .5rem;
+      box-sizing: border-box;
+    }
+    #notebook-name-input:focus { outline: none; border-color: var(--accent); }
+    #color-swatches {
+      display: flex;
+      gap: .45rem;
+      margin-bottom: .55rem;
+    }
+    .color-swatch {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: transform .15s;
+    }
+    .color-swatch.selected { border-color: var(--text); transform: scale(1.2); }
+    #new-notebook-actions { display: flex; gap: .5rem; }
+    #create-notebook-btn {
+      flex: 1;
+      background: var(--accent);
+      color: #0e0e10;
+      border: none;
+      border-radius: 6px;
+      padding: .35rem;
+      font-size: .8rem;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #cancel-notebook-btn {
+      flex: 1;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .35rem;
+      font-size: .8rem;
+      font-family: inherit;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    /* Notebooks list (scrollable) */
+    #notebooks-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: .25rem 0 .5rem;
+    }
+    #notebooks-list::-webkit-scrollbar { width: 4px; }
+    #notebooks-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* Individual notebook row */
+    .notebook-row {
+      margin: .2rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .notebook-row.drag-over {
+      border-color: var(--accent);
+      background: rgba(201,169,110,.07);
+    }
+
+    .notebook-header {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .55rem .8rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+    }
+    .notebook-header:hover { background: var(--item-hover-bg); }
+
+    .nb-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .nb-name {
+      flex: 1;
+      font-size: .83rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nb-count {
+      font-size: .68rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .nb-chevron {
+      font-size: .65rem;
+      color: var(--muted);
+      transition: transform .2s;
+      flex-shrink: 0;
+    }
+    .notebook-row.open .nb-chevron { transform: rotate(90deg); }
+    .nb-delete {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: .1rem .25rem;
+      font-size: .8rem;
+      opacity: 0;
+      transition: opacity .15s, color .15s;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .notebook-header:hover .nb-delete { opacity: 1; }
+    .nb-delete:hover { color: var(--error, #e05555); }
+
+    /* Expanded notebook items */
+    .nb-items-list {
+      display: none;
+      border-top: 1px solid var(--border);
+    }
+    .notebook-row.open .nb-items-list { display: block; }
+
+    .nb-trans-row {
+      display: flex;
+      align-items: flex-start;
+      gap: .4rem;
+      padding: .5rem .8rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .nb-trans-row:last-child { border-bottom: none; }
+    .nb-trans-row:hover { background: var(--item-hover-bg); }
+    .nb-trans-preview {
+      flex: 1;
+      font-size: .78rem;
+      color: var(--text);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .nb-trans-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .75rem;
+      padding: 0 .15rem;
+      opacity: 0;
+      transition: opacity .15s, color .15s;
+      flex-shrink: 0;
+      line-height: 1.6;
+    }
+    .nb-trans-row:hover .nb-trans-remove { opacity: 1; }
+    .nb-trans-remove:hover { color: var(--error, #e05555); }
+
+    .nb-empty-msg {
+      padding: .75rem 1rem;
+      font-size: .75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .notebooks-empty {
+      padding: .75rem 1.25rem;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    /* "History" label divider */
+    .sidebar-section-label {
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: .55rem 1.25rem .3rem;
+      flex-shrink: 0;
+    }
+
+    /* Drag-over highlight on history list (drop anywhere on it to cancel) */
+    #history-list.drag-active .history-item:not(.dragging) {
+      opacity: .7;
+    }
+
+    /* Hamburger button — top left */
+    #hamburger-btn {
+      position: fixed;
+      top: 1.1rem;
+      left: 1.25rem;
+      z-index: 100;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      width: 40px; height: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: border-color .2s, transform .15s;
+      padding: 0;
+    }
+    #hamburger-btn:hover { border-color: var(--accent); transform: scale(1.06); }
+    #hamburger-btn span {
+      display: block;
+      width: 16px; height: 1.5px;
+      background: var(--text);
+      border-radius: 99px;
+      transition: background .2s;
+    }
+    #hamburger-btn:hover span { background: var(--accent); }
+
+    /* ── Upload counter bar ── */
+    #upload-bar {
+      width: 100%;
+      max-width: 780px;
+      padding: 0 1.25rem;
+      margin-bottom: .75rem;
+    }
+    .upload-bar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem .9rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: .8rem;
+      gap: .75rem;
+    }
+    .upload-bar-inner.unlimited { justify-content: flex-start; gap: .5rem; }
+    .bar-label { color: var(--muted); white-space: nowrap; }
+    .bar-track {
+      flex: 1;
+      height: 4px;
+      background: var(--bar-track-bg);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width .4s cubic-bezier(.2,.8,.4,1);
+    }
+    .bar-count { color: var(--text); font-weight: 600; white-space: nowrap; }
+    .bar-upgrade {
+      color: var(--accent);
+      font-size: .78rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+      white-space: nowrap;
+    }
+    .bar-upgrade:hover { text-decoration: underline; }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      transform: translateY(12px) scale(.97);
+      transition: transform .25s cubic-bezier(.2,.8,.4,1);
+    }
+    .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+    .modal h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-style: italic;
+      margin-bottom: .5rem;
+    }
+    .modal p { color: var(--muted); font-size: .9rem; line-height: 1.7; margin-bottom: 1rem; }
+    .modal p + p { margin-top: -.25rem; }
+    .modal-input {
+      width: 100%;
+      padding: .7rem .9rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: .75rem;
+    }
+    .modal-input:focus { border-color: var(--accent); }
+    .modal-actions { display: flex; gap: .6rem; }
+    .modal-btn {
+      flex: 1;
+      padding: .75rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .15s;
+      border: none;
+    }
+    .modal-btn:hover { opacity: .85; transform: translateY(-1px); }
+    .modal-btn.primary { background: var(--accent); color: #0e0e10; }
+    .modal-btn.secondary { background: var(--btn-secondary-bg); color: var(--text); }
+    .modal-btn.danger-btn { background: rgba(224,112,112,.15); color: var(--error); border: 1px solid rgba(224,112,112,.3); }
+    .modal-error { font-size: .82rem; color: var(--error); margin-top: .4rem; min-height: 1em; }
+    .modal-success { font-size: .82rem; color: var(--success); margin-top: .4rem; }
+
+    /* Billing toggle buttons */
+    .billing-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .8rem;
+      font-weight: 500;
+      padding: .3rem .85rem;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .billing-toggle.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0e0e10;
+      font-weight: 600;
+    }
+
+    /* Referral code box */
+    .ref-code-box {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .6rem .9rem;
+      margin: .75rem 0;
+    }
+    .ref-code { font-size: 1.1rem; font-weight: 700; letter-spacing: .12em; color: var(--accent); flex: 1; }
+    .copy-ref-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: .2rem; transition: color .15s;
+    }
+    .copy-ref-btn:hover { color: var(--accent); }
+
+    /* ── Profile icon ── */
+    #profile-corner {
+      position: fixed;
+      top: 1.1rem;
+      right: 1.25rem;
+      z-index: 100;
+    }
+    #profile-btn {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--accent);
+      transition: border-color .2s, transform .15s;
+      padding: 0;
+    }
+    #profile-btn:hover { border-color: var(--accent); transform: scale(1.06); }
+    #profile-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+    #profile-dropdown {
+      position: absolute;
+      top: calc(100% + .5rem);
+      right: 0;
+      width: 210px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      opacity: 0;
+      transform: translateY(-6px) scale(.97);
+      pointer-events: none;
+      transition: opacity .2s, transform .2s cubic-bezier(.2,.8,.4,1);
+    }
+    #profile-dropdown.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+    .dropdown-user {
+      padding: .9rem 1rem .75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dropdown-user .name  { font-size: .9rem; font-weight: 600; }
+    .dropdown-user .email { font-size: .75rem; color: var(--muted); margin-top: .15rem; word-break: break-all; }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      width: 100%;
+      padding: .7rem 1rem;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .875rem;
+      cursor: pointer;
+      text-align: left;
+      transition: background .15s;
+      text-decoration: none;
+    }
+    .dropdown-item:hover { background: rgba(255,255,255,.05); }
+    .dropdown-item.danger { color: var(--error); }
+    .dropdown-item svg { opacity: .6; flex-shrink: 0; }
+
+    /* ── Footer / about ── */
+
+    /* ── Below-fold sections ── */
+    .below-fold {
+      width: 100%;
+      max-width: 780px;
+      padding: 0 1.25rem 6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    /* shared scroll-reveal: starts invisible+shifted, .visible slides in */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity .65s cubic-bezier(.2,.8,.4,1), transform .65s cubic-bezier(.2,.8,.4,1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* section divider label */
+    .section-eyebrow {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: .65rem;
+    }
+
+    /* ── How it works ── */
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    @media (max-width: 540px) { .how-grid { grid-template-columns: 1fr; } }
+    .how-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.25rem;
+      position: relative;
+    }
+    .how-step-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      opacity: .25;
+      line-height: 1;
+      margin-bottom: .6rem;
+    }
+    .how-step-title {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .35rem;
+    }
+    .how-step-desc {
+      font-size: .82rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Tips card ── */
+    .tips-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem 2rem;
+    }
+    .tips-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.1rem;
+    }
+    .tips-list {
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .tip-row {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      font-size: .875rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .tip-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: .05rem;
+    }
+
+    /* ── Stats strip ── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    @media (max-width: 540px) { .stats-strip { grid-template-columns: 1fr 1fr; } }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .stat-label {
+      font-size: .75rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ── Upgrade pitch section ── */
+    .upgrade-pitch {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid rgba(201,169,110,.3);
+      background: linear-gradient(135deg, rgba(201,169,110,.07) 0%, var(--surface) 60%);
+    }
+    .upgrade-pitch-glow {
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(201,169,110,.18), transparent 70%);
+      pointer-events: none;
+    }
+    .upgrade-pitch-inner {
+      padding: 2.25rem 2rem;
+      position: relative;
+    }
+    .upgrade-pitch-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .6rem;
+    }
+    .upgrade-pitch-sub {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.65;
+      max-width: 500px;
+      margin-bottom: 1.75rem;
+    }
+    .upgrade-pitch-plans {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .upgrade-pitch-plan {
+      flex: 1;
+      min-width: 180px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      position: relative;
+    }
+    .upgrade-pitch-plan.featured {
+      border-color: var(--accent);
+      background: rgba(201,169,110,.05);
+    }
+    .upgrade-pitch-plan-badge {
+      position: absolute;
+      top: -10px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #0e0e10;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .2rem .65rem;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+    .upgrade-pitch-plan-name {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .35rem;
+    }
+    .upgrade-pitch-plan-price {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .upgrade-pitch-plan-price span { font-size: .85rem; font-weight: 400; color: var(--muted); }
+    .upgrade-pitch-plan-detail {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .upgrade-pitch-btn {
+      width: 100%;
+      padding: .6rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border: none;
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .upgrade-pitch-btn:hover { background: #d9b97e; transform: translateY(-1px); }
+
+    /* ── Interstitial ad modal ── */
+    .ad-modal-inner {
+      max-width: 380px;
+      border-top: 3px solid var(--accent);
+    }
+    .ad-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .ad-label {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    #ad-close-btn {
+      font-size: .78rem;
+      color: var(--muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .25rem .6rem;
+      font-family: inherit;
+      cursor: not-allowed;
+      transition: color .2s, border-color .2s, cursor .2s;
+    }
+    #ad-close-btn:not([disabled]) {
+      cursor: pointer;
+      color: var(--text);
+      border-color: var(--text);
+    }
+    #ad-close-btn:not([disabled]):hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── ── */
+    /* ── Onboarding tutorial ── */
+    #onboarding-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(6px);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s;
+    }
+    #onboarding-overlay.open { opacity: 1; pointer-events: all; }
+
+    #onboarding-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      width: 100%;
+      max-width: 440px;
+      overflow: hidden;
+      transform: translateY(16px) scale(.97);
+      transition: transform .3s cubic-bezier(.2,.8,.4,1);
+    }
+    #onboarding-overlay.open #onboarding-card { transform: translateY(0) scale(1); }
+
+    /* progress bar at top */
+    #ob-progress-bar {
+      height: 3px;
+      background: var(--border);
+    }
+    #ob-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width .4s cubic-bezier(.2,.8,.4,1);
+    }
+
+    /* illustration stage */
+    #ob-stage {
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* shared step panel */
+    .ob-step {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity .35s;
+      pointer-events: none;
+    }
+    .ob-step.active { opacity: 1; }
+
+    /* ── Step 1: upload illustration ── */
+    #ob-step1 .ob-dropbox {
+      width: 160px; height: 110px;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      position: relative;
+    }
+    #ob-step1 .ob-dropbox-label {
+      font-size: .72rem;
+      color: var(--muted);
+    }
+    #ob-step1 .ob-img-icon {
+      width: 44px; height: 36px;
+      background: var(--accent);
+      border-radius: 6px;
+      position: absolute;
+      top: -50px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; justify-content: center;
+      animation: ob-img-drop 2s cubic-bezier(.2,.8,.4,1) infinite;
+    }
+    @keyframes ob-img-drop {
+      0%   { top: -50px; opacity: 0; }
+      20%  { opacity: 1; }
+      55%  { top: 30px; }
+      70%  { top: 26px; }
+      80%  { top: 30px; }
+      90%, 100% { top: 30px; opacity: 0; }
+    }
+    #ob-step1 .ob-dropbox.landing {
+      animation: ob-box-glow 2s infinite;
+    }
+    @keyframes ob-box-glow {
+      0%, 30% { border-color: var(--border); }
+      50%, 70% { border-color: var(--accent); background: rgba(201,169,110,.06); }
+      90%, 100% { border-color: var(--border); }
+    }
+
+    /* ── Step 2: transcribe button illustration ── */
+    #ob-step2 .ob-btn-mock {
+      padding: .7rem 1.8rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border-radius: 10px;
+      font-size: .9rem;
+      font-weight: 600;
+      position: relative;
+      animation: ob-btn-pulse 2s cubic-bezier(.2,.8,.4,1) infinite;
+    }
+    @keyframes ob-btn-pulse {
+      0%, 30% { transform: scale(1); box-shadow: none; }
+      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(201,169,110,.15); }
+      70%      { transform: scale(1.02); }
+      100%     { transform: scale(1); }
+    }
+
+    /* ── Step 3: result text illustration ── */
+    #ob-step3 .ob-result-mock {
+      width: 260px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+    .ob-line {
+      height: 8px;
+      background: var(--border);
+      border-radius: 99px;
+      transform-origin: left;
+      animation: ob-line-grow 2.4s ease infinite;
+    }
+    .ob-line:nth-child(1) { width: 90%; animation-delay: 0s; }
+    .ob-line:nth-child(2) { width: 75%; animation-delay: .15s; }
+    .ob-line:nth-child(3) { width: 85%; animation-delay: .30s; }
+    .ob-line:nth-child(4) { width: 60%; animation-delay: .45s; }
+    @keyframes ob-line-grow {
+      0%   { transform: scaleX(0); background: var(--border); }
+      40%  { transform: scaleX(1); background: var(--accent); }
+      70%  { transform: scaleX(1); background: var(--text); opacity: .5; }
+      90%, 100% { transform: scaleX(1); background: var(--border); opacity: 1; }
+    }
+
+    /* animated cursor SVG */
+    .ob-cursor {
+      position: absolute;
+      width: 20px;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.4));
+    }
+    #ob-cursor-1 { animation: ob-cur1 2s ease-in-out infinite; bottom: 18px; left: 50%; }
+    @keyframes ob-cur1 {
+      0%   { transform: translate(-60px, -30px); opacity: 0; }
+      20%  { opacity: 1; }
+      55%  { transform: translate(-8px, 4px); }
+      80%  { transform: translate(-8px, 4px); opacity: 1; }
+      100% { transform: translate(-8px, 4px); opacity: 0; }
+    }
+    #ob-cursor-2 { animation: ob-cur2 2s ease-in-out infinite; bottom: 30px; left: 50%; }
+    @keyframes ob-cur2 {
+      0%, 20% { transform: translate(30px, 20px); opacity: 0; }
+      40%  { transform: translate(0, 0); opacity: 1; }
+      60%  { transform: translate(0, 2px); opacity: 1; }
+      80%  { transform: translate(0, 0); opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* text content area */
+    #ob-content {
+      padding: 1.5rem 1.75rem 1.25rem;
+    }
+    #ob-step-num {
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--accent);
+      margin-bottom: .35rem;
+    }
+    #ob-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-style: italic;
+      margin-bottom: .45rem;
+      transition: opacity .25s;
+    }
+    #ob-desc {
+      font-size: .88rem;
+      color: var(--muted);
+      line-height: 1.7;
+      transition: opacity .25s;
+    }
+
+    /* dot indicators */
+    #ob-dots {
+      display: flex;
+      gap: .4rem;
+      margin-top: 1rem;
+    }
+    .ob-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background .3s, transform .3s;
+    }
+    .ob-dot.active { background: var(--accent); transform: scale(1.4); }
+
+    /* footer buttons */
+    #ob-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.75rem 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    #ob-skip {
+      background: none; border: none;
+      color: var(--muted); font-family: inherit;
+      font-size: .85rem; cursor: pointer;
+      transition: color .15s;
+    }
+    #ob-skip:hover { color: var(--text); }
+    #ob-next {
+      padding: .55rem 1.4rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border: none;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    #ob-next:hover { background: #d9b97e; transform: translateY(-1px); }
+
+    /* ── Theme toggle button ── */
+    #theme-toggle {
+      position: fixed;
+      top: 1.1rem;
+      right: calc(1.25rem + 50px); /* sits just left of profile button */
+      z-index: 100;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      width: 40px; height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color .2s, transform .15s, background .3s;
+      padding: 0;
+      color: var(--text);
+    }
+    #theme-toggle:hover { border-color: var(--accent); transform: scale(1.06); color: var(--accent); }
+    #theme-toggle svg { transition: transform .4s cubic-bezier(.2,.8,.4,1), opacity .2s; }
+
+    /* Smooth transition on all themed elements */
+    .card, .modal, #profile-dropdown, #history-sidebar,
+    #upload-bar .upload-bar-inner, #hamburger-btn, #theme-toggle,
+    #transcribe-btn, #copy-btn, .modal-input, .ref-code-box,
+    .dropdown-item, header, footer { transition: background .3s, border-color .3s, color .3s; }
+  </style>
+</head>
+<body>
+
+  <!-- Hamburger button — fixed top-left, opens history sidebar -->
+  <button id="hamburger-btn" title="History" aria-label="Open history">
+    <span></span><span></span><span></span>
+  </button>
+
+  <!-- Onboarding tutorial modal -->
+  <div id="onboarding-overlay">
+    <div id="onboarding-card">
+
+      <div id="ob-progress-bar"><div id="ob-progress-fill" style="width:33%"></div></div>
+
+      <!-- Illustration stage -->
+      <div id="ob-stage">
+
+        <!-- Step 1: drag & drop -->
+        <div class="ob-step active" id="ob-step1">
+          <div class="ob-dropbox landing">
+            <div class="ob-img-icon">
+              <svg width="22" height="18" viewBox="0 0 24 20" fill="none" stroke="#0e0e10" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="22" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="M21 17L16 12 5 21"/></svg>
+            </div>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            <span class="ob-dropbox-label">Drop your image here</span>
+          </div>
+          <!-- cursor dragging the image -->
+          <svg id="ob-cursor-1" class="ob-cursor" viewBox="0 0 24 24"><path d="M4 4l7 18 3-7 7-3z" fill="white" stroke="#333" stroke-width="1"/></svg>
+        </div>
+
+        <!-- Step 2: click transcribe -->
+        <div class="ob-step" id="ob-step2">
+          <div class="ob-btn-mock">Transcribe handwriting</div>
+          <svg id="ob-cursor-2" class="ob-cursor" viewBox="0 0 24 24"><path d="M4 4l7 18 3-7 7-3z" fill="white" stroke="#333" stroke-width="1"/></svg>
+        </div>
+
+        <!-- Step 3: text appears -->
+        <div class="ob-step" id="ob-step3">
+          <div class="ob-result-mock">
+            <div class="ob-line"></div>
+            <div class="ob-line"></div>
+            <div class="ob-line"></div>
+            <div class="ob-line"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Text content -->
+      <div id="ob-content">
+        <div id="ob-step-num">Step 1 of 3</div>
+        <div id="ob-title">Upload your notes</div>
+        <div id="ob-desc">Take a photo of your handwritten notes or drag an image straight onto the page.</div>
+        <div id="ob-dots">
+          <div class="ob-dot active"></div>
+          <div class="ob-dot"></div>
+          <div class="ob-dot"></div>
+        </div>
+      </div>
+
+      <div id="ob-footer">
+        <button id="ob-skip">Skip</button>
+        <button id="ob-next">Next →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Theme toggle (dark ↔ light) -->
+  <button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
+    <!-- Moon icon shown in dark mode, sun shown in light mode -->
+    <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  </button>
+
+  <!-- History sidebar overlay (dims the page when sidebar is open) -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- History sidebar panel -->
+  <div id="history-sidebar" aria-label="Transcription history">
+
+    <div class="sidebar-header">
+      <h2>Library</h2>
+      <button id="sidebar-close" aria-label="Close history">✕</button>
+    </div>
+
+    <!-- ── Notebooks section ── -->
+    <div id="notebooks-section">
+      <div id="notebooks-section-header">
+        <!-- Toggle collapses/expands the notebooks list -->
+        <button id="notebooks-toggle" aria-expanded="false">
+          <i id="notebooks-toggle-chevron">›</i>
+          Notebooks
+        </button>
+        <button id="new-notebook-btn" title="New notebook">+ New</button>
+      </div>
+
+      <!-- Body: new-notebook form + list (hidden when collapsed) -->
+      <div id="notebooks-body">
+        <!-- Inline create form -->
+        <div id="new-notebook-form">
+          <input id="notebook-name-input" type="text" placeholder="Notebook name…" maxlength="40" />
+          <div id="color-swatches">
+            <!-- Six colour presets; first is selected by default -->
+            <button class="color-swatch selected" data-color="#c9a96e" style="background:#c9a96e" title="Gold"></button>
+            <button class="color-swatch" data-color="#6e9dc9" style="background:#6e9dc9" title="Blue"></button>
+            <button class="color-swatch" data-color="#7dc96e" style="background:#7dc96e" title="Green"></button>
+            <button class="color-swatch" data-color="#c96e9d" style="background:#c96e9d" title="Pink"></button>
+            <button class="color-swatch" data-color="#9d6ec9" style="background:#9d6ec9" title="Purple"></button>
+            <button class="color-swatch" data-color="#c9836e" style="background:#c9836e" title="Orange"></button>
+          </div>
+          <div id="new-notebook-actions">
+            <button id="create-notebook-btn">Create</button>
+            <button id="cancel-notebook-btn">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Notebooks list — injected by JS -->
+        <div id="notebooks-list"></div>
+      </div>
+    </div>
+
+    <!-- ── History section ── -->
+    <div class="sidebar-section-label">History</div>
+    <input type="search" id="history-search" placeholder="Search transcriptions…" autocomplete="off" />
+    <div id="history-list">
+      <!-- items injected by JS -->
+    </div>
+
+  </div>
+
+  <!-- Profile icon fixed to top-right corner -->
+  <div id="profile-corner">
+    <button id="profile-btn" title="Your profile">
+      {% if user.avatar %}
+        <img src="/static/avatars/{{ user.avatar }}" alt="Profile picture" />
+      {% else %}
+        {{ (user.first_name or 'U')[0] | upper }}
+      {% endif %}
+    </button>
+    <div id="profile-dropdown">
+      <div class="dropdown-user">
+        <div class="name">{{ user.first_name }} {{ user.last_name }}</div>
+        <div class="email">{{ user.email }}</div>
+      </div>
+      <!-- Hidden file input triggered by the "Change photo" button -->
+      <input type="file" id="avatar-input" accept="image/png,image/jpeg,image/webp" style="display:none" />
+      <button class="dropdown-item" id="change-photo-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M20.39 12A8.39 8.39 0 1 1 12 3.61M20 3l-8 8"/></svg>
+        Change photo
+      </button>
+      <button class="dropdown-item" id="open-subscription-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Subscription
+        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:rgba(201,169,110,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
+      </button>
+      <a class="dropdown-item danger" href="/logout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Log out
+      </a>
+    </div>
+  </div>
+
+  <header>
+    <h1 class="logo">Note<span>-</span>Cloud</h1>
+    <p class="tagline">Turn your handwritten notes into text — instantly.</p>
+  </header>
+
+  <!-- Token counter bar -->
+  <div id="upload-bar">
+    {% if tokens_remaining is none %}
+      <div class="upload-bar-inner unlimited">
+        <span style="color:var(--accent)">✦</span>
+        <span class="bar-label">Unlimited — {{ tier | title }}</span>
+      </div>
+    {% else %}
+      {% set pct = [[tokens_remaining / tokens_limit * 100, 0] | max, 100] | min %}
+      <div class="upload-bar-inner">
+        <span class="bar-label">Daily tokens</span>
+        <div class="bar-track">
+          <div class="bar-fill" id="bar-fill"
+               data-total="{{ tokens_limit }}"
+               style="width:{{ pct }}%">
+          </div>
+        </div>
+        <span class="bar-count">
+          <span id="tokens-remaining-num">{{ tokens_remaining }}</span> / {{ tokens_limit }}
+        </span>
+        <button class="bar-upgrade" id="open-upgrade-btn">Upgrade</button>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Upgrade modal ── -->
+  <div class="modal-overlay" id="upgrade-modal">
+    <div class="modal">
+      <h3>Get more tokens</h3>
+
+      <!-- Monthly / Yearly toggle -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:1rem">
+        <button id="toggle-monthly" class="billing-toggle active" onclick="setBilling('monthly')">Monthly</button>
+        <button id="toggle-yearly"  class="billing-toggle"        onclick="setBilling('yearly')">Yearly</button>
+        <span id="yearly-badge" style="display:none;background:rgba(92,184,138,.15);color:var(--success);font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:99px">SAVE UP TO 15%</span>
+      </div>
+
+      <!-- Pricing cards -->
+      <div style="display:flex;gap:.6rem;margin-bottom:1rem">
+        <!-- Student tier -->
+        <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:.9rem;text-align:center">
+          <div style="font-weight:600;font-size:.9rem;margin-bottom:.25rem">Student</div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--accent)" id="student-price">$3.99</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem" id="student-period">/month</div>
+          <div style="font-size:.7rem;color:var(--success);min-height:1em" id="student-saving"></div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem">5,000 tokens/day<br>~20 pages</div>
+          <button class="modal-btn primary" style="width:100%;margin-top:.75rem;padding:.55rem" onclick="startUpgrade('student')">Choose</button>
+        </div>
+        <!-- Pro tier -->
+        <div style="flex:1;background:var(--bg);border:1.5px solid var(--accent);border-radius:10px;padding:.9rem;text-align:center;position:relative">
+          <div style="position:absolute;top:-.6rem;left:50%;transform:translateX(-50%);background:var(--accent);color:#0e0e10;font-size:.65rem;font-weight:700;padding:.15rem .5rem;border-radius:99px">BEST VALUE</div>
+          <div style="font-weight:600;font-size:.9rem;margin-bottom:.25rem">Pro</div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--accent)" id="pro-price">$8.99</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem" id="pro-period">/month</div>
+          <div style="font-size:.7rem;color:var(--success);min-height:1em" id="pro-saving"></div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem">Unlimited tokens<br>no daily cap</div>
+          <button class="modal-btn primary" style="width:100%;margin-top:.75rem;padding:.55rem" onclick="startUpgrade('pro')">Choose</button>
+        </div>
+      </div>
+
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:.6rem">
+        Or share your referral code — earn <strong style="color:var(--text)">+{{ referral_bonus_tokens }} tokens/day</strong> for every friend who signs up.
+      </p>
+      <div class="ref-code-box">
+        <span class="ref-code" id="ref-code-display">{{ user.referral_code or '—' }}</span>
+        <button class="copy-ref-btn" id="copy-ref-btn" title="Copy code">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-actions" style="margin-top:.75rem">
+        <button class="modal-btn secondary" id="close-upgrade-btn">Maybe later</button>
+      </div>
+      <p class="modal-error" id="upgrade-error"></p>
+
+      <div style="border-top:1px solid var(--border);margin-top:1.25rem;padding-top:1rem">
+        <p style="margin-bottom:.5rem;font-size:.85rem">Have a special code?</p>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <!-- Letters segment: exactly 5 A-Z characters -->
+          <input class="modal-input" id="redeem-letters"
+                 placeholder="ABCDE"
+                 maxlength="5"
+                 style="margin:0;flex:5;text-transform:uppercase;letter-spacing:.1em;text-align:center;font-weight:600" />
+          <span style="color:var(--muted);font-weight:600;font-size:1rem;flex-shrink:0">–</span>
+          <!-- Numbers segment: exactly 4 digits -->
+          <input class="modal-input" id="redeem-numbers"
+                 placeholder="1234"
+                 maxlength="4"
+                 inputmode="numeric"
+                 style="margin:0;flex:4;letter-spacing:.1em;text-align:center;font-weight:600" />
+          <button class="modal-btn primary" style="flex:0 0 auto;padding:.75rem 1rem" id="redeem-btn">Redeem</button>
+        </div>
+        <p class="modal-error" id="redeem-error"></p>
+        <p class="modal-success" id="redeem-success" style="display:none"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Subscription modal ── -->
+  <div class="modal-overlay" id="subscription-modal">
+    <div class="modal">
+      <h3>Your subscription</h3>
+
+      <!-- Current plan info -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:600;font-size:.95rem">{{ (tier or 'free') | title }} plan</div>
+            {% if tier == 'free' %}
+              <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">500 tokens/day · ~2 pages</div>
+            {% elif tier == 'student' %}
+              <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">5,000 tokens/day · ~20 pages</div>
+            {% else %}
+              <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">Unlimited tokens</div>
+            {% endif %}
+          </div>
+          <span style="background:rgba(201,169,110,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:99px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
+        </div>
+      </div>
+
+      {% if tier == 'free' %}
+        <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">You're on the free plan. Upgrade for more tokens and fewer interruptions.</p>
+        <button class="modal-btn primary" style="width:100%" onclick="document.getElementById('subscription-modal').classList.remove('open');document.getElementById('upgrade-modal').classList.add('open')">
+          View upgrade options
+        </button>
+      {% else %}
+        <p style="color:var(--muted);font-size:.875rem;margin-bottom:1rem">To change or pause your plan, contact us. Cancellations take effect at the end of your billing period.</p>
+        <div class="modal-actions">
+          <button class="modal-btn secondary" id="close-subscription-btn">Close</button>
+          <button class="modal-btn danger-btn" id="cancel-sub-btn">Cancel subscription</button>
+        </div>
+        <p class="modal-error" id="cancel-error" style="margin-top:.5rem"></p>
+        <p class="modal-success" id="cancel-success" style="display:none;margin-top:.5rem"></p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if tier == 'free' %}
+  <!-- ── Interstitial upgrade ad (free users only) ── -->
+  <div class="modal-overlay" id="ad-modal">
+    <div class="modal ad-modal-inner">
+      <div class="ad-top-bar">
+        <span class="ad-label">Advertisement</span>
+        <button id="ad-close-btn" disabled>Close in <span id="ad-countdown">5</span>s</button>
+      </div>
+      <div style="text-align:center;padding:.5rem 0 1rem">
+        <div style="font-size:2rem;margin-bottom:.5rem">✏️</div>
+        <h3 id="ad-headline" style="font-size:1.15rem;font-weight:700;color:var(--text);margin-bottom:.5rem"></h3>
+        <p id="ad-body" style="font-size:.875rem;color:var(--muted);line-height:1.6;margin-bottom:1.25rem"></p>
+        <button class="modal-btn primary" style="width:100%" onclick="document.getElementById('ad-modal').classList.remove('open');document.getElementById('upgrade-modal').classList.add('open')">
+          See upgrade options →
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <main>
+
+    <div id="drop-zone">
+      <svg class="drop-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M34 6L42 14L16 40L6 42L8 32L34 6Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M30 10L38 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <div class="drop-buttons">
+        <!-- Desktop: generic file picker -->
+        <label class="drop-label" for="file-input" id="desktop-choose-wrap">Choose an image</label>
+        <!-- Mobile only: gallery picker -->
+        <label class="drop-label drop-label-camera" for="gallery-input" id="gallery-btn-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:.35rem"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Gallery
+        </label>
+        <!-- Mobile only: camera -->
+        <label class="drop-label drop-label-camera" for="camera-input" id="camera-btn-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:.35rem"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Camera
+        </label>
+      </div>
+      <p id="drop-hint">or drag &amp; drop your photo here &nbsp;·&nbsp; PNG, JPG, WEBP, GIF</p>
+      <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/webp" multiple />
+      <!-- Gallery input — no capture attr so it goes straight to photo library on mobile -->
+      <input type="file" id="gallery-input" accept="image/*" />
+      <!-- Camera input — capture="environment" opens the rear camera on mobile -->
+      <input type="file" id="camera-input" accept="image/*" capture="environment" />
+    </div>
+
+    <div id="preview-wrapper">
+      <img id="preview" src="" alt="Preview of your upload" />
+      <button id="clear-btn" title="Remove image">&#x2715;</button>
+    </div>
+
+    <!-- Multi-file thumbnail strip (shown when >1 image selected) -->
+    <div id="multi-preview"></div>
+
+    <button id="transcribe-btn" class="empty"><span id="transcribe-label">Transcribe handwriting</span></button>
+
+    <!-- Pencil progress overlay (shown while Claude is processing) -->
+    <div id="loading-overlay">
+      <div id="loading-msg">Reading your handwriting…</div>
+      <div id="loading-track">
+        <!-- SVG scribble path — pencil draws this line left to right -->
+        <svg id="loading-svg" viewBox="0 0 400 36" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Ghost path (faint background) -->
+          <path class="scribble-bg" d="M4,18 C14,6 24,30 34,18 C44,6 54,30 64,18 C74,6 84,30 94,18 C104,6 114,30 124,18 C134,6 144,30 154,18 C164,6 174,30 184,18 C194,6 204,30 214,18 C224,6 234,30 244,18 C254,6 264,30 274,18 C284,6 294,30 304,18 C314,6 324,30 334,18 C344,6 354,30 364,18 C374,6 384,30 396,18"/>
+          <!-- Colored fill path (revealed left-to-right via dashoffset) -->
+          <path id="scribble-fg" class="scribble-fg" d="M4,18 C14,6 24,30 34,18 C44,6 54,30 64,18 C74,6 84,30 94,18 C104,6 114,30 124,18 C134,6 144,30 154,18 C164,6 174,30 184,18 C194,6 204,30 214,18 C224,6 234,30 244,18 C254,6 264,30 274,18 C284,6 294,30 304,18 C314,6 324,30 334,18 C344,6 354,30 364,18 C374,6 384,30 396,18"/>
+        </svg>
+        <span id="loading-pencil">✏️</span>
+      </div>
+      <div id="loading-pct">0%</div>
+    </div>
+
+    <p id="status"></p>
+
+    <section id="result-section" class="card">
+      <div class="result-header">
+        <span class="result-label">Transcription</span>
+        <span id="word-count"></span>
+      </div>
+      <textarea id="result-text" spellcheck="true" aria-label="Transcribed text"></textarea>
+      <div class="result-footer">
+        <button id="copy-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy to clipboard
+        </button>
+        <button id="cleanup-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          AI cleanup
+        </button>
+        <button id="share-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share link
+        </button>
+        <!-- Download buttons — IDs updated by JS once a transcription_id is known -->
+        <div id="download-group">
+          <a id="dl-txt-btn" class="dl-btn" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            .txt
+          </a>
+          <a id="dl-docx-btn" class="dl-btn" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            .docx
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Below-fold content ── -->
+  <div class="below-fold">
+
+    <!-- How it works -->
+    <div class="reveal">
+      <div class="section-eyebrow">How it works</div>
+      <div class="how-grid">
+        <div class="how-step">
+          <div class="how-step-num">1</div>
+          <div class="how-step-title">Snap or upload</div>
+          <div class="how-step-desc">Take a photo of your handwritten notes or drag an image straight onto the page.</div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">2</div>
+          <div class="how-step-title">Claude reads it</div>
+          <div class="how-step-desc">Claude's vision AI analyses your handwriting — even messy cursive — and converts it to clean text.</div>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">3</div>
+          <div class="how-step-title">Edit &amp; export</div>
+          <div class="how-step-desc">Tweak the result, run AI cleanup, then copy, download as .txt or .docx, or share a link.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="reveal">
+      <div class="tips-card">
+        <h3>Tips for the best results</h3>
+        <div class="tips-list">
+          <div class="tip-row"><span class="tip-icon">💡</span><span><strong>Good lighting matters.</strong> Natural daylight or a bright lamp makes handwriting pop against the page — low-light photos are the #1 cause of errors.</span></div>
+          <div class="tip-row"><span class="tip-icon">📐</span><span><strong>Shoot straight down.</strong> Hold your phone directly above the page to avoid distortion. The text should fill most of the frame.</span></div>
+          <div class="tip-row"><span class="tip-icon">✏️</span><span><strong>Dark pen on white paper.</strong> High contrast = fewer [illegible] markers. Pencil on lined paper can be tricky — a ballpoint on blank paper is ideal.</span></div>
+          <div class="tip-row"><span class="tip-icon">📄</span><span><strong>Multi-page?</strong> Select all your images at once using the file picker — Note-Cloud will transcribe them in order and stitch everything together.</span></div>
+          <div class="tip-row"><span class="tip-icon">✨</span><span><strong>Use AI cleanup.</strong> After transcribing, hit "AI cleanup" to fix spacing, grammar, and punctuation automatically — great for fast handwriting.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="reveal">
+      <div class="section-eyebrow">What you get</div>
+      <div class="stats-strip">
+        <div class="stat-card">
+          <div class="stat-value">~2s</div>
+          <div class="stat-label">Average time to transcribe a full page</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">95%+</div>
+          <div class="stat-label">Accuracy on clear, well-lit handwriting</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">∞</div>
+          <div class="stat-label">Pages per session on Pro — no hard limits</div>
+        </div>
+      </div>
+    </div>
+
+    {% if tier == 'free' or tier == 'student' %}
+    <!-- Upgrade pitch -->
+    <div class="reveal">
+      <div class="upgrade-pitch">
+        <div class="upgrade-pitch-glow"></div>
+        <div class="upgrade-pitch-inner">
+          <div class="section-eyebrow" style="margin-bottom:.5rem">Ready for more?</div>
+          <h2 class="upgrade-pitch-title">Stop hitting the wall.</h2>
+          <p class="upgrade-pitch-sub">Free users get ~2 pages a day. One lecture's worth. Upgrade and never think about limits again.</p>
+          <div class="upgrade-pitch-plans">
+            {% if tier == 'free' %}
+            <div class="upgrade-pitch-plan">
+              <div class="upgrade-pitch-plan-name">Student</div>
+              <div class="upgrade-pitch-plan-price">$3.99<span>/mo</span></div>
+              <div class="upgrade-pitch-plan-detail">5,000 tokens/day · ~20 pages</div>
+              <button class="upgrade-pitch-btn" onclick="document.getElementById('upgrade-modal').classList.add('open')">Get Student</button>
+            </div>
+            {% endif %}
+            <div class="upgrade-pitch-plan featured">
+              <div class="upgrade-pitch-plan-badge">Most popular</div>
+              <div class="upgrade-pitch-plan-name">Pro</div>
+              <div class="upgrade-pitch-plan-price">$8.99<span>/mo</span></div>
+              <div class="upgrade-pitch-plan-detail">Unlimited · no daily cap</div>
+              <button class="upgrade-pitch-btn" onclick="document.getElementById('upgrade-modal').classList.add('open')">Get Pro</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <script>
+    const USER_TIER = "{{ tier or 'free' }}";
+
+    const dropZone      = document.getElementById("drop-zone");
+    const fileInput     = document.getElementById("file-input");
+    const preview       = document.getElementById("preview");
+    const previewWrap   = document.getElementById("preview-wrapper");
+    const multiPreview  = document.getElementById("multi-preview");
+    const clearBtn      = document.getElementById("clear-btn");
+    const transcribeBtn = document.getElementById("transcribe-btn");
+    const statusEl      = document.getElementById("status");
+    const resultSection = document.getElementById("result-section");
+    const resultText    = document.getElementById("result-text");
+    const wordCount     = document.getElementById("word-count");
+    const copyBtn       = document.getElementById("copy-btn");
+    const cleanupBtn    = document.getElementById("cleanup-btn");
+    const shareBtn      = document.getElementById("share-btn");
+    const dlTxtBtn      = document.getElementById("dl-txt-btn");
+    const dlDocxBtn     = document.getElementById("dl-docx-btn");
+    const transcribeLabel = document.getElementById("transcribe-label");
+
+    // Scribble loader elements
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const scribbleFg     = document.getElementById("scribble-fg");
+    const loadingMsg     = document.getElementById("loading-msg");
+    const loadingPct     = document.getElementById("loading-pct");
+    const loadingPencil  = document.getElementById("loading-pencil");
+
+    // Measure path length once so we can drive dashoffset from it
+    let scribbleLen = 0;
+    if (scribbleFg) {
+      scribbleLen = scribbleFg.getTotalLength();
+      scribbleFg.style.strokeDasharray  = scribbleLen;
+      scribbleFg.style.strokeDashoffset = scribbleLen; // fully hidden
+    }
+
+    // Hide cleanup button until a transcription is loaded
+    cleanupBtn.style.display = "none";
+
+    let selectedFiles = [];
+    let loadingTimer  = null;
+    let loadingProgress = 0;
+    let noFileMsgIndex = 0;
+
+    const loadingMessages = [
+      "loading"
+    ];
+
+    function setScribbleProgress(pct) {
+      const offset = scribbleLen * (1 - pct / 100);
+      scribbleFg.style.strokeDashoffset = offset;
+      loadingPencil.style.left = pct + "%";
+      loadingPct.textContent = Math.round(pct) + "%";
+    }
+
+    function startPencilLoader() {
+      loadingOverlay.style.display = "block";
+      loadingProgress = 0;
+      // Disable transition for instant reset
+      scribbleFg.style.transition = "none";
+      loadingPencil.style.transition = "none";
+      setScribbleProgress(0);
+      // Re-enable transitions next frame
+      requestAnimationFrame(() => {
+        scribbleFg.style.transition  = "stroke-dashoffset .35s ease-out";
+        loadingPencil.style.transition = "left .35s ease-out";
+      });
+      loadingMsg.textContent = loadingMessages[0];
+      loadingMsg.style.opacity = "1";
+      let msgIndex = 0;
+      loadingTimer = setInterval(() => {
+        const step = loadingProgress < 60 ? 2.2 : loadingProgress < 80 ? 0.9 : 0.25;
+        loadingProgress = Math.min(loadingProgress + step, 88);
+        setScribbleProgress(loadingProgress);
+        const newIdx = Math.min(Math.floor(loadingProgress / 22), loadingMessages.length - 1);
+        if (newIdx !== msgIndex) {
+          msgIndex = newIdx;
+          loadingMsg.style.opacity = "0";
+          setTimeout(() => {
+            loadingMsg.textContent = loadingMessages[msgIndex];
+            loadingMsg.style.opacity = "1";
+          }, 200);
+        }
+      }, 200);
+    }
+
+    function stopPencilLoader(success = true) {
+      clearInterval(loadingTimer);
+      if (success) {
+        setScribbleProgress(100);
+        loadingMsg.style.opacity = "0";
+        setTimeout(() => {
+          loadingMsg.textContent = "Done!";
+          loadingMsg.style.opacity = "1";
+        }, 200);
+        setTimeout(() => { loadingOverlay.style.display = "none"; }, 900);
+      } else {
+        loadingOverlay.style.display = "none";
+      }
+    }
+    const noFileMsgs = [
+      "Upload something first... I can't read thin air",
+      "Bro there's literally nothing here",
+      "An image would be cool right about now",
+      "Still waiting for a pic... no rush or anything",
+      "The button works, it's you that's the problem",
+      "Ok at this point I think you're doing this on purpose, just upload a pic",
+      "Have you considered... uploading a photo?",
+      "I'm a handwriting reader not a mind reader",
+    ];
+
+    function countWords(str) {
+      return str.trim().split(/\s+/).filter(Boolean).length;
+    }
+
+    function setLoading(msg) {
+      statusEl.innerHTML = `<span>${msg}</span><span class="dot-loader"><span></span><span></span><span></span></span>`;
+    }
+
+    function clearStatus() { statusEl.innerHTML = ""; }
+
+    function handleFiles(files) {
+      const imageFiles = Array.from(files).filter(f => f.type.startsWith("image/"));
+      if (!imageFiles.length) {
+        statusEl.style.color = "var(--error)";
+        statusEl.textContent = "Please select image files.";
+        return;
+      }
+      statusEl.style.color = "";
+      selectedFiles = imageFiles;
+
+      if (imageFiles.length === 1) {
+        // Single file — classic single preview
+        preview.src = URL.createObjectURL(imageFiles[0]);
+        previewWrap.style.display = "block";
+        multiPreview.style.display = "none";
+        transcribeLabel.textContent = "Transcribe handwriting";
+      } else {
+        // Multiple files — thumbnail grid
+        previewWrap.style.display = "none";
+        multiPreview.innerHTML = "";
+        multiPreview.style.display = "flex";
+        imageFiles.forEach((f, idx) => {
+          const wrap = document.createElement("div");
+          wrap.className = "multi-thumb-wrap";
+          const img = document.createElement("img");
+          img.className = "multi-thumb";
+          img.src = URL.createObjectURL(f);
+          img.title = `Page ${idx + 1}: ${f.name}`;
+          const rm = document.createElement("button");
+          rm.className = "multi-thumb-rm";
+          rm.textContent = "×";
+          rm.title = "Remove this page";
+          rm.addEventListener("click", () => {
+            selectedFiles = selectedFiles.filter((_, i) => i !== idx);
+            if (selectedFiles.length === 0) { clearSelection(); return; }
+            handleFiles(selectedFiles); // re-render
+          });
+          wrap.appendChild(img);
+          wrap.appendChild(rm);
+          multiPreview.appendChild(wrap);
+        });
+        transcribeLabel.textContent = `Transcribe ${imageFiles.length} pages`;
+      }
+      dropZone.style.display = "none";
+      transcribeBtn.classList.remove("empty");
+      resultSection.style.display = "none";
+      clearStatus();
+    }
+
+    // Backward-compat alias for single file (drag-drop, camera)
+    function handleFile(file) { handleFiles([file]); }
+
+    function clearSelection() {
+      selectedFiles = [];
+      preview.src = "";
+      previewWrap.style.display = "none";
+      multiPreview.style.display = "none";
+      multiPreview.innerHTML = "";
+      dropZone.style.display = "block";
+      transcribeBtn.classList.add("empty");
+      transcribeLabel.textContent = "Transcribe handwriting";
+      resultSection.style.display = "none";
+      fileInput.value = "";
+      clearStatus();
+    }
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) handleFiles(Array.from(fileInput.files));
+    });
+
+    // Gallery input — opens photo library on mobile
+    const galleryInput = document.getElementById("gallery-input");
+    galleryInput.addEventListener("change", () => {
+      if (galleryInput.files.length > 0) handleFile(galleryInput.files[0]);
+    });
+
+    // Camera input — opens rear camera on mobile
+    const cameraInput = document.getElementById("camera-input");
+    cameraInput.addEventListener("change", () => {
+      if (cameraInput.files.length > 0) handleFile(cameraInput.files[0]);
+    });
+
+    clearBtn.addEventListener("click", clearSelection);
+
+    dropZone.addEventListener("dragover",  (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+    dropZone.addEventListener("dragleave", ()  => dropZone.classList.remove("drag-over"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    transcribeBtn.addEventListener("click", async () => {
+      if (!selectedFiles.length) {
+        // Fade just the label text out, swap, fade back in, then revert after 2s
+        transcribeLabel.style.opacity = "0";
+        setTimeout(() => {
+          transcribeLabel.textContent = noFileMsgs[noFileMsgIndex % noFileMsgs.length];
+          noFileMsgIndex++;
+          transcribeLabel.style.opacity = "";
+          setTimeout(() => {
+            transcribeLabel.style.opacity = "0";
+            setTimeout(() => {
+              transcribeLabel.textContent = "Transcribe handwriting";
+              transcribeLabel.style.opacity = "";
+            }, 200);
+          }, 2000);
+        }, 200);
+        return;
+      }
+
+      transcribeBtn.disabled = true;
+      transcribeBtn.classList.add("loading");
+      transcribeLabel.textContent = selectedFiles.length > 1 ? `Sending ${selectedFiles.length} pages…` : "Reading handwriting…";
+      startPencilLoader();
+      resultSection.style.display = "none";
+      cleanupBtn.style.display = "none";
+
+      const formData = new FormData();
+      selectedFiles.forEach(f => formData.append("images[]", f));
+
+      let success = false;
+      try {
+        const response = await fetch("/transcribe", { method: "POST", body: formData, credentials: "same-origin" });
+        if (response.status === 401) { window.location.href = "/login"; return; }
+        const data = await response.json();
+
+        if (data.error === "limit_reached") {
+          statusEl.style.color = "var(--error)";
+          statusEl.textContent = data.message;
+          if (upgradeModal) upgradeModal.classList.add("open");
+          return;
+        }
+
+        if (!response.ok) throw new Error(data.error || "Server error.");
+
+        success = true;
+        resultText.value = data.transcription;
+        wordCount.textContent = `${countWords(data.transcription)} words`;
+        resultSection.style.display = "block";
+        clearStatus();
+        resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        updateCounter(data.tokens_remaining, data.tokens_limit);
+        shareBtn.dataset.transId = data.transcription_id || "";
+        cleanupBtn.style.display = "";
+
+        const tid = data.transcription_id;
+        if (tid) {
+          dlTxtBtn.href  = `/transcriptions/${tid}/download/txt`;
+          dlDocxBtn.href = `/transcriptions/${tid}/download/docx`;
+          dlTxtBtn.style.display  = "";
+          dlDocxBtn.style.display = "";
+        }
+
+      } catch (err) {
+        statusEl.style.color = "var(--error)";
+        statusEl.textContent = "Error: " + err.message;
+      } finally {
+        stopPencilLoader(success);
+        transcribeBtn.disabled = false;
+        transcribeBtn.classList.remove("loading");
+        transcribeLabel.textContent = selectedFiles.length > 1 ? `Transcribe ${selectedFiles.length} pages` : "Transcribe handwriting";
+        noFileMsgIndex = 0;
+      }
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(resultText.value);
+        copyBtn.classList.add("copied");
+        copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+        setTimeout(() => {
+          copyBtn.classList.remove("copied");
+          copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy to clipboard`;
+        }, 2000);
+      } catch {
+        resultText.select();
+        document.execCommand("copy");
+      }
+    });
+
+    shareBtn.addEventListener("click", async () => {
+      const transId = shareBtn.dataset.transId;
+      if (!transId) return;
+
+      const original = shareBtn.innerHTML;
+      shareBtn.textContent = "Generating…";
+      shareBtn.disabled = true;
+
+      try {
+        const res  = await fetch(`/transcriptions/${transId}/share`, {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Failed");
+
+        await navigator.clipboard.writeText(data.url);
+        shareBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Link copied!`;
+        shareBtn.classList.add("copied");
+        setTimeout(() => {
+          shareBtn.innerHTML = original;
+          shareBtn.classList.remove("copied");
+          shareBtn.disabled = false;
+        }, 2500);
+      } catch (err) {
+        shareBtn.innerHTML = original;
+        shareBtn.disabled = false;
+        alert("Could not generate share link: " + err.message);
+      }
+    });
+
+    // ── AI Cleanup ──────────────────────────────────────────────────────────────
+    cleanupBtn.addEventListener("click", async () => {
+      const text = resultText.value.trim();
+      if (!text) return;
+      const origHTML = cleanupBtn.innerHTML;
+      cleanupBtn.textContent = "Cleaning up…";
+      cleanupBtn.disabled = true;
+      try {
+        const res  = await fetch("/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (data.text) {
+          resultText.value = data.text;
+          wordCount.textContent = `${countWords(data.text)} words`;
+          cleanupBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Done!`;
+          setTimeout(() => { cleanupBtn.innerHTML = origHTML; cleanupBtn.disabled = false; }, 2000);
+          return;
+        }
+        if (data.error) { statusEl.style.color = "var(--error)"; statusEl.textContent = data.error; }
+      } catch (err) {
+        statusEl.style.color = "var(--error)";
+        statusEl.textContent = "Cleanup failed: " + err.message;
+      }
+      cleanupBtn.innerHTML = origHTML;
+      cleanupBtn.disabled = false;
+    });
+
+    resultText.addEventListener("input", () => {
+      wordCount.textContent = `${countWords(resultText.value)} words`;
+    });
+
+    // Slide the about card in when scrolled to, out when scrolled away
+    // ── Profile dropdown ──
+    const profileBtn      = document.getElementById("profile-btn");
+    const profileDropdown = document.getElementById("profile-dropdown");
+    const avatarInput     = document.getElementById("avatar-input");
+    const changePhotoBtn  = document.getElementById("change-photo-btn");
+
+    profileBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      profileDropdown.classList.toggle("open");
+    });
+    document.addEventListener("click", () => profileDropdown.classList.remove("open"));
+
+    changePhotoBtn.addEventListener("click", () => avatarInput.click());
+
+    avatarInput.addEventListener("change", async () => {
+      if (!avatarInput.files.length) return;
+      const form = new FormData();
+      form.append("avatar", avatarInput.files[0]);
+      const res  = await fetch("/profile/upload", { method: "POST", body: form, credentials: "same-origin" });
+      const data = await res.json();
+      if (data.ok) {
+        profileBtn.innerHTML = `<img src="/static/avatars/${data.avatar}?t=${Date.now()}" alt="Profile picture" style="width:100%;height:100%;object-fit:cover" />`;
+      }
+      profileDropdown.classList.remove("open");
+    });
+
+    // ── Upload counter & upgrade modal ──
+    const upgradeModal    = document.getElementById("upgrade-modal");
+    const openUpgradeBtn      = document.getElementById("open-upgrade-btn");
+    const closeUpgradeBtn     = document.getElementById("close-upgrade-btn");
+    const subscriptionModal   = document.getElementById("subscription-modal");
+    const openSubscriptionBtn = document.getElementById("open-subscription-btn");
+    const closeSubscriptionBtn= document.getElementById("close-subscription-btn");
+    const cancelSubBtn        = document.getElementById("cancel-sub-btn");
+    const cancelError         = document.getElementById("cancel-error");
+    const cancelSuccess       = document.getElementById("cancel-success");
+    const redeemLetters       = document.getElementById("redeem-letters");
+    const redeemNumbers       = document.getElementById("redeem-numbers");
+    const redeemBtn           = document.getElementById("redeem-btn");
+    const redeemError         = document.getElementById("redeem-error");
+    const redeemSuccess       = document.getElementById("redeem-success");
+    const upgradeError        = document.getElementById("upgrade-error");
+    const barFill             = document.getElementById("bar-fill");
+    const tokensRemainingNum  = document.getElementById("tokens-remaining-num");
+    const copyRefBtn          = document.getElementById("copy-ref-btn");
+    const refCodeDisplay      = document.getElementById("ref-code-display");
+
+    if (openUpgradeBtn)
+      openUpgradeBtn.addEventListener("click", () => upgradeModal.classList.add("open"));
+    if (closeUpgradeBtn)
+      closeUpgradeBtn.addEventListener("click", () => upgradeModal.classList.remove("open"));
+    if (upgradeModal)
+      upgradeModal.addEventListener("click", (e) => { if (e.target === upgradeModal) upgradeModal.classList.remove("open"); });
+
+    // Subscription modal
+    if (openSubscriptionBtn)
+      openSubscriptionBtn.addEventListener("click", () => {
+        profileDropdown.classList.remove("open");
+        subscriptionModal.classList.add("open");
+      });
+    if (closeSubscriptionBtn)
+      closeSubscriptionBtn.addEventListener("click", () => subscriptionModal.classList.remove("open"));
+    if (subscriptionModal)
+      subscriptionModal.addEventListener("click", (e) => { if (e.target === subscriptionModal) subscriptionModal.classList.remove("open"); });
+
+    // Cancel subscription
+    if (cancelSubBtn) {
+      cancelSubBtn.addEventListener("click", async () => {
+        if (!confirm("Are you sure you want to cancel? You'll keep access until the end of your billing period.")) return;
+        cancelSubBtn.textContent = "Cancelling…";
+        cancelSubBtn.disabled = true;
+        const res  = await fetch("/cancel-subscription", { method: "POST", credentials: "same-origin" });
+        const data = await res.json();
+        if (data.ok) {
+          if (cancelSuccess) { cancelSuccess.textContent = data.message; cancelSuccess.style.display = "block"; }
+          cancelSubBtn.style.display = "none";
+          setTimeout(() => window.location.reload(), 2000);
+        } else {
+          if (cancelError) cancelError.textContent = data.error || "Something went wrong.";
+          cancelSubBtn.textContent = "Cancel subscription";
+          cancelSubBtn.disabled = false;
+        }
+      });
+    }
+
+    // Copy referral code to clipboard
+    if (copyRefBtn && refCodeDisplay) {
+      copyRefBtn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(refCodeDisplay.textContent.trim());
+        copyRefBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+        setTimeout(() => {
+          copyRefBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+        }, 2000);
+      });
+    }
+
+    // Billing period toggle — switches prices between monthly and yearly
+    let billingPeriod = "monthly";
+    const pricing = {
+      monthly: { student: "$3.99", pro: "$8.99", period: "/month" },
+      yearly:  { student: "$39.90", pro: "$89.90", period: "/year" },
+    };
+    const savings = {
+      student: "Save 10% vs monthly",
+      pro:     "Save 15% vs monthly",
+    };
+
+    function setBilling(period) {
+      billingPeriod = period;
+      const p = pricing[period];
+      document.getElementById("student-price").textContent  = p.student;
+      document.getElementById("student-period").textContent = p.period;
+      document.getElementById("pro-price").textContent      = p.pro;
+      document.getElementById("pro-period").textContent     = p.period;
+      document.getElementById("student-saving").textContent = period === "yearly" ? savings.student : "";
+      document.getElementById("pro-saving").textContent     = period === "yearly" ? savings.pro : "";
+      document.getElementById("toggle-monthly").classList.toggle("active", period === "monthly");
+      document.getElementById("toggle-yearly").classList.toggle("active",  period === "yearly");
+      document.getElementById("yearly-badge").style.display = period === "yearly" ? "inline" : "none";
+    }
+
+    // Called by the Choose buttons in the upgrade modal
+    async function startUpgrade(tier) {
+      const btn = event.target;
+      btn.textContent = "Setting up…";
+      btn.disabled = true;
+      const res  = await fetch("/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ tier, period: billingPeriod }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        if (upgradeError) upgradeError.textContent = data.message || "Payments coming soon!";
+        btn.textContent = "Choose";
+        btn.disabled = false;
+      }
+    }
+
+    // ── Redeem code inputs — enforce letters-only and numbers-only ──
+    if (redeemLetters) {
+      redeemLetters.addEventListener("keydown", (e) => {
+        // Allow: backspace, delete, tab, arrows, home, end
+        if (["Backspace","Delete","Tab","ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;
+        // Block anything that isn't a letter A-Z
+        if (!/^[a-zA-Z]$/.test(e.key)) { e.preventDefault(); return; }
+        // Auto-jump to numbers field when 5 letters are filled
+        if (redeemLetters.value.length === 4) {
+          setTimeout(() => redeemNumbers.focus(), 0);
+        }
+      });
+      // Force uppercase as the user types
+      redeemLetters.addEventListener("input", () => {
+        redeemLetters.value = redeemLetters.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 5);
+      });
+    }
+
+    if (redeemNumbers) {
+      redeemNumbers.addEventListener("keydown", (e) => {
+        if (["Backspace","Delete","Tab","ArrowLeft","ArrowRight","Home","End"].includes(e.key)) {
+          // If backspace on empty numbers field, jump back to letters
+          if (e.key === "Backspace" && redeemNumbers.value.length === 0) {
+            redeemLetters.focus();
+          }
+          return;
+        }
+        // Block anything that isn't a digit 0-9
+        if (!/^[0-9]$/.test(e.key)) { e.preventDefault(); }
+      });
+      redeemNumbers.addEventListener("input", () => {
+        redeemNumbers.value = redeemNumbers.value.replace(/[^0-9]/g, "").slice(0, 4);
+      });
+    }
+
+    // Redeem a special code
+    if (redeemBtn) {
+      redeemBtn.addEventListener("click", async () => {
+        redeemError.textContent = "";
+        redeemSuccess.style.display = "none";
+
+        const letters = (redeemLetters?.value || "").trim().toUpperCase();
+        const numbers = (redeemNumbers?.value || "").trim();
+
+        if (letters.length < 5) { redeemError.textContent = "Enter all 5 letters."; redeemLetters.focus(); return; }
+        if (numbers.length < 4) { redeemError.textContent = "Enter all 4 digits."; redeemNumbers.focus(); return; }
+
+        const code = letters + numbers;
+        const res  = await fetch("/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          redeemSuccess.textContent = data.message;
+          redeemSuccess.style.display = "block";
+          redeemLetters.value = "";
+          redeemNumbers.value = "";
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          redeemError.textContent = data.error;
+        }
+      });
+    }
+
+    // Update the token bar after each transcription
+    function updateCounter(remaining, limit) {
+      if (remaining === null || remaining === undefined) return;
+      if (tokensRemainingNum) tokensRemainingNum.textContent = remaining;
+      if (barFill) {
+        const total = parseInt(barFill.dataset.total) || limit || 500;
+        barFill.style.width = Math.max(0, (remaining / total) * 100) + "%";
+      }
+      if (remaining === 0 && upgradeModal)
+        setTimeout(() => upgradeModal.classList.add("open"), 800);
+    }
+
+    // ── Scroll-reveal for below-fold sections ────────────────────────────────
+    const revealEls = document.querySelectorAll(".reveal");
+    revealEls.forEach((el, i) => { el.style.transitionDelay = (i * 0.08) + "s"; });
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add("visible");
+          revealObserver.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.05 });
+    revealEls.forEach(el => revealObserver.observe(el));
+
+    // ── Interstitial ad (free users only) ────────────────────────────────────
+    if (USER_TIER === "free") {
+    const adModal      = document.getElementById("ad-modal");
+    const adCloseBtn   = document.getElementById("ad-close-btn");
+    const adCountdown  = document.getElementById("ad-countdown");
+    const adHeadline   = document.getElementById("ad-headline");
+    const adBody       = document.getElementById("ad-body");
+
+    const adMessages = [
+      {
+        headline: "Still on the free plan?",
+        body: "You're getting ~2 pages a day. Student plan users get 10× that — enough for a full week of lectures without hitting a wall.",
+      },
+      {
+        headline: "Your notes deserve better.",
+        body: "Free users see this ad. Pro users don't. Upgrade for unlimited transcriptions and zero interruptions.",
+      },
+      {
+        headline: "Running low on tokens?",
+        body: "The free plan resets every 24 hours. Student plan gives you 5,000 tokens daily — that's a full stack of notes.",
+      },
+      {
+        headline: "Did you know?",
+        body: "Pro users get unlimited pages, AI cleanup, multi-page upload, and no ads — all for less than a coffee a week.",
+      },
+      {
+        headline: "One less thing to worry about.",
+        body: "Stop counting tokens mid-study session. Upgrade to Student or Pro and just focus on your notes.",
+      },
+    ];
+
+    let adShown = false;
+
+    function showAd() {
+      if (adShown) return;
+      adShown = true;
+      const msg = adMessages[Math.floor(Math.random() * adMessages.length)];
+      adHeadline.textContent = msg.headline;
+      adBody.textContent = msg.body;
+      adCloseBtn.disabled = true;
+      adCountdown.textContent = "5";
+      adModal.classList.add("open");
+
+      let secs = 5;
+      const tick = setInterval(() => {
+        secs--;
+        adCountdown.textContent = secs;
+        if (secs <= 0) {
+          clearInterval(tick);
+          adCloseBtn.disabled = false;
+          adCloseBtn.textContent = "Close";
+        }
+      }, 1000);
+    }
+
+    adCloseBtn.addEventListener("click", () => {
+      if (!adCloseBtn.disabled) {
+        adModal.classList.remove("open");
+        // Schedule next ad 2–4 minutes later
+        const delay = (120 + Math.random() * 120) * 1000;
+        setTimeout(() => { adShown = false; showAd(); }, delay);
+      }
+    });
+
+    // Show first ad after 45–90 seconds of being on the page
+    const firstAdDelay = (45 + Math.random() * 45) * 1000;
+    setTimeout(showAd, firstAdDelay);
+    } // end free-user ad block
+
+    // ── Theme toggle ─────────────────────────────────────────────────────────
+    const themeToggle = document.getElementById("theme-toggle");
+    const iconMoon    = document.getElementById("icon-moon");
+    const iconSun     = document.getElementById("icon-sun");
+
+    function applyTheme(light) {
+      document.body.classList.toggle("light", light);
+      iconMoon.style.display = light ? "none"  : "";
+      iconSun.style.display  = light ? ""      : "none";
+    }
+
+    // Restore saved preference (default: dark)
+    const savedTheme = localStorage.getItem("notecloud-theme");
+    applyTheme(savedTheme === "light");
+
+    themeToggle.addEventListener("click", () => {
+      const isLight = !document.body.classList.contains("light");
+      applyTheme(isLight);
+      localStorage.setItem("notecloud-theme", isLight ? "light" : "dark");
+    });
+
+    // ── Onboarding tutorial ──────────────────────────────────────────────────
+    const obOverlay  = document.getElementById("onboarding-overlay");
+    const obNext     = document.getElementById("ob-next");
+    const obSkip     = document.getElementById("ob-skip");
+    const obStepNum  = document.getElementById("ob-step-num");
+    const obTitle    = document.getElementById("ob-title");
+    const obDesc     = document.getElementById("ob-desc");
+    const obFill     = document.getElementById("ob-progress-fill");
+    const obDots     = document.querySelectorAll(".ob-dot");
+    const obSteps    = document.querySelectorAll(".ob-step");
+
+    const OB_STEPS = [
+      {
+        title: "Upload your notes",
+        desc:  "Take a photo of your handwritten notes, or drag an image straight onto the page.",
+      },
+      {
+        title: "Hit transcribe",
+        desc:  "One tap sends your image to Claude's vision AI, which reads even messy handwriting.",
+      },
+      {
+        title: "Get clean text",
+        desc:  "Your words appear instantly — ready to copy, edit, or export wherever you need them.",
+      },
+    ];
+
+    let obCurrent = 0;
+
+    function obShow(i) {
+      obCurrent = i;
+      const total = OB_STEPS.length;
+
+      // update text (fade trick)
+      obTitle.style.opacity = "0";
+      obDesc.style.opacity  = "0";
+      setTimeout(() => {
+        obStepNum.textContent = `Step ${i + 1} of ${total}`;
+        obTitle.textContent   = OB_STEPS[i].title;
+        obDesc.textContent    = OB_STEPS[i].desc;
+        obTitle.style.opacity = "1";
+        obDesc.style.opacity  = "1";
+      }, 180);
+
+      // progress bar
+      obFill.style.width = `${((i + 1) / total) * 100}%`;
+
+      // illustrations
+      obSteps.forEach((s, idx) => s.classList.toggle("active", idx === i));
+
+      // dots
+      obDots.forEach((d, idx) => d.classList.toggle("active", idx === i));
+
+      // button label
+      obNext.textContent = i === total - 1 ? "Get started ✦" : "Next →";
+    }
+
+    function obClose() {
+      obOverlay.classList.remove("open");
+      localStorage.setItem("notecloud-onboarded", "1");
+    }
+
+    obNext.addEventListener("click", () => {
+      if (obCurrent < OB_STEPS.length - 1) {
+        obShow(obCurrent + 1);
+      } else {
+        obClose();
+      }
+    });
+    obSkip.addEventListener("click", obClose);
+
+    // Show on first ever visit (not seen before)
+    if (!localStorage.getItem("notecloud-onboarded")) {
+      // slight delay so the page renders first
+      setTimeout(() => obOverlay.classList.add("open"), 600);
+    }
+
+    // ── History sidebar ──────────────────────────────────────────────────────
+    const hamburgerBtn    = document.getElementById("hamburger-btn");
+    const sidebarOverlay  = document.getElementById("sidebar-overlay");
+    const historySidebar  = document.getElementById("history-sidebar");
+    const sidebarClose    = document.getElementById("sidebar-close");
+    const historyList     = document.getElementById("history-list");
+    const notebooksSection = document.getElementById("notebooks-section");
+
+    function openSidebar() {
+      historySidebar.classList.add("open");
+      sidebarOverlay.classList.add("open");
+      loadHistory();
+      loadNotebooks();
+    }
+
+    function closeSidebar() {
+      historySidebar.classList.remove("open");
+      sidebarOverlay.classList.remove("open");
+    }
+
+    hamburgerBtn.addEventListener("click", openSidebar);
+    sidebarClose.addEventListener("click", closeSidebar);
+    sidebarOverlay.addEventListener("click", closeSidebar);
+
+    // Tracks which transcription is currently being dragged
+    let draggedTransId = null;
+
+    async function loadHistory() {
+      historyList.innerHTML = '<p style="color:var(--muted);padding:1rem;font-size:.85rem">Loading…</p>';
+      try {
+        const res  = await fetch("/history", { credentials: "same-origin" });
+        const data = await res.json();
+        if (!data.items || data.items.length === 0) {
+          historyList.innerHTML = '<p style="color:var(--muted);padding:1rem;font-size:.85rem">No transcriptions yet.</p>';
+          return;
+        }
+        historyList.innerHTML = "";
+        data.items.forEach(item => {
+          const div = document.createElement("div");
+          div.className = "history-item";
+          div.draggable = true;
+          div.dataset.transId = item.id;
+
+          // Format the date (item.created_at is an ISO string)
+          const d = new Date(item.created_at + "Z"); // treat as UTC
+          const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+          // Trim preview to ~100 chars
+          const preview = (item.text || "").trim().slice(0, 100) + ((item.text || "").length > 100 ? "…" : "");
+
+          // Title: use custom title if set, else date string. Double-click to rename.
+          const displayTitle = item.title || `${dateStr} · ${timeStr}`;
+
+          div.innerHTML = `
+            <div class="history-item-body">
+              <div class="history-item-title" title="Double-click to rename">${escapeHtml(displayTitle)}</div>
+              <div class="history-item-preview">${escapeHtml(preview)}</div>
+              <div class="history-item-meta">
+                <span class="history-item-date">${dateStr} · ${timeStr}</span>
+                <span>${item.word_count} word${item.word_count !== 1 ? "s" : ""}</span>
+              </div>
+            </div>
+            <span class="drag-handle" title="Drag into a notebook">⠿</span>
+          `;
+
+          // Double-click title to rename
+          const titleEl = div.querySelector(".history-item-title");
+          titleEl.addEventListener("dblclick", (e) => {
+            e.stopPropagation();
+            const input = document.createElement("input");
+            input.value = item.title || "";
+            input.placeholder = "Custom name…";
+            input.style.cssText = "width:100%;padding:.2rem .4rem;font-size:.8rem;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);font-family:inherit;outline:none";
+            titleEl.replaceWith(input);
+            input.focus();
+            input.select();
+            async function saveRename() {
+              const newTitle = input.value.trim();
+              if (newTitle && newTitle !== (item.title || "")) {
+                await fetch(`/transcriptions/${item.id}/rename`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "same-origin",
+                  body: JSON.stringify({ title: newTitle }),
+                });
+                item.title = newTitle;
+              }
+              const newEl = document.createElement("div");
+              newEl.className = "history-item-title";
+              newEl.title = "Double-click to rename";
+              newEl.textContent = item.title || displayTitle;
+              input.replaceWith(newEl);
+              // re-attach dblclick on the new element
+              newEl.addEventListener("dblclick", titleEl.ondblclick);
+            }
+            input.addEventListener("blur", saveRename);
+            input.addEventListener("keydown", (ev) => {
+              if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+              if (ev.key === "Escape") { input.value = item.title || ""; input.blur(); }
+            });
+          });
+
+          // Clicking an item pastes its full text into the result area
+          div.addEventListener("click", (e) => {
+            // Don't trigger if user clicked the title input or drag handle
+            if (e.target.tagName === "INPUT" || e.target.classList.contains("drag-handle")) return;
+            resultText.value = item.text;
+            const wc = item.text.trim().split(/\s+/).filter(Boolean).length;
+            if (wordCount) wordCount.textContent = wc + " word" + (wc !== 1 ? "s" : "");
+            resultSection.style.display = "block";
+            cleanupBtn.style.display = "";
+            shareBtn.dataset.transId = item.id;
+            dlTxtBtn.href  = `/transcriptions/${item.id}/download/txt`;
+            dlDocxBtn.href = `/transcriptions/${item.id}/download/docx`;
+            dlTxtBtn.style.display  = "";
+            dlDocxBtn.style.display = "";
+            closeSidebar();
+            resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          });
+
+          // ── Drag events ──
+          div.addEventListener("dragstart", (e) => {
+            draggedTransId = item.id;
+            div.classList.add("dragging");
+            // Open the notebooks section so user sees drop targets
+            if (!notebooksSection.classList.contains("open")) {
+              notebooksSection.classList.add("open");
+              document.getElementById("notebooks-toggle").setAttribute("aria-expanded", "true");
+            }
+            e.dataTransfer.effectAllowed = "copy";
+          });
+          div.addEventListener("dragend", () => {
+            div.classList.remove("dragging");
+            draggedTransId = null;
+          });
+
+          historyList.appendChild(div);
+        });
+      } catch (e) {
+        historyList.innerHTML = '<p style="color:var(--error,#e05555);padding:1rem;font-size:.85rem">Could not load history.</p>';
+      }
+    }
+
+    // ── History search filter ─────────────────────────────────────────────────
+    const historySearch = document.getElementById("history-search");
+    historySearch.addEventListener("input", () => {
+      const q = historySearch.value.toLowerCase();
+      document.querySelectorAll("#history-list .history-item").forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    // ── Notebooks ─────────────────────────────────────────────────────────────
+    const notebooksToggle   = document.getElementById("notebooks-toggle");
+    const notebooksList     = document.getElementById("notebooks-list");
+    const newNotebookBtn    = document.getElementById("new-notebook-btn");
+    const newNotebookForm   = document.getElementById("new-notebook-form");
+    const notebookNameInput = document.getElementById("notebook-name-input");
+    const createNotebookBtn = document.getElementById("create-notebook-btn");
+    const cancelNotebookBtn = document.getElementById("cancel-notebook-btn");
+    const colorSwatches     = document.querySelectorAll(".color-swatch");
+
+    let selectedColor = "#c9a96e"; // default: gold
+
+    // Toggle notebooks section open/closed
+    notebooksToggle.addEventListener("click", () => {
+      const isOpen = notebooksSection.classList.toggle("open");
+      notebooksToggle.setAttribute("aria-expanded", isOpen);
+    });
+
+    // Colour picker
+    colorSwatches.forEach(sw => {
+      sw.addEventListener("click", () => {
+        colorSwatches.forEach(s => s.classList.remove("selected"));
+        sw.classList.add("selected");
+        selectedColor = sw.dataset.color;
+      });
+    });
+
+    // Show the new-notebook form
+    newNotebookBtn.addEventListener("click", () => {
+      newNotebookForm.classList.add("open");
+      notebookNameInput.value = "";
+      notebookNameInput.focus();
+    });
+
+    cancelNotebookBtn.addEventListener("click", () => {
+      newNotebookForm.classList.remove("open");
+    });
+
+    createNotebookBtn.addEventListener("click", createNotebook);
+    notebookNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") createNotebook();
+    });
+
+    async function createNotebook() {
+      const name = notebookNameInput.value.trim();
+      if (!name) { notebookNameInput.focus(); return; }
+      createNotebookBtn.textContent = "Creating…";
+      createNotebookBtn.disabled = true;
+      const res  = await fetch("/notebooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ name, color: selectedColor }),
+      });
+      const data = await res.json();
+      createNotebookBtn.textContent = "Create";
+      createNotebookBtn.disabled = false;
+      if (data.ok) {
+        newNotebookForm.classList.remove("open");
+        notebookNameInput.value = "";
+        // Add the new notebook row to the top of the list
+        const row = buildNotebookRow(data);
+        notebooksList.prepend(row);
+        hideNotebooksEmptyMsg();
+      }
+    }
+
+    async function loadNotebooks() {
+      notebooksList.innerHTML = '<p style="color:var(--muted);padding:.5rem 1.25rem;font-size:.78rem">Loading…</p>';
+      try {
+        const res  = await fetch("/notebooks", { credentials: "same-origin" });
+        const data = await res.json();
+        notebooksList.innerHTML = "";
+        if (!data.length) {
+          showNotebooksEmptyMsg();
+          return;
+        }
+        data.forEach(nb => notebooksList.appendChild(buildNotebookRow(nb)));
+      } catch (e) {
+        notebooksList.innerHTML = '<p style="color:var(--error,#e05555);padding:.5rem 1.25rem;font-size:.78rem">Could not load notebooks.</p>';
+      }
+    }
+
+    function showNotebooksEmptyMsg() {
+      if (!notebooksList.querySelector(".notebooks-empty")) {
+        const p = document.createElement("p");
+        p.className = "notebooks-empty";
+        p.textContent = "No notebooks yet. Create one, then drag a scan into it.";
+        notebooksList.appendChild(p);
+      }
+    }
+    function hideNotebooksEmptyMsg() {
+      const p = notebooksList.querySelector(".notebooks-empty");
+      if (p) p.remove();
+    }
+
+    // Build a notebook row element
+    function buildNotebookRow(nb) {
+      const row = document.createElement("div");
+      row.className = "notebook-row";
+      row.dataset.nbId = nb.id;
+
+      // Count badge is updated live as items are added/removed
+      let count = nb.item_count || 0;
+
+      row.innerHTML = `
+        <div class="notebook-header">
+          <span class="nb-dot" style="background:${nb.color}"></span>
+          <span class="nb-name">${escapeHtml(nb.name)}</span>
+          <span class="nb-count">${count} item${count !== 1 ? "s" : ""}</span>
+          <span class="nb-chevron">›</span>
+          <button class="nb-delete" title="Delete notebook" data-nb-id="${nb.id}">✕</button>
+        </div>
+        <div class="nb-items-list"></div>
+      `;
+
+      const header      = row.querySelector(".notebook-header");
+      const itemsList   = row.querySelector(".nb-items-list");
+      const countBadge  = row.querySelector(".nb-count");
+      const deleteBtn   = row.querySelector(".nb-delete");
+
+      // ── Toggle expand ──
+      header.addEventListener("click", async (e) => {
+        if (e.target === deleteBtn) return; // delete btn handles its own click
+        const isOpen = row.classList.toggle("open");
+        if (isOpen && itemsList.childElementCount === 0) {
+          await loadNotebookItems(nb.id, itemsList, countBadge);
+        }
+      });
+
+      // ── Delete notebook ──
+      deleteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete notebook "${nb.name}"? Transcriptions won't be deleted.`)) return;
+        const res  = await fetch(`/notebooks/${nb.id}`, { method: "DELETE", credentials: "same-origin" });
+        const data = await res.json();
+        if (data.ok) {
+          row.remove();
+          if (!notebooksList.querySelector(".notebook-row")) showNotebooksEmptyMsg();
+        }
+      });
+
+      // ── Drag & drop — make row a drop target ──
+      row.addEventListener("dragover", (e) => {
+        if (draggedTransId === null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        row.classList.add("drag-over");
+      });
+      row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
+      row.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        row.classList.remove("drag-over");
+        if (draggedTransId === null) return;
+        const transId = draggedTransId;
+        draggedTransId = null;
+
+        const res  = await fetch(`/notebooks/${nb.id}/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ transcription_id: transId }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          // Update count badge
+          count++;
+          countBadge.textContent = `${count} item${count !== 1 ? "s" : ""}`;
+          // If the notebook is expanded, reload its items
+          if (row.classList.contains("open")) {
+            await loadNotebookItems(nb.id, itemsList, countBadge);
+          }
+        }
+      });
+
+      return row;
+    }
+
+    // Load and render transcriptions inside a notebook row
+    async function loadNotebookItems(nbId, itemsList, countBadge) {
+      itemsList.innerHTML = '<p class="nb-empty-msg" style="color:var(--muted)">Loading…</p>';
+      const res  = await fetch(`/notebooks/${nbId}/items`, { credentials: "same-origin" });
+      const data = await res.json();
+      itemsList.innerHTML = "";
+
+      if (!Array.isArray(data) || data.length === 0) {
+        itemsList.innerHTML = '<p class="nb-empty-msg">No items yet — drag a scan here.</p>';
+        return;
+      }
+
+      // Update count badge from actual server data
+      if (countBadge) countBadge.textContent = `${data.length} item${data.length !== 1 ? "s" : ""}`;
+
+      data.forEach(item => {
+        const preview = (item.text || "").trim().slice(0, 80) + ((item.text || "").length > 80 ? "…" : "");
+        const row = document.createElement("div");
+        row.className = "nb-trans-row";
+        row.innerHTML = `
+          <span class="nb-trans-preview">${escapeHtml(preview)}</span>
+          <button class="nb-trans-remove" title="Remove from notebook">✕</button>
+        `;
+
+        // Click to load the transcription into the editor
+        row.addEventListener("click", (e) => {
+          if (e.target.classList.contains("nb-trans-remove")) return;
+          resultText.value = item.text;
+          const wc = item.text.trim().split(/\s+/).filter(Boolean).length;
+          if (wordCount) wordCount.textContent = wc + " word" + (wc !== 1 ? "s" : "");
+          resultSection.style.display = "block";
+          // Show download buttons for this item
+          shareBtn.dataset.transId = item.id;
+          dlTxtBtn.href  = `/transcriptions/${item.id}/download/txt`;
+          dlDocxBtn.href = `/transcriptions/${item.id}/download/docx`;
+          dlTxtBtn.style.display  = "";
+          dlDocxBtn.style.display = "";
+          closeSidebar();
+          resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+
+        // Remove from notebook
+        row.querySelector(".nb-trans-remove").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const res2 = await fetch(`/notebooks/${nbId}/items/${item.id}`, {
+            method: "DELETE",
+            credentials: "same-origin",
+          });
+          const d = await res2.json();
+          if (d.ok) {
+            row.remove();
+            // Update count badge
+            const remaining = itemsList.querySelectorAll(".nb-trans-row").length;
+            if (countBadge) countBadge.textContent = `${remaining} item${remaining !== 1 ? "s" : ""}`;
+            if (remaining === 0) {
+              itemsList.innerHTML = '<p class="nb-empty-msg">No items yet — drag a scan here.</p>';
+            }
+          }
+        });
+
+        itemsList.appendChild(row);
+      });
+    }
+  </script>
+
+</body>
+</html>
