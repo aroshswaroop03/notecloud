@@ -2118,6 +2118,46 @@
       animation-duration: 0.001ms !important;
       transition-duration: 0.001ms !important;
     }
+
+    /* ── Site logo (scroll-shrink effect) ── */
+    #site-logo {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      pointer-events: none;
+    }
+    #site-logo-img {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      transition: width .35s ease, height .35s ease, opacity .35s ease;
+    }
+    #site-logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: .01em;
+      white-space: nowrap;
+      overflow: hidden;
+      max-width: 120px;
+      opacity: 1;
+      transition: max-width .35s ease, opacity .25s ease;
+    }
+    /* Scrolled state — text collapses, icon shrinks slightly */
+    #site-logo.scrolled #site-logo-text {
+      max-width: 0;
+      opacity: 0;
+    }
+    #site-logo.scrolled #site-logo-img {
+      width: 24px;
+      height: 24px;
+      opacity: .7;
+    }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
@@ -2128,10 +2168,10 @@
     <span></span><span></span><span></span>
   </button>
 
-  <!-- Logo — fixed top-center -->
-  <div style="position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:.4rem;opacity:.85">
-    <img src="/static/logo.svg" alt="Note-Cloud" style="width:28px;height:28px">
-    <span style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--accent);letter-spacing:.01em">Note-Cloud</span>
+  <!-- Logo — fixed top-center, shrinks on scroll -->
+  <div id="site-logo">
+    <img src="/static/logo.svg" alt="Note-Cloud" id="site-logo-img">
+    <span id="site-logo-text">Note-Cloud</span>
   </div>
 
   <!-- Onboarding tutorial modal -->
@@ -3023,6 +3063,22 @@
   </div>
 
   <script>
+    // ── Logo scroll-shrink ────────────────────────────────────────────────────
+    (function() {
+      const logo = document.getElementById('site-logo');
+      const THRESHOLD = 60; // px scrolled before text collapses
+      let ticking = false;
+      window.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            logo.classList.toggle('scrolled', window.scrollY > THRESHOLD);
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+    })();
+
     // ── CSRF: attach token to every non-GET fetch automatically ──────────────
     (function() {
       const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
