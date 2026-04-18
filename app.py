@@ -11,12 +11,21 @@ database built right into Python — no separate server needed) and Flask sessio
 import base64
 import io
 import os
+import re
 import secrets
 import sqlite3
 from datetime import date, datetime
 from functools import wraps
 
 import anthropic
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+try:
+    from PIL import Image as PilImage
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 try:
     from google_auth_oauthlib.flow import Flow
     from google.oauth2.credentials import Credentials
@@ -48,13 +57,14 @@ load_dotenv()
 app = Flask(__name__)
 
 # ── Secret key ────────────────────────────────────────────────────────────────
-# Flask uses this string to cryptographically sign the session cookie it sends
-# to the browser. Anyone who knows this key could forge a session, so in a real
-# production app you'd load it from an environment variable. For now, a hardcoded
-# long random string is fine.
-app.secret_key = "note-cloud-super-secret-key-x7k2mQpLnR9vWsYtJeZa3bCuFhD4gNwX"
+app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") != "development"
+
+# ── Security extensions ───────────────────────────────────────────────────────
+csrf    = CSRFProtect(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 # ── Database path ──────────────────────────────────────────────────────────────
 # __file__ is the path to this script. os.path.dirname gets the folder it lives
@@ -293,6 +303,7 @@ def landing():
 
 
 @app.route("/login", methods=["POST"])
+@limiter.limit("10 per minute")
 def login_post():
     """
     POST /login
@@ -335,6 +346,7 @@ def login_post():
 
 
 @app.route("/signup", methods=["POST"])
+@limiter.limit("5 per minute")
 def signup_post():
     """
     POST /signup
@@ -617,6 +629,8 @@ def create_notebook():
     data = request.get_json(silent=True) or {}
     name  = data.get("name", "").strip()
     color = data.get("color", "#c9a96e").strip()
+    if not re.match(r'^#[0-9a-fA-F]{6}$', color):
+        color = "#c9a96e"
     if not name:
         return jsonify({"error": "Notebook name is required."}), 400
     conn = get_db()
@@ -838,6 +852,14 @@ def upload_avatar():
     if file.filename == "" or not allowed_file(file.filename):
         return jsonify({"error": "Invalid file."}), 400
 
+    if PIL_AVAILABLE:
+        try:
+            img = PilImage.open(file.stream)
+            img.verify()
+            file.stream.seek(0)
+        except Exception:
+            return jsonify({"error": "Invalid or corrupted image."}), 415
+
     # Save into static/avatars/ using the user's id as the filename
     # so each upload overwrites the previous one cleanly.
     ext = file.filename.rsplit(".", 1)[1].lower()
@@ -901,6 +923,13 @@ def transcribe():
     for f in files:
         if not allowed_file(f.filename):
             return jsonify({"error": f"Unsupported file type: {f.filename}. Use PNG, JPG, WEBP, or GIF."}), 415
+        if PIL_AVAILABLE:
+            try:
+                img = PilImage.open(f.stream)
+                img.verify()
+                f.stream.seek(0)
+            except Exception:
+                return jsonify({"error": f"Invalid or corrupted image: {f.filename}"}), 415
 
     # ── 2. Read every image and convert to base64 ───────────────────────────
 
@@ -949,11 +978,24 @@ def transcribe():
     # Each word in the transcription costs one token.
     word_count = len(transcription.split())
 
-    conn = get_db()
+    # Use BEGIN IMMEDIATE to hold a write lock while we re-check the limit
+    # and apply the update atomically, preventing race conditions.
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("BEGIN IMMEDIATE")
     user = conn.execute(
         "SELECT tokens_today, last_token_date, bonus_tokens, tier, is_admin FROM users WHERE id = ?",
         (user_id,),
     ).fetchone()
+
+    fresh_status = get_token_status(user)
+    if fresh_status["remaining"] is not None and fresh_status["remaining"] < word_count:
+        conn.rollback()
+        conn.close()
+        return jsonify({
+            "error": "limit_reached",
+            "message": f"You've used all {fresh_status['limit']} tokens for today. Upgrade for more, or share your referral code to earn bonus tokens."
+        }), 429
 
     if user["last_token_date"] == today_str:
         new_total = user["tokens_today"] + word_count

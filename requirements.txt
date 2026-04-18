@@ -6,3 +6,6 @@ google-auth-oauthlib==1.2.1
 google-auth-httplib2==0.2.0
 google-api-python-client==2.160.0
 gunicorn==23.0.0
+flask-wtf==1.2.2
+flask-limiter==3.9.0
+Pillow==11.2.1

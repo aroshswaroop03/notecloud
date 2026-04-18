@@ -2119,6 +2119,7 @@
       transition-duration: 0.001ms !important;
     }
   </style>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
 
@@ -3016,6 +3017,18 @@
   </div>
 
   <script>
+    // ── CSRF: attach token to every non-GET fetch automatically ──────────────
+    (function() {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+      const _fetch = window.fetch;
+      window.fetch = function(url, opts = {}) {
+        if (opts.method && opts.method.toUpperCase() !== 'GET') {
+          opts.headers = Object.assign({}, opts.headers, { 'X-CSRFToken': csrfToken });
+        }
+        return _fetch(url, opts);
+      };
+    })();
+
     const USER_TIER = "{{ tier or 'free' }}";
 
     const dropZone      = document.getElementById("drop-zone");
