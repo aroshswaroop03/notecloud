@@ -3275,7 +3275,9 @@
       try {
         const response = await fetch("/transcribe", { method: "POST", body: formData, credentials: "same-origin" });
         if (response.status === 401) { window.location.href = "/login"; return; }
-        const data = await response.json();
+        let data;
+        try { data = await response.json(); }
+        catch { throw new Error("Unexpected server response. Please try again."); }
 
         if (data.error === "limit_reached") {
           statusEl.style.color = "var(--error)";

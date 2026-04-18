@@ -66,6 +66,21 @@ app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") != "development"
 csrf    = CSRFProtect(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
+# Return JSON for CSRF errors (instead of HTML which the frontend can't parse)
+from flask_wtf.csrf import CSRFError
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    return jsonify({"error": "Request validation failed. Please refresh the page and try again."}), 400
+
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify({"error": "Internal server error. Please try again."}), 500
+
+@app.errorhandler(429)
+def handle_429(e):
+    return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
 # ── Database path ──────────────────────────────────────────────────────────────
 # __file__ is the path to this script. os.path.dirname gets the folder it lives
 # in. We store the database in the same folder as app.py.
@@ -868,8 +883,8 @@ def upload_avatar():
 
     if PIL_AVAILABLE:
         try:
-            img = PilImage.open(file.stream)
-            img.verify()
+            raw = file.read()
+            PilImage.open(io.BytesIO(raw)).verify()
             file.stream.seek(0)
         except Exception:
             return jsonify({"error": "Invalid or corrupted image."}), 415
@@ -939,8 +954,8 @@ def transcribe():
             return jsonify({"error": f"Unsupported file type: {f.filename}. Use PNG, JPG, WEBP, or GIF."}), 415
         if PIL_AVAILABLE:
             try:
-                img = PilImage.open(f.stream)
-                img.verify()
+                raw = f.read()
+                PilImage.open(io.BytesIO(raw)).verify()
                 f.stream.seek(0)
             except Exception:
                 return jsonify({"error": f"Invalid or corrupted image: {f.filename}"}), 415
