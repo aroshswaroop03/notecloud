@@ -453,7 +453,8 @@ def get_token_status(user):
     base_limit = TIER_LIMITS.get(tier)  # None for pro, undefined for dev
 
     if user["is_admin"] or tier == "dev" or base_limit is None:
-        return {"limit": None, "used": 0, "remaining": None, "tier": tier}
+        used = user["tokens_today"] if user["last_token_date"] == today else 0
+        return {"limit": None, "used": used, "remaining": None, "tier": tier}
 
     daily_limit = base_limit + (user["bonus_tokens"] or 0)
     used = user["tokens_today"] if user["last_token_date"] == today else 0
@@ -534,22 +535,33 @@ def upgrade():
       STRIPE_PRICE_PRO=price_...
     """
     data = request.get_json(silent=True) or {}
-    tier = data.get("tier", "pro")
+    tier   = data.get("tier", "pro")
+    period = data.get("period", "monthly")
     if tier not in ("student", "pro"):
         return jsonify({"error": "Invalid tier."}), 400
+    if period not in ("monthly", "annual"):
+        return jsonify({"error": "Invalid billing period."}), 400
 
     # TODO: uncomment when Stripe is set up:
     # import stripe
     # stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-    # price_id = os.getenv(f"STRIPE_PRICE_{tier.upper()}")
+    # period_key = "ANNUAL" if period == "annual" else "MONTHLY"
+    # price_id = os.getenv(f"STRIPE_PRICE_{tier.upper()}_{period_key}")
     # checkout = stripe.checkout.Session.create(
     #     payment_method_types=["card"],
     #     line_items=[{"price": price_id, "quantity": 1}],
     #     mode="subscription",
-    #     success_url=request.host_url + f"?upgraded={tier}",
+    #     client_reference_id=str(session["user_id"]),
+    #     success_url=request.host_url + "?checkout=success",
     #     cancel_url=request.host_url,
     # )
     # return jsonify({"url": checkout.url})
+    #
+    # IMPORTANT: do NOT upgrade the user's tier from the success_url — anyone
+    # could hit /?checkout=success to get free access. Instead, create a
+    # POST /stripe/webhook route that listens for the
+    # checkout.session.completed event and upgrades the tier there after
+    # verifying the Stripe signature.
 
     return jsonify({"error": "coming_soon", "message": "Payments coming soon — stay tuned!"}), 501
 
@@ -823,13 +835,15 @@ def cancel_subscription():
     """
     user_id = session["user_id"]
     conn = get_db()
-    user = conn.execute("SELECT tier FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = conn.execute("SELECT tier, is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
 
-    if user["tier"] == "free":
+    if user["is_admin"] or user["tier"] in ("free", "dev", None):
         conn.close()
-        return jsonify({"error": "You're already on the free plan."}), 400
+        return jsonify({"error": "No active subscription to cancel."}), 400
 
-    # TODO: stripe.Subscription.delete(user["stripe_subscription_id"])
+    # TODO: stripe.Subscription.cancel(user["stripe_subscription_id"])
+    # IMPORTANT: tier downgrade must happen via Stripe webhook (customer.subscription.deleted),
+    # not here — otherwise users could cancel and keep paid access until the webhook fires.
     conn.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()

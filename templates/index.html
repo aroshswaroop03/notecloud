@@ -2359,7 +2359,7 @@
           <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem" id="student-period">/month</div>
           <div style="font-size:.7rem;color:var(--success);min-height:1em" id="student-saving"></div>
           <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem">5,000 tokens/day<br>~20 pages</div>
-          <button class="modal-btn primary" style="width:100%;margin-top:.75rem;padding:.55rem" onclick="startUpgrade('student')">Choose</button>
+          <button class="modal-btn primary" style="width:100%;margin-top:.75rem;padding:.55rem" onclick="startUpgrade('student', this)">Choose</button>
         </div>
         <!-- Pro tier -->
         <div style="flex:1;background:var(--bg);border:1.5px solid var(--accent);border-radius:10px;padding:.9rem;text-align:center;position:relative">
@@ -2369,7 +2369,7 @@
           <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem" id="pro-period">/month</div>
           <div style="font-size:.7rem;color:var(--success);min-height:1em" id="pro-saving"></div>
           <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem">Unlimited tokens<br>no daily cap</div>
-          <button class="modal-btn primary" style="width:100%;margin-top:.75rem;padding:.55rem" onclick="startUpgrade('pro')">Choose</button>
+          <button class="modal-btn primary" style="width:100%;margin-top:.75rem;padding:.55rem" onclick="startUpgrade('pro', this)">Choose</button>
         </div>
       </div>
 
@@ -3521,8 +3521,8 @@
     }
 
     // Called by the Choose buttons in the upgrade modal
-    async function startUpgrade(tier) {
-      const btn = event.target;
+    async function startUpgrade(tier, btn) {
+      const origText = btn.textContent;
       btn.textContent = "Setting up…";
       btn.disabled = true;
       const res  = await fetch("/upgrade", {
@@ -3536,7 +3536,7 @@
         window.location.href = data.url;
       } else {
         if (upgradeError) upgradeError.textContent = data.message || "Payments coming soon!";
-        btn.textContent = "Choose";
+        btn.textContent = origText;
         btn.disabled = false;
       }
     }
