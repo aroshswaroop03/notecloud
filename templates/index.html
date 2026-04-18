@@ -2122,41 +2122,37 @@
     /* ── Site logo (scroll-shrink effect) ── */
     #site-logo {
       position: fixed;
-      top: 1rem;
+      top: .9rem;
       left: 50%;
       transform: translateX(-50%);
       z-index: 50;
       display: flex;
       align-items: center;
-      gap: .5rem;
+      gap: 0;
       pointer-events: none;
-    }
-    #site-logo-img {
-      width: 32px;
-      height: 32px;
-      flex-shrink: 0;
-      transition: width .35s ease, height .35s ease, opacity .35s ease;
-    }
-    #site-logo-text {
       font-family: 'Playfair Display', serif;
-      font-size: 1rem;
+      font-size: 1.15rem;
       color: var(--accent);
       letter-spacing: .01em;
-      white-space: nowrap;
-      overflow: hidden;
-      max-width: 120px;
-      opacity: 1;
-      transition: max-width .35s ease, opacity .25s ease;
+      line-height: 1;
     }
-    /* Scrolled state — text collapses, icon shrinks slightly */
-    #site-logo.scrolled #site-logo-text {
+    #logo-pencil-n {
+      height: 1.25em;
+      width: auto;
+      flex-shrink: 0;
+      display: block;
+    }
+    .logo-collapse {
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 6em;
+      opacity: 1;
+      transition: max-width .4s cubic-bezier(.4,0,.2,1), opacity .3s ease;
+    }
+    #site-logo.scrolled .logo-collapse {
       max-width: 0;
       opacity: 0;
-    }
-    #site-logo.scrolled #site-logo-img {
-      width: 24px;
-      height: 24px;
-      opacity: .7;
     }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -2168,10 +2164,34 @@
     <span></span><span></span><span></span>
   </button>
 
-  <!-- Logo — fixed top-center, shrinks on scroll -->
-  <div id="site-logo">
-    <img src="/static/logo.svg" alt="Note-Cloud" id="site-logo-img">
-    <span id="site-logo-text">Note-Cloud</span>
+  <!-- Logo — fixed top-center: "NoteCloud" shrinks to "NC" on scroll -->
+  <div id="site-logo" aria-label="Note-Cloud">
+    <!-- Pencil-N: the left leg of the N is drawn as a pencil -->
+    <svg id="logo-pencil-n" viewBox="0 0 22 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- Eraser cap -->
+      <rect x="1" y="0" width="5.5" height="4" rx="1.2" fill="#e87070"/>
+      <!-- Eraser band -->
+      <rect x="1" y="3.2" width="5.5" height="1.2" fill="#c05050"/>
+      <!-- Pencil body (left leg of N) -->
+      <rect x="1" y="4.2" width="5.5" height="17" fill="#c9a96e"/>
+      <!-- Wood tip -->
+      <polygon points="1,21.2 6.5,21.2 3.75,27" fill="#d4a070"/>
+      <!-- Graphite tip -->
+      <polygon points="2.4,24 5.1,24 3.75,27" fill="#777"/>
+
+      <!-- N diagonal (top-left of pencil body to bottom of right leg) -->
+      <line x1="6.5" y1="4.2" x2="18" y2="25" stroke="#c9a96e" stroke-width="3.2" stroke-linecap="round"/>
+
+      <!-- Right leg of N -->
+      <rect x="15.5" y="4.2" width="5.5" height="24" rx="1" fill="#c9a96e"/>
+    </svg>
+
+    <!-- "ote" collapses on scroll -->
+    <span class="logo-collapse">ote</span>
+    <!-- "C" stays visible always -->
+    <span>C</span>
+    <!-- "loud" collapses on scroll -->
+    <span class="logo-collapse">loud</span>
   </div>
 
   <!-- Onboarding tutorial modal -->
