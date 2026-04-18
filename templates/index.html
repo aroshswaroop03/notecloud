@@ -1168,158 +1168,281 @@
     /* ── Below-fold sections ── */
     .below-fold {
       width: 100%;
-      max-width: 780px;
-      padding: 0 1.25rem 6rem;
+      max-width: 860px;
+      padding: 0 1.25rem 10rem;
       display: flex;
       flex-direction: column;
-      gap: 2.5rem;
+      gap: 5rem;
     }
 
-    /* shared scroll-reveal: starts invisible+shifted, .visible slides in */
+    /* shared scroll-reveal */
     .reveal {
       opacity: 0;
-      transform: translateY(40px);
-      transition: opacity .65s cubic-bezier(.2,.8,.4,1), transform .65s cubic-bezier(.2,.8,.4,1);
+      transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
     }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal.from-right { transform: translateX(60px); }
+    .reveal.from-left  { transform: translateX(-60px); }
+    .reveal.visible    { opacity: 1; transform: translateX(0); }
 
-    /* section divider label */
+    /* section label */
     .section-eyebrow {
-      font-size: .7rem;
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .68rem;
       font-weight: 700;
-      letter-spacing: .12em;
+      letter-spacing: .14em;
       text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: .65rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-eyebrow::before {
+      content: '';
+      display: block;
+      width: 18px;
+      height: 1px;
+      background: var(--accent);
+      opacity: .6;
     }
 
     /* ── How it works ── */
+    .how-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 2.5rem;
+      max-width: 460px;
+    }
     .how-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-    @media (max-width: 540px) { .how-grid { grid-template-columns: 1fr; } }
-    .how-step {
-      background: var(--surface);
+      gap: 1px;
+      background: var(--border);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.5rem 1.25rem;
-      position: relative;
+      overflow: hidden;
     }
+    @media (max-width: 560px) { .how-grid { grid-template-columns: 1fr; } }
+    .how-step {
+      background: var(--surface);
+      padding: 2rem 1.75rem;
+      position: relative;
+      transition: background .2s;
+    }
+    .how-step:hover { background: var(--item-hover-bg); }
     .how-step-num {
       font-family: 'Playfair Display', serif;
-      font-size: 2.2rem;
+      font-size: 3.5rem;
       font-weight: 700;
       color: var(--accent);
-      opacity: .25;
+      opacity: .15;
       line-height: 1;
-      margin-bottom: .6rem;
+      margin-bottom: 1.25rem;
+      user-select: none;
     }
     .how-step-title {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .5rem;
+    }
+    .how-step-desc {
+      font-size: .83rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ── Tips grid ── */
+    .tips-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 2.5rem;
+    }
+    .tips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    @media (max-width: 560px) { .tips-grid { grid-template-columns: 1fr; } }
+    .tip-cell {
+      background: var(--surface);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      transition: background .2s;
+    }
+    .tip-cell:hover { background: var(--item-hover-bg); }
+    .tip-cell-icon {
+      font-size: 1.4rem;
+      line-height: 1;
+      margin-bottom: .25rem;
+    }
+    .tip-cell-title {
       font-size: .9rem;
       font-weight: 600;
       color: var(--text);
-      margin-bottom: .35rem;
     }
-    .how-step-desc {
+    .tip-cell-desc {
       font-size: .82rem;
       color: var(--muted);
       line-height: 1.6;
     }
 
-    /* ── Tips card ── */
-    .tips-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.75rem 2rem;
-    }
-    .tips-card h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 1.1rem;
-    }
-    .tips-list {
-      display: flex;
-      flex-direction: column;
-      gap: .75rem;
-    }
-    .tip-row {
-      display: flex;
-      align-items: flex-start;
-      gap: .75rem;
-      font-size: .875rem;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-    .tip-icon {
-      font-size: 1rem;
-      flex-shrink: 0;
-      margin-top: .05rem;
-    }
-
     /* ── Stats strip ── */
+    .stats-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 2.5rem;
+    }
     .stats-strip {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-    @media (max-width: 540px) { .stats-strip { grid-template-columns: 1fr 1fr; } }
-    .stat-card {
-      background: var(--surface);
+      gap: 1px;
+      background: var(--border);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.25rem 1rem;
-      text-align: center;
+      overflow: hidden;
     }
+    @media (max-width: 560px) { .stats-strip { grid-template-columns: 1fr; } }
+    .stat-card {
+      background: var(--surface);
+      padding: 2.25rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      transition: background .2s;
+    }
+    .stat-card:hover { background: var(--item-hover-bg); }
     .stat-value {
       font-family: 'Playfair Display', serif;
-      font-size: 1.9rem;
+      font-size: clamp(2.4rem, 5vw, 3.5rem);
       font-weight: 700;
       color: var(--accent);
       line-height: 1;
-      margin-bottom: .3rem;
     }
     .stat-label {
-      font-size: .75rem;
+      font-size: .82rem;
       color: var(--muted);
-      line-height: 1.4;
+      line-height: 1.5;
+      max-width: 160px;
     }
 
-    /* ── Upgrade pitch section ── */
+    /* ── Pricing table ── */
+    .pricing-table {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .pricing-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85rem;
+    }
+    .pricing-table th, .pricing-table td {
+      padding: .9rem 1.1rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-table th:first-child,
+    .pricing-table td:first-child {
+      text-align: left;
+      color: var(--text);
+      font-weight: 400;
+      width: 40%;
+    }
+    .pricing-table thead th {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .pricing-table thead th:first-child { color: transparent; }
+    .pricing-table tbody tr:last-child td { border-bottom: none; }
+    .pricing-table tbody tr:hover td { background: var(--item-hover-bg); }
+    .col-pro { color: var(--accent) !important; }
+    .plan-price {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: .2rem;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .plan-price span { font-size: .72rem; font-weight: 400; color: var(--muted); font-family: 'Inter', sans-serif; }
+    .check { color: var(--success); font-size: 1rem; }
+    .cross { color: var(--muted); font-size: 1rem; }
+    .cta-row td { padding-top: 1rem; padding-bottom: 1rem; }
+    .table-upgrade-btn {
+      padding: .45rem 1.1rem;
+      background: var(--btn-secondary-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .78rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .table-upgrade-btn:hover { opacity: .8; transform: translateY(-1px); }
+    .table-upgrade-btn.featured {
+      background: var(--accent);
+      color: #0e0e10;
+      border-color: transparent;
+    }
+
+    /* ── Upgrade pitch ── */
     .upgrade-pitch {
       position: relative;
       border-radius: var(--radius);
       overflow: hidden;
-      border: 1px solid rgba(201,169,110,.3);
-      background: linear-gradient(135deg, rgba(201,169,110,.07) 0%, var(--surface) 60%);
+      border: 1px solid rgba(201,169,110,.25);
+      background: var(--surface);
     }
     .upgrade-pitch-glow {
       position: absolute;
-      top: -60px; right: -60px;
-      width: 260px; height: 260px;
-      background: radial-gradient(circle, rgba(201,169,110,.18), transparent 70%);
+      top: -80px; right: -80px;
+      width: 340px; height: 340px;
+      background: radial-gradient(circle, rgba(201,169,110,.12), transparent 65%);
       pointer-events: none;
     }
     .upgrade-pitch-inner {
-      padding: 2.25rem 2rem;
+      padding: 3rem 2.5rem;
       position: relative;
     }
     .upgrade-pitch-title {
       font-family: 'Playfair Display', serif;
-      font-size: 1.75rem;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
       font-weight: 700;
       color: var(--text);
-      margin-bottom: .6rem;
+      line-height: 1.1;
+      margin-bottom: .75rem;
     }
     .upgrade-pitch-sub {
       color: var(--muted);
-      font-size: .9rem;
-      line-height: 1.65;
-      max-width: 500px;
-      margin-bottom: 1.75rem;
+      font-size: .95rem;
+      line-height: 1.7;
+      max-width: 480px;
+      margin-bottom: 2.5rem;
     }
     .upgrade-pitch-plans {
       display: flex;
@@ -1328,55 +1451,60 @@
     }
     .upgrade-pitch-plan {
       flex: 1;
-      min-width: 180px;
+      min-width: 190px;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 1.25rem;
+      padding: 1.5rem;
       position: relative;
+      transition: border-color .2s, transform .2s;
     }
+    .upgrade-pitch-plan:hover { transform: translateY(-2px); }
     .upgrade-pitch-plan.featured {
-      border-color: var(--accent);
-      background: rgba(201,169,110,.05);
+      border-color: rgba(201,169,110,.5);
+      background: rgba(201,169,110,.04);
     }
+    .upgrade-pitch-plan.featured:hover { border-color: var(--accent); }
     .upgrade-pitch-plan-badge {
       position: absolute;
-      top: -10px; left: 50%;
+      top: -11px; left: 50%;
       transform: translateX(-50%);
       background: var(--accent);
       color: #0e0e10;
-      font-size: .65rem;
+      font-size: .62rem;
       font-weight: 700;
-      letter-spacing: .06em;
+      letter-spacing: .08em;
       text-transform: uppercase;
-      padding: .2rem .65rem;
+      padding: .22rem .7rem;
       border-radius: 99px;
       white-space: nowrap;
     }
     .upgrade-pitch-plan-name {
-      font-size: .75rem;
-      font-weight: 600;
+      font-size: .72rem;
+      font-weight: 700;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: .08em;
-      margin-bottom: .35rem;
+      letter-spacing: .1em;
+      margin-bottom: .5rem;
     }
     .upgrade-pitch-plan-price {
-      font-size: 1.6rem;
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
       font-weight: 700;
       color: var(--text);
       line-height: 1;
-      margin-bottom: .3rem;
+      margin-bottom: .35rem;
     }
-    .upgrade-pitch-plan-price span { font-size: .85rem; font-weight: 400; color: var(--muted); }
+    .upgrade-pitch-plan-price span { font-size: .9rem; font-weight: 400; color: var(--muted); font-family: 'Inter', sans-serif; }
     .upgrade-pitch-plan-detail {
-      font-size: .78rem;
+      font-size: .8rem;
       color: var(--muted);
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
+      line-height: 1.4;
     }
     .upgrade-pitch-btn {
       width: 100%;
-      padding: .6rem;
+      padding: .7rem;
       background: var(--accent);
       color: #0e0e10;
       border: none;
@@ -1385,9 +1513,9 @@
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background .15s, transform .1s;
+      transition: opacity .15s, transform .1s;
     }
-    .upgrade-pitch-btn:hover { background: #d9b97e; transform: translateY(-1px); }
+    .upgrade-pitch-btn:hover { opacity: .88; transform: translateY(-1px); }
 
     /* ── Interstitial ad modal ── */
     .ad-modal-inner {
@@ -1698,6 +1826,298 @@
     #upload-bar .upload-bar-inner, #hamburger-btn, #theme-toggle,
     #transcribe-btn, #copy-btn, .modal-input, .ref-code-box,
     .dropdown-item, header, footer { transition: background .3s, border-color .3s, color .3s; }
+
+    /* ── Settings modal ── */
+    #settings-modal .modal {
+      max-width: 480px;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+    #settings-modal .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem 0;
+      flex-shrink: 0;
+    }
+    #settings-modal .modal-header h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-style: italic;
+    }
+    #settings-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: .2rem .4rem;
+      border-radius: 6px;
+      transition: color .15s, background .15s;
+      line-height: 1;
+    }
+    #settings-close:hover { color: var(--text); background: var(--item-hover-bg); }
+
+    /* Tab strip */
+    .settings-tabs {
+      display: flex;
+      gap: 0;
+      padding: 1rem 1.5rem 0;
+      border-bottom: 1px solid var(--border);
+      margin-top: .75rem;
+      flex-shrink: 0;
+    }
+    .settings-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .83rem;
+      font-weight: 500;
+      padding: .5rem .9rem;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      margin-bottom: -1px;
+    }
+    .settings-tab:hover { color: var(--text); }
+    .settings-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+    /* Tab panels */
+    .settings-panel { display: none; padding: 1.5rem; overflow-y: auto; flex: 1; }
+    .settings-panel.active { display: block; }
+
+    .settings-field { margin-bottom: 1rem; }
+    .settings-field label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: .4rem;
+    }
+    .settings-field input {
+      width: 100%;
+      padding: .65rem .85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .92rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .settings-field input:focus { border-color: var(--accent); }
+    .settings-field-row { display: flex; gap: .65rem; }
+    .settings-field-row .settings-field { flex: 1; }
+
+    .settings-save-btn {
+      width: 100%;
+      padding: .7rem;
+      background: var(--accent);
+      color: #0e0e10;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      margin-top: .25rem;
+    }
+    .settings-save-btn:hover { opacity: .88; transform: translateY(-1px); }
+    .settings-save-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .settings-msg { font-size: .82rem; min-height: 1.1em; margin-top: .5rem; }
+    .settings-msg.ok    { color: var(--success); }
+    .settings-msg.error { color: var(--error); }
+
+    .settings-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.25rem 0;
+    }
+    .settings-section-title {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: .85rem;
+    }
+
+    /* Appearance toggles */
+    .appearance-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .appearance-row:last-child { border-bottom: none; }
+    .appearance-row-label { font-size: .9rem; color: var(--text); }
+    .appearance-row-sub { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border2, rgba(255,255,255,.15));
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 16px; height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
+
+    /* Danger zone */
+    .danger-zone {
+      background: rgba(224,112,112,.05);
+      border: 1px solid rgba(224,112,112,.2);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+    }
+    .danger-zone-title { font-size: .85rem; font-weight: 600; color: var(--error); margin-bottom: .35rem; }
+    .danger-zone-desc  { font-size: .8rem; color: var(--muted); margin-bottom: .75rem; line-height: 1.55; }
+    .danger-btn-outline {
+      padding: .55rem 1.1rem;
+      background: transparent;
+      border: 1px solid rgba(224,112,112,.4);
+      border-radius: 8px;
+      color: var(--error);
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .danger-btn-outline:hover { background: rgba(224,112,112,.1); border-color: var(--error); }
+
+    /* Delete confirm sub-form */
+    #delete-confirm-form { display: none; margin-top: .75rem; }
+    #delete-confirm-form.open { display: block; }
+
+    /* Accent colour swatches */
+    .accent-swatch {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 2.5px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: transform .15s, border-color .15s;
+      outline: none;
+    }
+    .accent-swatch:hover { transform: scale(1.15); }
+    .accent-swatch.selected { border-color: var(--text); transform: scale(1.2); }
+
+    /* Font size buttons */
+    .font-size-btn {
+      padding: .45rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: .82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .font-size-btn:hover { border-color: var(--accent); color: var(--text); }
+    .font-size-btn.active { background: rgba(201,169,110,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+    /* Stats grid tiles */
+    .stat-tile {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .75rem .6rem;
+      text-align: center;
+    }
+    .stat-tile-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.1;
+      margin-bottom: .2rem;
+    }
+    .stat-tile-lbl {
+      font-size: .68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    /* Shortcuts table */
+    .shortcuts-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: .25rem;
+    }
+    .shortcuts-table tr { border-bottom: 1px solid var(--border); }
+    .shortcuts-table tr:last-child { border-bottom: none; }
+    .shortcut-action {
+      padding: .65rem .2rem;
+      font-size: .86rem;
+      color: var(--text);
+    }
+    .shortcut-keys {
+      padding: .65rem .2rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .shortcut-keys kbd {
+      display: inline-block;
+      padding: .15rem .42rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: .75rem;
+      font-family: inherit;
+      color: var(--text);
+      margin-left: .2rem;
+    }
+
+    /* Tips */
+    .shortcut-tip {
+      display: flex;
+      align-items: flex-start;
+      gap: .65rem;
+      font-size: .83rem;
+      color: var(--muted);
+      line-height: 1.55;
+      padding: .5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .shortcut-tip:last-child { border-bottom: none; }
+    .shortcut-tip span:first-child { flex-shrink: 0; font-size: 1rem; margin-top: .05rem; }
+
+    /* Reduce-motion: disable all transitions/animations */
+    body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
   </style>
 </head>
 <body>
@@ -1798,23 +2218,33 @@
     </div>
 
     <!-- ── Notebooks section ── -->
+    {% if tier == 'free' %}
     <div id="notebooks-section">
       <div id="notebooks-section-header">
-        <!-- Toggle collapses/expands the notebooks list -->
+        <button id="notebooks-toggle" aria-expanded="false" style="cursor:default;opacity:.5">
+          <i id="notebooks-toggle-chevron">›</i>
+          Notebooks
+        </button>
+      </div>
+      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.18);border-radius:10px;">
+        <div style="font-size:.75rem;font-weight:600;color:var(--accent);margin-bottom:.3rem;">Student &amp; Pro</div>
+        <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.6rem;">Organise your transcriptions into notebooks.</div>
+        <button onclick="document.getElementById('upgrade-modal').classList.add('open')" style="width:100%;padding:.45rem;background:var(--accent);color:#0e0e10;border:none;border-radius:7px;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Upgrade to unlock</button>
+      </div>
+    </div>
+    {% else %}
+    <div id="notebooks-section">
+      <div id="notebooks-section-header">
         <button id="notebooks-toggle" aria-expanded="false">
           <i id="notebooks-toggle-chevron">›</i>
           Notebooks
         </button>
         <button id="new-notebook-btn" title="New notebook">+ New</button>
       </div>
-
-      <!-- Body: new-notebook form + list (hidden when collapsed) -->
       <div id="notebooks-body">
-        <!-- Inline create form -->
         <div id="new-notebook-form">
           <input id="notebook-name-input" type="text" placeholder="Notebook name…" maxlength="40" />
           <div id="color-swatches">
-            <!-- Six colour presets; first is selected by default -->
             <button class="color-swatch selected" data-color="#c9a96e" style="background:#c9a96e" title="Gold"></button>
             <button class="color-swatch" data-color="#6e9dc9" style="background:#6e9dc9" title="Blue"></button>
             <button class="color-swatch" data-color="#7dc96e" style="background:#7dc96e" title="Green"></button>
@@ -1827,11 +2257,10 @@
             <button id="cancel-notebook-btn">Cancel</button>
           </div>
         </div>
-
-        <!-- Notebooks list — injected by JS -->
         <div id="notebooks-list"></div>
       </div>
     </div>
+    {% endif %}
 
     <!-- ── History section ── -->
     <div class="sidebar-section-label">History</div>
@@ -1861,6 +2290,10 @@
       <button class="dropdown-item" id="change-photo-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M20.39 12A8.39 8.39 0 1 1 12 3.61M20 3l-8 8"/></svg>
         Change photo
+      </button>
+      <button class="dropdown-item" id="open-settings-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
       </button>
       <button class="dropdown-item" id="open-subscription-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
@@ -2016,6 +2449,29 @@
     </div>
   </div>
 
+  <!-- ── Google Docs connect modal ── -->
+  <div class="modal-overlay" id="gdocs-connect-modal">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <h3 style="display:flex;align-items:center;gap:.5rem">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Connect Google Docs
+        </h3>
+        <button id="gdocs-connect-close" aria-label="Close">✕</button>
+      </div>
+      <div style="padding:1.25rem 1.5rem 1.5rem">
+        <p style="color:var(--muted);font-size:.875rem;line-height:1.6;margin-bottom:1.25rem">
+          Connect your Google account to export transcriptions directly into a new Google Doc. You'll only need to do this once — Google will ask you to approve access.
+        </p>
+        <button class="modal-btn primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.6rem" id="gdocs-oauth-btn">
+          <svg width="16" height="16" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          Connect Google account
+        </button>
+        <p id="gdocs-connect-error" style="color:var(--error,#e05555);font-size:.8rem;margin-top:.75rem;display:none"></p>
+      </div>
+    </div>
+  </div>
+
   {% if tier == 'free' %}
   <!-- ── Interstitial upgrade ad (free users only) ── -->
   <div class="modal-overlay" id="ad-modal">
@@ -2035,6 +2491,255 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- ── Settings modal ── -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button id="settings-close" aria-label="Close settings">✕</button>
+      </div>
+
+      <!-- Tab strip -->
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="profile">Profile</button>
+        <button class="settings-tab" data-tab="appearance">Appearance</button>
+        <button class="settings-tab" data-tab="account">Account</button>
+        <button class="settings-tab" data-tab="shortcuts">Shortcuts</button>
+      </div>
+
+      <!-- ── Profile tab ── -->
+      <div class="settings-panel active" id="settings-tab-profile">
+
+        <!-- Avatar row -->
+        <div class="settings-section-title">Photo</div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem">
+          <div id="settings-avatar-preview" style="width:56px;height:56px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:var(--accent);flex-shrink:0">
+            {% if user.avatar %}
+              <img src="/static/avatars/{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" />
+            {% else %}
+              {{ (user.first_name or 'U')[0] | upper }}
+            {% endif %}
+          </div>
+          <div>
+            <input type="file" id="settings-avatar-input" accept="image/png,image/jpeg,image/webp" style="display:none" />
+            <button class="settings-save-btn" id="settings-avatar-btn" style="width:auto;padding:.5rem 1rem;font-size:.82rem;margin:0">Change photo</button>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:.35rem">PNG, JPG or WEBP · max 10 MB</div>
+          </div>
+        </div>
+        <p class="settings-msg" id="settings-avatar-msg"></p>
+
+        <hr class="settings-divider" />
+
+        <div class="settings-section-title">Personal info</div>
+        <div class="settings-field-row">
+          <div class="settings-field">
+            <label for="settings-first">First name</label>
+            <input id="settings-first" type="text" value="{{ user.first_name or '' }}" maxlength="40" />
+          </div>
+          <div class="settings-field">
+            <label for="settings-last">Last name</label>
+            <input id="settings-last" type="text" value="{{ user.last_name or '' }}" maxlength="40" />
+          </div>
+        </div>
+        <div class="settings-field">
+          <label for="settings-email">Email</label>
+          <input id="settings-email" type="email" value="{{ user.email or '' }}" maxlength="120" />
+        </div>
+        <button class="settings-save-btn" id="settings-profile-save">Save changes</button>
+        <p class="settings-msg" id="settings-profile-msg"></p>
+
+        <hr class="settings-divider" />
+
+        <div class="settings-section-title">Change password</div>
+        <div class="settings-field">
+          <label for="settings-pw-current">Current password</label>
+          <input id="settings-pw-current" type="password" placeholder="••••••••" />
+        </div>
+        <div class="settings-field">
+          <label for="settings-pw-new">New password</label>
+          <input id="settings-pw-new" type="password" placeholder="At least 6 characters" />
+        </div>
+        <div class="settings-field">
+          <label for="settings-pw-confirm">Confirm new password</label>
+          <input id="settings-pw-confirm" type="password" placeholder="Repeat new password" />
+        </div>
+        <button class="settings-save-btn" id="settings-pw-save">Update password</button>
+        <p class="settings-msg" id="settings-pw-msg"></p>
+
+        <hr class="settings-divider" />
+
+        <div class="settings-section-title">Referral</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-bottom:.6rem">Share your code — earn <strong style="color:var(--text)">+250 tokens/day</strong> for every friend who signs up.</div>
+        <div class="ref-code-box" style="margin:0">
+          <span class="ref-code">{{ user.referral_code or '—' }}</span>
+          <button class="copy-ref-btn" id="settings-copy-ref" title="Copy referral code">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ── Appearance tab ── -->
+      <div class="settings-panel" id="settings-tab-appearance">
+
+        <div class="settings-section-title">Theme</div>
+        <div class="appearance-row">
+          <div>
+            <div class="appearance-row-label">Light mode</div>
+            <div class="appearance-row-sub">Switch between dark and light themes</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-theme-toggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="appearance-row" style="border-bottom:none;padding-bottom:0">
+          <div>
+            <div class="appearance-row-label">Accent colour</div>
+            <div class="appearance-row-sub">Choose your highlight colour</div>
+          </div>
+        </div>
+        <div id="accent-swatches" style="display:flex;gap:.5rem;padding:.6rem 0 .75rem;flex-wrap:wrap">
+          <button class="accent-swatch selected" data-accent="#c9a96e" style="background:#c9a96e" title="Gold (default)"></button>
+          <button class="accent-swatch" data-accent="#7eb8f7" style="background:#7eb8f7" title="Blue"></button>
+          <button class="accent-swatch" data-accent="#7dc98a" style="background:#7dc98a" title="Green"></button>
+          <button class="accent-swatch" data-accent="#c97eb8" style="background:#c97eb8" title="Pink"></button>
+          <button class="accent-swatch" data-accent="#b87ec9" style="background:#b87ec9" title="Purple"></button>
+          <button class="accent-swatch" data-accent="#e8855a" style="background:#e8855a" title="Coral"></button>
+        </div>
+
+        <hr class="settings-divider" style="margin-top:.25rem" />
+
+        <div class="settings-section-title">Text size</div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.25rem">
+          <button class="font-size-btn" data-size="small"  style="flex:1">Small</button>
+          <button class="font-size-btn active" data-size="medium" style="flex:1">Medium</button>
+          <button class="font-size-btn" data-size="large"  style="flex:1">Large</button>
+        </div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.25rem">Affects the transcription output text size.</div>
+
+        <hr class="settings-divider" />
+
+        <div class="settings-section-title">Behaviour</div>
+        <div class="appearance-row">
+          <div>
+            <div class="appearance-row-label">Compact history</div>
+            <div class="appearance-row-sub">Denser list in the sidebar</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-compact-toggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="appearance-row">
+          <div>
+            <div class="appearance-row-label">Reduce motion</div>
+            <div class="appearance-row-sub">Disable slide and fade animations</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-motion-toggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+      </div>
+
+      <!-- ── Account tab ── -->
+      <div class="settings-panel" id="settings-tab-account">
+
+        <div class="settings-section-title">Your account</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem">
+          <div style="font-size:.82rem;color:var(--muted);margin-bottom:.15rem">Signed in as</div>
+          <div style="font-size:.95rem;font-weight:600" id="settings-account-email">{{ user.email }}</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:.3rem">Member since {{ user.created_at[:10] if user.created_at else 'recently' }}</div>
+        </div>
+
+        <!-- Stats grid -->
+        <div id="settings-stats-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:1.25rem">
+          <div class="stat-tile">
+            <div class="stat-tile-val" id="stat-transcriptions">—</div>
+            <div class="stat-tile-lbl">Transcriptions</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-val" id="stat-words">—</div>
+            <div class="stat-tile-lbl">Words total</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-val" style="font-size:.95rem" id="stat-plan">{{ (tier or 'Free') | title }}</div>
+            <div class="stat-tile-lbl">Current plan</div>
+          </div>
+        </div>
+
+        <hr class="settings-divider" />
+
+        <div class="settings-section-title">Data</div>
+        <div style="display:flex;gap:.6rem;margin-bottom:1.25rem">
+          <a id="export-data-btn" href="/account/export" style="flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.6rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;font-weight:500;text-decoration:none;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export all data
+          </a>
+        </div>
+
+        <div class="danger-zone">
+          <div class="danger-zone-title">Delete account</div>
+          <div class="danger-zone-desc">This permanently removes your account, all transcriptions, and all notebooks. This cannot be undone.</div>
+          <button class="danger-btn-outline" id="delete-account-btn">Delete my account</button>
+          <div id="delete-confirm-form">
+            <div class="settings-field" style="margin-top:.75rem;margin-bottom:.6rem">
+              <label for="delete-pw-confirm">Confirm your password to continue</label>
+              <input id="delete-pw-confirm" type="password" placeholder="Your password" />
+            </div>
+            <div style="display:flex;gap:.5rem">
+              <button class="danger-btn-outline" id="delete-account-confirm" style="flex:1">Yes, delete everything</button>
+              <button id="delete-account-cancel" style="flex:1;padding:.55rem;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:inherit;font-size:.85rem;cursor:pointer">Cancel</button>
+            </div>
+            <p class="settings-msg error" id="delete-account-msg" style="margin-top:.5rem"></p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Shortcuts tab ── -->
+      <div class="settings-panel" id="settings-tab-shortcuts">
+        <div class="settings-section-title">Keyboard shortcuts</div>
+        <table class="shortcuts-table">
+          <tbody>
+            <tr><td class="shortcut-action">Open history sidebar</td><td class="shortcut-keys"><kbd>H</kbd></td></tr>
+            <tr><td class="shortcut-action">Focus upload zone</td><td class="shortcut-keys"><kbd>U</kbd></td></tr>
+            <tr><td class="shortcut-action">Transcribe</td><td class="shortcut-keys"><kbd>⌘</kbd><kbd>↵</kbd></td></tr>
+            <tr><td class="shortcut-action">Copy result</td><td class="shortcut-keys"><kbd>⌘</kbd><kbd>C</kbd></td></tr>
+            <tr><td class="shortcut-action">AI cleanup</td><td class="shortcut-keys"><kbd>⌘</kbd><kbd>K</kbd></td></tr>
+            <tr><td class="shortcut-action">Clear image</td><td class="shortcut-keys"><kbd>Esc</kbd></td></tr>
+            <tr><td class="shortcut-action">Toggle theme</td><td class="shortcut-keys"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>L</kbd></td></tr>
+            <tr><td class="shortcut-action">Open settings</td><td class="shortcut-keys"><kbd>,</kbd></td></tr>
+          </tbody>
+        </table>
+
+        <hr class="settings-divider" />
+        <div class="settings-section-title">Tips</div>
+        <div class="shortcut-tip">
+          <span>📎</span>
+          <span>Paste an image directly from your clipboard with <kbd style="font-size:.75rem;padding:.1rem .35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px">⌘V</kbd></span>
+        </div>
+        <div class="shortcut-tip">
+          <span>🖱️</span>
+          <span>Drag and drop multiple images at once for multi-page transcription.</span>
+        </div>
+        <div class="shortcut-tip">
+          <span>✏️</span>
+          <span>Double-click any history item title to rename it.</span>
+        </div>
+        <div class="shortcut-tip">
+          <span>📚</span>
+          <span>Drag a history item onto a notebook to organise it.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <main>
 
@@ -2125,6 +2830,10 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             .docx
           </a>
+          <button id="gdocs-btn" class="dl-btn" style="display:none;border:none;cursor:pointer;background:none;font-family:inherit">
+            <svg width="13" height="13" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+            Google Docs
+          </button>
         </div>
       </div>
     </section>
@@ -2137,6 +2846,7 @@
     <!-- How it works -->
     <div class="reveal">
       <div class="section-eyebrow">How it works</div>
+      <h2 class="how-heading">From handwriting to text in seconds.</h2>
       <div class="how-grid">
         <div class="how-step">
           <div class="how-step-num">1</div>
@@ -2158,21 +2868,36 @@
 
     <!-- Tips -->
     <div class="reveal">
-      <div class="tips-card">
-        <h3>Tips for the best results</h3>
-        <div class="tips-list">
-          <div class="tip-row"><span class="tip-icon">💡</span><span><strong>Good lighting matters.</strong> Natural daylight or a bright lamp makes handwriting pop against the page — low-light photos are the #1 cause of errors.</span></div>
-          <div class="tip-row"><span class="tip-icon">📐</span><span><strong>Shoot straight down.</strong> Hold your phone directly above the page to avoid distortion. The text should fill most of the frame.</span></div>
-          <div class="tip-row"><span class="tip-icon">✏️</span><span><strong>Dark pen on white paper.</strong> High contrast = fewer [illegible] markers. Pencil on lined paper can be tricky — a ballpoint on blank paper is ideal.</span></div>
-          <div class="tip-row"><span class="tip-icon">📄</span><span><strong>Multi-page?</strong> Select all your images at once using the file picker — Note-Cloud will transcribe them in order and stitch everything together.</span></div>
-          <div class="tip-row"><span class="tip-icon">✨</span><span><strong>Use AI cleanup.</strong> After transcribing, hit "AI cleanup" to fix spacing, grammar, and punctuation automatically — great for fast handwriting.</span></div>
+      <div class="section-eyebrow">Get the best results</div>
+      <h2 class="tips-heading">A few habits make a big difference.</h2>
+      <div class="tips-grid">
+        <div class="tip-cell">
+          <div class="tip-cell-icon">💡</div>
+          <div class="tip-cell-title">Good lighting matters</div>
+          <div class="tip-cell-desc">Natural daylight or a bright lamp makes handwriting pop — low-light photos are the #1 cause of errors.</div>
+        </div>
+        <div class="tip-cell">
+          <div class="tip-cell-icon">📐</div>
+          <div class="tip-cell-title">Shoot straight down</div>
+          <div class="tip-cell-desc">Hold your phone directly above the page. The text should fill most of the frame with no angle distortion.</div>
+        </div>
+        <div class="tip-cell">
+          <div class="tip-cell-icon">✏️</div>
+          <div class="tip-cell-title">Dark pen on white paper</div>
+          <div class="tip-cell-desc">High contrast means fewer [illegible] markers. A ballpoint on blank paper is ideal.</div>
+        </div>
+        <div class="tip-cell">
+          <div class="tip-cell-icon">✨</div>
+          <div class="tip-cell-title">Use AI cleanup</div>
+          <div class="tip-cell-desc">Hit "AI cleanup" after transcribing to auto-fix spacing, grammar, and punctuation.</div>
         </div>
       </div>
     </div>
 
     <!-- Stats -->
     <div class="reveal">
-      <div class="section-eyebrow">What you get</div>
+      <div class="section-eyebrow">By the numbers</div>
+      <h2 class="stats-heading">Built for serious note-takers.</h2>
       <div class="stats-strip">
         <div class="stat-card">
           <div class="stat-value">~2s</div>
@@ -2184,8 +2909,76 @@
         </div>
         <div class="stat-card">
           <div class="stat-value">∞</div>
-          <div class="stat-label">Pages per session on Pro — no hard limits</div>
+          <div class="stat-label">Pages per session on Pro</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Pricing comparison table -->
+    <div class="reveal">
+      <div class="section-eyebrow">Pricing</div>
+      <h2 class="stats-heading">Simple, honest pricing.</h2>
+      <div class="pricing-table">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Free</th>
+              <th class="col-student">Student<div class="plan-price">$3.99<span>/mo</span></div></th>
+              <th class="col-pro">Pro<div class="plan-price">$8.99<span>/mo</span></div></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Daily transcription limit</td>
+              <td>~2 pages</td>
+              <td>~20 pages</td>
+              <td class="col-pro">Unlimited</td>
+            </tr>
+            <tr>
+              <td>AI text cleanup</td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Multi-page upload</td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Download (.txt &amp; .docx)</td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Share via link</td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Notebooks</td>
+              <td><span class="cross">—</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Referral bonus tokens</td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr class="cta-row">
+              <td></td>
+              <td><span style="font-size:.78rem;color:var(--muted)">Current plan</span></td>
+              <td><button class="table-upgrade-btn" onclick="document.getElementById('upgrade-modal').classList.add('open')">Get Student</button></td>
+              <td class="col-pro"><button class="table-upgrade-btn featured" onclick="document.getElementById('upgrade-modal').classList.add('open')">Get Pro</button></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -2241,6 +3034,7 @@
     const shareBtn      = document.getElementById("share-btn");
     const dlTxtBtn      = document.getElementById("dl-txt-btn");
     const dlDocxBtn     = document.getElementById("dl-docx-btn");
+    const gdocsBtn      = document.getElementById("gdocs-btn");
     const transcribeLabel = document.getElementById("transcribe-label");
 
     // Scribble loader elements
@@ -2495,6 +3289,7 @@
           dlDocxBtn.href = `/transcriptions/${tid}/download/docx`;
           dlTxtBtn.style.display  = "";
           dlDocxBtn.style.display = "";
+          if (gdocsBtn) gdocsBtn.style.display = "";
         }
 
       } catch (err) {
@@ -2814,15 +3609,19 @@
 
     // ── Scroll-reveal for below-fold sections ────────────────────────────────
     const revealEls = document.querySelectorAll(".reveal");
-    revealEls.forEach((el, i) => { el.style.transitionDelay = (i * 0.08) + "s"; });
+    revealEls.forEach((el, i) => {
+      el.classList.add(i % 2 === 0 ? "from-right" : "from-left");
+      el.style.transitionDelay = (i * 0.08) + "s";
+    });
     const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
           e.target.classList.add("visible");
-          revealObserver.unobserve(e.target);
+        } else {
+          e.target.classList.remove("visible");
         }
       });
-    }, { threshold: 0.05 });
+    }, { rootMargin: "-15% 0px -15% 0px", threshold: 0 });
     revealEls.forEach(el => revealObserver.observe(el));
 
     // ── Interstitial ad (free users only) ────────────────────────────────────
@@ -2856,6 +3655,12 @@
       },
     ];
 
+    // Track visits: no ad for first 3 visits, show on visit 4, then every 2nd visit (4, 6, 8, …)
+    const visitKey = "notecloud-visit-count";
+    const visitCount = parseInt(localStorage.getItem(visitKey) || "0", 10) + 1;
+    localStorage.setItem(visitKey, visitCount);
+    const shouldShowAd = visitCount >= 4 && (visitCount - 4) % 2 === 0;
+
     let adShown = false;
 
     function showAd() {
@@ -2883,16 +3688,88 @@
     adCloseBtn.addEventListener("click", () => {
       if (!adCloseBtn.disabled) {
         adModal.classList.remove("open");
-        // Schedule next ad 2–4 minutes later
-        const delay = (120 + Math.random() * 120) * 1000;
-        setTimeout(() => { adShown = false; showAd(); }, delay);
       }
     });
 
-    // Show first ad after 45–90 seconds of being on the page
-    const firstAdDelay = (45 + Math.random() * 45) * 1000;
-    setTimeout(showAd, firstAdDelay);
+    // Only show ad on qualifying visits (4th, 6th, 8th, …)
+    if (shouldShowAd) {
+      const firstAdDelay = (45 + Math.random() * 45) * 1000;
+      setTimeout(showAd, firstAdDelay);
+    }
     } // end free-user ad block
+
+    // ── Google Docs export ────────────────────────────────────────────────────
+    if (gdocsBtn) {
+      let googleConnected = false;
+
+      // Check connection status on load
+      fetch("/google/status", { credentials: "same-origin" })
+        .then(r => r.json())
+        .then(d => { googleConnected = d.connected; });
+
+      // If returning from OAuth, mark as connected and clean the URL
+      const _gParams = new URLSearchParams(window.location.search);
+      if (_gParams.get("google_connected")) {
+        googleConnected = true;
+        history.replaceState({}, "", window.location.pathname);
+      }
+      if (_gParams.get("google_error")) {
+        history.replaceState({}, "", window.location.pathname);
+      }
+
+      // Connect modal elements
+      const gdocsConnectModal = document.getElementById("gdocs-connect-modal");
+      document.getElementById("gdocs-connect-close").addEventListener("click", () => {
+        gdocsConnectModal.classList.remove("open");
+      });
+      document.getElementById("gdocs-oauth-btn").addEventListener("click", () => {
+        window.location.href = "/google/auth";
+      });
+
+      gdocsBtn.addEventListener("click", async () => {
+        const transId = shareBtn.dataset.transId;
+        if (!transId) return;
+
+        if (!googleConnected) {
+          gdocsConnectModal.classList.add("open");
+          return;
+        }
+
+        const originalHTML = gdocsBtn.innerHTML;
+        gdocsBtn.textContent = "Exporting…";
+        gdocsBtn.disabled = true;
+
+        try {
+          const res = await fetch(`/transcriptions/${transId}/export/gdocs`, {
+            method: "POST",
+            credentials: "same-origin",
+          });
+          const data = await res.json();
+
+          if (data.error === "google_not_connected") {
+            googleConnected = false;
+            gdocsConnectModal.classList.add("open");
+            gdocsBtn.innerHTML = originalHTML;
+            gdocsBtn.disabled = false;
+            return;
+          }
+
+          if (data.url) {
+            window.open(data.url, "_blank");
+            gdocsBtn.textContent = "Opened ✓";
+            setTimeout(() => { gdocsBtn.innerHTML = originalHTML; }, 3000);
+          } else {
+            gdocsBtn.textContent = "Failed";
+            setTimeout(() => { gdocsBtn.innerHTML = originalHTML; }, 3000);
+          }
+        } catch {
+          gdocsBtn.textContent = "Failed";
+          setTimeout(() => { gdocsBtn.innerHTML = originalHTML; }, 3000);
+        } finally {
+          gdocsBtn.disabled = false;
+        }
+      });
+    }
 
     // ── Theme toggle ─────────────────────────────────────────────────────────
     const themeToggle = document.getElementById("theme-toggle");
@@ -3108,6 +3985,7 @@
             dlDocxBtn.href = `/transcriptions/${item.id}/download/docx`;
             dlTxtBtn.style.display  = "";
             dlDocxBtn.style.display = "";
+            if (gdocsBtn) gdocsBtn.style.display = "";
             closeSidebar();
             resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
           });
@@ -3389,6 +4267,303 @@
         itemsList.appendChild(row);
       });
     }
+    // ── Settings modal ────────────────────────────────────────────────────────
+    const settingsModal   = document.getElementById("settings-modal");
+    const settingsClose   = document.getElementById("settings-close");
+    const openSettingsBtn = document.getElementById("open-settings-btn");
+
+    function openSettings(tab) {
+      settingsModal.classList.add("open");
+      if (tab) switchSettingsTab(tab);
+      profileDropdown.classList.remove("open");
+      if (tab === "account") loadStats();
+    }
+
+    settingsClose.addEventListener("click", () => settingsModal.classList.remove("open"));
+    settingsModal.addEventListener("click", (e) => {
+      if (e.target === settingsModal) settingsModal.classList.remove("open");
+    });
+    openSettingsBtn.addEventListener("click", () => openSettings("profile"));
+
+    // Tab switching
+    function switchSettingsTab(name) {
+      document.querySelectorAll(".settings-tab").forEach(t => {
+        t.classList.toggle("active", t.dataset.tab === name);
+      });
+      document.querySelectorAll(".settings-panel").forEach(p => {
+        p.classList.toggle("active", p.id === `settings-tab-${name}`);
+      });
+      if (name === "account") loadStats();
+    }
+    document.querySelectorAll(".settings-tab").forEach(tab => {
+      tab.addEventListener("click", () => switchSettingsTab(tab.dataset.tab));
+    });
+
+    // ── Avatar upload (inline in profile tab) ─────────────────────────────────
+    const settingsAvatarInput = document.getElementById("settings-avatar-input");
+    const settingsAvatarBtn   = document.getElementById("settings-avatar-btn");
+    const settingsAvatarMsg   = document.getElementById("settings-avatar-msg");
+    const settingsAvatarPreview = document.getElementById("settings-avatar-preview");
+
+    settingsAvatarBtn.addEventListener("click", () => settingsAvatarInput.click());
+    settingsAvatarInput.addEventListener("change", async () => {
+      const file = settingsAvatarInput.files[0];
+      if (!file) return;
+      settingsAvatarMsg.className = "settings-msg";
+      settingsAvatarMsg.textContent = "Uploading…";
+      const form = new FormData();
+      form.append("avatar", file);
+      try {
+        const res = await fetch("/profile/upload", { method: "POST", credentials: "same-origin", body: form });
+        const d = await res.json();
+        if (d.ok) {
+          settingsAvatarMsg.className = "settings-msg ok";
+          settingsAvatarMsg.textContent = "Photo updated.";
+          const newSrc = `/static/avatars/${d.avatar}?t=${Date.now()}`;
+          // Update inline preview
+          settingsAvatarPreview.innerHTML = `<img src="${newSrc}" style="width:100%;height:100%;object-fit:cover" />`;
+          // Update header profile button
+          const pbtn = document.getElementById("profile-btn");
+          if (pbtn) pbtn.innerHTML = `<img src="${newSrc}" alt="Profile picture" style="width:100%;height:100%;object-fit:cover" />`;
+        } else {
+          settingsAvatarMsg.className = "settings-msg error";
+          settingsAvatarMsg.textContent = d.error || "Upload failed.";
+        }
+      } catch {
+        settingsAvatarMsg.className = "settings-msg error";
+        settingsAvatarMsg.textContent = "Network error.";
+      }
+    });
+
+    // ── Profile save ──────────────────────────────────────────────────────────
+    const profileSaveBtn = document.getElementById("settings-profile-save");
+    const profileMsg     = document.getElementById("settings-profile-msg");
+
+    profileSaveBtn.addEventListener("click", async () => {
+      const firstName = document.getElementById("settings-first").value.trim();
+      const lastName  = document.getElementById("settings-last").value.trim();
+      const email     = document.getElementById("settings-email").value.trim();
+
+      profileMsg.className = "settings-msg";
+      profileMsg.textContent = "";
+      profileSaveBtn.disabled = true;
+      profileSaveBtn.textContent = "Saving…";
+
+      try {
+        const res = await fetch("/profile/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ first_name: firstName, last_name: lastName, email }),
+        });
+        const d = await res.json();
+        if (d.ok) {
+          profileMsg.className = "settings-msg ok";
+          profileMsg.textContent = "Profile updated.";
+          const nameEl = document.querySelector("#profile-dropdown .dropdown-user .name");
+          const emailEl = document.querySelector("#profile-dropdown .dropdown-user .email");
+          if (nameEl)  nameEl.textContent  = `${d.first_name} ${d.last_name}`;
+          if (emailEl) emailEl.textContent = d.email;
+          document.getElementById("settings-account-email").textContent = d.email;
+          const pbtn = document.getElementById("profile-btn");
+          if (pbtn && !pbtn.querySelector("img")) pbtn.textContent = (d.first_name || "U")[0].toUpperCase();
+        } else {
+          profileMsg.className = "settings-msg error";
+          profileMsg.textContent = d.error || "Something went wrong.";
+        }
+      } catch {
+        profileMsg.className = "settings-msg error";
+        profileMsg.textContent = "Network error. Please try again.";
+      }
+      profileSaveBtn.disabled = false;
+      profileSaveBtn.textContent = "Save changes";
+    });
+
+    // ── Referral code copy (settings tab) ────────────────────────────────────
+    const settingsCopyRef = document.getElementById("settings-copy-ref");
+    if (settingsCopyRef) {
+      settingsCopyRef.addEventListener("click", () => {
+        const code = document.querySelector("#settings-tab-profile .ref-code")?.textContent?.trim();
+        if (code && code !== "—") navigator.clipboard.writeText(code).then(() => {
+          settingsCopyRef.style.color = "var(--success)";
+          setTimeout(() => { settingsCopyRef.style.color = ""; }, 1500);
+        });
+      });
+    }
+
+    // ── Password save ─────────────────────────────────────────────────────────
+    const pwSaveBtn = document.getElementById("settings-pw-save");
+    const pwMsg     = document.getElementById("settings-pw-msg");
+
+    pwSaveBtn.addEventListener("click", async () => {
+      const current    = document.getElementById("settings-pw-current").value;
+      const newPw      = document.getElementById("settings-pw-new").value;
+      const confirmPw  = document.getElementById("settings-pw-confirm").value;
+
+      pwMsg.className = "settings-msg";
+      pwMsg.textContent = "";
+      pwSaveBtn.disabled = true;
+      pwSaveBtn.textContent = "Updating…";
+
+      try {
+        const res = await fetch("/profile/password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ current, new_password: newPw, confirm: confirmPw }),
+        });
+        const d = await res.json();
+        if (d.ok) {
+          pwMsg.className = "settings-msg ok";
+          pwMsg.textContent = "Password updated.";
+          document.getElementById("settings-pw-current").value = "";
+          document.getElementById("settings-pw-new").value     = "";
+          document.getElementById("settings-pw-confirm").value = "";
+        } else {
+          pwMsg.className = "settings-msg error";
+          pwMsg.textContent = d.error || "Something went wrong.";
+        }
+      } catch {
+        pwMsg.className = "settings-msg error";
+        pwMsg.textContent = "Network error. Please try again.";
+      }
+      pwSaveBtn.disabled = false;
+      pwSaveBtn.textContent = "Update password";
+    });
+
+    // ── Appearance: theme toggle ──────────────────────────────────────────────
+    const settingsThemeToggle = document.getElementById("settings-theme-toggle");
+    settingsThemeToggle.checked = document.body.classList.contains("light");
+    settingsThemeToggle.addEventListener("change", () => {
+      document.getElementById("theme-toggle").click();
+      settingsThemeToggle.checked = document.body.classList.contains("light");
+    });
+
+    // ── Appearance: accent colour ─────────────────────────────────────────────
+    const savedAccent = localStorage.getItem("notecloud-accent");
+    if (savedAccent) {
+      document.documentElement.style.setProperty("--accent", savedAccent);
+      document.documentElement.style.setProperty("--accent-dim", savedAccent + "99");
+    }
+    document.querySelectorAll(".accent-swatch").forEach(sw => {
+      if (savedAccent && sw.dataset.accent === savedAccent) {
+        document.querySelectorAll(".accent-swatch").forEach(s => s.classList.remove("selected"));
+        sw.classList.add("selected");
+      }
+      sw.addEventListener("click", () => {
+        document.querySelectorAll(".accent-swatch").forEach(s => s.classList.remove("selected"));
+        sw.classList.add("selected");
+        const color = sw.dataset.accent;
+        document.documentElement.style.setProperty("--accent", color);
+        document.documentElement.style.setProperty("--accent-dim", color + "99");
+        localStorage.setItem("notecloud-accent", color);
+      });
+    });
+
+    // ── Appearance: font size ─────────────────────────────────────────────────
+    const fontSizes = { small: ".875rem", medium: ".975rem", large: "1.1rem" };
+    const savedFontSize = localStorage.getItem("notecloud-fontsize") || "medium";
+    function applyFontSize(size) {
+      const el = document.getElementById("result-text");
+      if (el) el.style.fontSize = fontSizes[size] || fontSizes.medium;
+      document.querySelectorAll(".font-size-btn").forEach(b => b.classList.toggle("active", b.dataset.size === size));
+      localStorage.setItem("notecloud-fontsize", size);
+    }
+    applyFontSize(savedFontSize);
+    document.querySelectorAll(".font-size-btn").forEach(btn => {
+      btn.addEventListener("click", () => applyFontSize(btn.dataset.size));
+    });
+
+    // ── Appearance: compact history ───────────────────────────────────────────
+    const compactToggle = document.getElementById("settings-compact-toggle");
+    compactToggle.checked = localStorage.getItem("notecloud-compact") === "1";
+    function applyCompact(on) {
+      document.querySelectorAll(".history-item").forEach(el => {
+        el.style.padding = on ? ".5rem 1.25rem" : "";
+      });
+    }
+    compactToggle.addEventListener("change", () => {
+      localStorage.setItem("notecloud-compact", compactToggle.checked ? "1" : "0");
+      applyCompact(compactToggle.checked);
+    });
+    applyCompact(compactToggle.checked);
+
+    // ── Appearance: reduce motion ─────────────────────────────────────────────
+    const motionToggle = document.getElementById("settings-motion-toggle");
+    motionToggle.checked = localStorage.getItem("notecloud-reduce-motion") === "1";
+    if (motionToggle.checked) document.body.classList.add("reduce-motion");
+    motionToggle.addEventListener("change", () => {
+      document.body.classList.toggle("reduce-motion", motionToggle.checked);
+      localStorage.setItem("notecloud-reduce-motion", motionToggle.checked ? "1" : "0");
+    });
+
+    // ── Account: load stats ───────────────────────────────────────────────────
+    let statsLoaded = false;
+    async function loadStats() {
+      if (statsLoaded) return;
+      try {
+        const res = await fetch("/account/stats", { credentials: "same-origin" });
+        const d = await res.json();
+        const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+        document.getElementById("stat-transcriptions").textContent = fmt(d.transcriptions);
+        document.getElementById("stat-words").textContent = fmt(d.words);
+        statsLoaded = true;
+      } catch { /* silent */ }
+    }
+
+    // ── Account / delete ──────────────────────────────────────────────────────
+    const deleteBtn        = document.getElementById("delete-account-btn");
+    const deleteConfirm    = document.getElementById("delete-confirm-form");
+    const deleteCancel     = document.getElementById("delete-account-cancel");
+    const deleteConfirmBtn = document.getElementById("delete-account-confirm");
+    const deleteMsg        = document.getElementById("delete-account-msg");
+
+    deleteBtn.addEventListener("click", () => {
+      deleteConfirm.classList.add("open");
+      deleteBtn.style.display = "none";
+    });
+    deleteCancel.addEventListener("click", () => {
+      deleteConfirm.classList.remove("open");
+      deleteBtn.style.display = "";
+      deleteMsg.textContent = "";
+      document.getElementById("delete-pw-confirm").value = "";
+    });
+    deleteConfirmBtn.addEventListener("click", async () => {
+      const password = document.getElementById("delete-pw-confirm").value;
+      deleteMsg.textContent = "";
+      deleteConfirmBtn.disabled = true;
+      deleteConfirmBtn.textContent = "Deleting…";
+      try {
+        const res = await fetch("/account/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ password }),
+        });
+        const d = await res.json();
+        if (d.ok) {
+          window.location.href = "/login";
+        } else {
+          deleteMsg.textContent = d.error || "Something went wrong.";
+          deleteConfirmBtn.disabled = false;
+          deleteConfirmBtn.textContent = "Yes, delete everything";
+        }
+      } catch {
+        deleteMsg.textContent = "Network error.";
+        deleteConfirmBtn.disabled = false;
+        deleteConfirmBtn.textContent = "Yes, delete everything";
+      }
+    });
+
+    // ── Keyboard shortcut: comma opens settings ───────────────────────────────
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "," && !e.metaKey && !e.ctrlKey &&
+          !["INPUT","TEXTAREA"].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        openSettings("shortcuts");
+      }
+    });
+
   </script>
 
 </body>

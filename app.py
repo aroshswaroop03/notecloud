@@ -17,6 +17,14 @@ from datetime import date, datetime
 from functools import wraps
 
 import anthropic
+try:
+    from google_auth_oauthlib.flow import Flow
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request as GoogleRequest
+    from googleapiclient.discovery import build as google_build
+    GOOGLE_LIBS_AVAILABLE = True
+except ImportError:
+    GOOGLE_LIBS_AVAILABLE = False
 from docx import Document
 from docx.shared import Pt
 from dotenv import load_dotenv
@@ -71,6 +79,15 @@ REFERRAL_BONUS_TOKENS = 250  # roughly 1 extra page per referral
 # The secret owner code — loaded from .env so it's never in the source code.
 # Whoever redeems this code gets is_admin=1 and is never limited.
 OWNER_CODE = os.getenv("OWNER_CODE", "")
+
+# Google OAuth 2.0 credentials — set these in .env
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/google/callback")
+GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/drive.file",
+]
 
 # The maximum upload size Flask will accept — 10 MB should be plenty for a photo
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
@@ -186,6 +203,14 @@ def init_db():
         conn.commit()
     except Exception:
         pass
+
+    # Add Google OAuth token columns
+    for col in ["google_access_token TEXT", "google_refresh_token TEXT", "google_token_expiry TEXT"]:
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            conn.commit()
+        except Exception:
+            pass
 
     # Notebooks — user-created folders to organise transcriptions
     conn.execute("""
@@ -554,13 +579,21 @@ def history():
     return jsonify({"items": items})
 
 
+def require_paid_tier():
+    """Return a JSON error response if the user is on the free tier, else None."""
+    conn = get_db()
+    user = conn.execute("SELECT tier, is_admin FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    conn.close()
+    if user and (user["is_admin"] or user["tier"] not in ("free", None)):
+        return None
+    return jsonify({"error": "upgrade_required", "message": "Notebooks are available on Student and Pro plans."}), 403
+
+
 @app.route("/notebooks", methods=["GET"])
 @login_required
 def list_notebooks():
-    """
-    GET /notebooks
-    Returns all notebooks for the logged-in user, with item counts.
-    """
+    err = require_paid_tier()
+    if err: return err
     conn = get_db()
     rows = conn.execute(
         """SELECT n.id, n.name, n.color, n.created_at,
@@ -579,10 +612,8 @@ def list_notebooks():
 @app.route("/notebooks", methods=["POST"])
 @login_required
 def create_notebook():
-    """
-    POST /notebooks  { "name": "...", "color": "#hex" }
-    Creates a new notebook and returns its id.
-    """
+    err = require_paid_tier()
+    if err: return err
     data = request.get_json(silent=True) or {}
     name  = data.get("name", "").strip()
     color = data.get("color", "#c9a96e").strip()
@@ -1100,6 +1131,322 @@ def download_docx(trans_id):
         as_attachment=True,
         download_name=filename,
     )
+
+
+# ── Account stats & export ────────────────────────────────────────────────────
+
+@app.route("/account/stats")
+@login_required
+def account_stats():
+    """GET /account/stats — total transcription count and word count for the user."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COUNT(*) AS count, COALESCE(SUM(word_count), 0) AS words FROM transcriptions WHERE user_id = ?",
+        (session["user_id"],)
+    ).fetchone()
+    user = conn.execute(
+        "SELECT created_at FROM users WHERE id = ?", (session["user_id"],)
+    ).fetchone()
+    conn.close()
+    return jsonify({
+        "transcriptions": row["count"],
+        "words": row["words"],
+        "member_since": (user["created_at"] or "")[:10],
+    })
+
+
+@app.route("/account/export")
+@login_required
+def account_export():
+    """GET /account/export — download all transcriptions as a JSON file."""
+    import json as _json
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, title, text, word_count, created_at FROM transcriptions WHERE user_id = ? ORDER BY id DESC",
+        (session["user_id"],)
+    ).fetchall()
+    conn.close()
+    data = {"exported_at": datetime.utcnow().isoformat(), "transcriptions": [dict(r) for r in rows]}
+    buf = io.BytesIO(_json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
+    buf.seek(0)
+    return send_file(buf, mimetype="application/json", as_attachment=True,
+                     download_name="note-cloud-export.json")
+
+
+# ── Settings routes ───────────────────────────────────────────────────────────
+
+@app.route("/profile/update", methods=["POST"])
+@login_required
+def profile_update():
+    """
+    POST /profile/update  { "first_name": "...", "last_name": "...", "email": "..." }
+    Updates the user's display name and email address.
+    """
+    data = request.get_json(silent=True) or {}
+    first_name = data.get("first_name", "").strip()
+    last_name  = data.get("last_name",  "").strip()
+    email      = data.get("email",      "").strip().lower()
+
+    if not first_name or not last_name:
+        return jsonify({"error": "First and last name are required."}), 400
+    if not email or "@" not in email:
+        return jsonify({"error": "A valid email address is required."}), 400
+
+    conn = get_db()
+    # Check if the new email is already taken by a different account
+    existing = conn.execute(
+        "SELECT id FROM users WHERE email = ? AND id != ?",
+        (email, session["user_id"])
+    ).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({"error": "That email is already in use by another account."}), 409
+
+    conn.execute(
+        "UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?",
+        (first_name, last_name, email, session["user_id"])
+    )
+    conn.commit()
+    conn.close()
+
+    session["user_email"] = email
+    return jsonify({"ok": True, "first_name": first_name, "last_name": last_name, "email": email})
+
+
+@app.route("/profile/password", methods=["POST"])
+@login_required
+def profile_password():
+    """
+    POST /profile/password  { "current": "...", "new_password": "...", "confirm": "..." }
+    Changes the user's password after verifying their current one.
+    """
+    data = request.get_json(silent=True) or {}
+    current      = data.get("current",      "")
+    new_password = data.get("new_password", "")
+    confirm      = data.get("confirm",      "")
+
+    if not current or not new_password:
+        return jsonify({"error": "Current and new password are required."}), 400
+    if len(new_password) < 6:
+        return jsonify({"error": "New password must be at least 6 characters."}), 400
+    if new_password != confirm:
+        return jsonify({"error": "New passwords do not match."}), 400
+
+    conn = get_db()
+    user = conn.execute("SELECT password_hash FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not user or not check_password_hash(user["password_hash"], current):
+        conn.close()
+        return jsonify({"error": "Current password is incorrect."}), 401
+
+    new_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, session["user_id"]))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/account/delete", methods=["POST"])
+@login_required
+def account_delete():
+    """
+    POST /account/delete  { "password": "..." }
+    Permanently deletes the account and all associated data after password confirmation.
+    """
+    data = request.get_json(silent=True) or {}
+    password = data.get("password", "")
+
+    if not password:
+        return jsonify({"error": "Password confirmation is required."}), 400
+
+    conn = get_db()
+    user = conn.execute("SELECT password_hash FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not user or not check_password_hash(user["password_hash"], password):
+        conn.close()
+        return jsonify({"error": "Incorrect password."}), 401
+
+    uid = session["user_id"]
+    # Delete all transcriptions, notebook memberships, and notebooks first
+    trans_ids = [r["id"] for r in conn.execute("SELECT id FROM transcriptions WHERE user_id = ?", (uid,)).fetchall()]
+    if trans_ids:
+        placeholders = ",".join("?" * len(trans_ids))
+        conn.execute(f"DELETE FROM notebook_transcriptions WHERE transcription_id IN ({placeholders})", trans_ids)
+    conn.execute("DELETE FROM transcriptions WHERE user_id = ?", (uid,))
+    conn.execute("DELETE FROM notebook_transcriptions WHERE notebook_id IN (SELECT id FROM notebooks WHERE user_id = ?)", (uid,))
+    conn.execute("DELETE FROM notebooks WHERE user_id = ?", (uid,))
+    conn.execute("DELETE FROM users WHERE id = ?", (uid,))
+    conn.commit()
+    conn.close()
+
+    session.clear()
+    return jsonify({"ok": True})
+
+
+# ── Google Docs integration ───────────────────────────────────────────────────
+
+def _google_flow():
+    """Build a google_auth_oauthlib Flow from env config."""
+    return Flow.from_client_config(
+        {"web": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [GOOGLE_REDIRECT_URI],
+        }},
+        scopes=GOOGLE_SCOPES,
+        redirect_uri=GOOGLE_REDIRECT_URI,
+    )
+
+
+@app.route("/google/auth")
+@login_required
+def google_auth():
+    """Redirect the user to Google's OAuth consent screen."""
+    if not GOOGLE_LIBS_AVAILABLE or not GOOGLE_CLIENT_ID:
+        return "Google integration not configured — add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env", 503
+    flow = _google_flow()
+    auth_url, state = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent",
+    )
+    session["google_oauth_state"] = state
+    return redirect(auth_url)
+
+
+@app.route("/google/callback")
+@login_required
+def google_callback():
+    """Handle the OAuth callback, store tokens, and redirect back to the app."""
+    if not GOOGLE_LIBS_AVAILABLE or not GOOGLE_CLIENT_ID:
+        return redirect("/?google_error=not_configured")
+
+    state = session.pop("google_oauth_state", None)
+    if not state or request.args.get("state") != state:
+        return redirect("/?google_error=invalid_state")
+
+    if "error" in request.args:
+        return redirect("/?google_error=access_denied")
+
+    flow = _google_flow()
+    flow.fetch_token(authorization_response=request.url)
+    creds = flow.credentials
+
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET google_access_token=?, google_refresh_token=?, google_token_expiry=? WHERE id=?",
+        (
+            creds.token,
+            creds.refresh_token,
+            creds.expiry.isoformat() if creds.expiry else None,
+            session["user_id"],
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return redirect("/?google_connected=1")
+
+
+@app.route("/google/status")
+@login_required
+def google_status():
+    """Return whether the user has connected their Google account."""
+    conn = get_db()
+    user = conn.execute(
+        "SELECT google_access_token FROM users WHERE id=?", (session["user_id"],)
+    ).fetchone()
+    conn.close()
+    return jsonify({"connected": bool(user and user["google_access_token"])})
+
+
+@app.route("/google/disconnect", methods=["POST"])
+@login_required
+def google_disconnect():
+    """Remove stored Google tokens for the user."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET google_access_token=NULL, google_refresh_token=NULL, google_token_expiry=NULL WHERE id=?",
+        (session["user_id"],),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/transcriptions/<int:trans_id>/export/gdocs", methods=["POST"])
+@login_required
+def export_to_gdocs(trans_id):
+    """Create a new Google Doc containing the transcription text."""
+    if not GOOGLE_LIBS_AVAILABLE or not GOOGLE_CLIENT_ID:
+        return jsonify({"error": "Google integration not configured."}), 503
+
+    conn = get_db()
+    row = conn.execute(
+        "SELECT text, title, created_at FROM transcriptions WHERE id=? AND user_id=?",
+        (trans_id, session["user_id"]),
+    ).fetchone()
+    user = conn.execute(
+        "SELECT google_access_token, google_refresh_token, google_token_expiry FROM users WHERE id=?",
+        (session["user_id"],),
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"error": "Not found."}), 404
+
+    if not user or not user["google_access_token"]:
+        conn.close()
+        return jsonify({"error": "google_not_connected"}), 401
+
+    # Build credentials object
+    expiry = None
+    if user["google_token_expiry"]:
+        try:
+            expiry = datetime.fromisoformat(user["google_token_expiry"])
+        except Exception:
+            pass
+
+    creds = Credentials(
+        token=user["google_access_token"],
+        refresh_token=user["google_refresh_token"],
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        scopes=GOOGLE_SCOPES,
+        expiry=expiry,
+    )
+
+    # Refresh token if expired
+    if creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(GoogleRequest())
+            conn.execute(
+                "UPDATE users SET google_access_token=?, google_token_expiry=? WHERE id=?",
+                (creds.token, creds.expiry.isoformat() if creds.expiry else None, session["user_id"]),
+            )
+            conn.commit()
+        except Exception:
+            conn.close()
+            return jsonify({"error": "google_not_connected"}), 401
+
+    conn.close()
+
+    try:
+        docs = google_build("docs", "v1", credentials=creds)
+        doc_title = row["title"] or f"Transcription — {(row['created_at'] or '')[:10]}"
+        doc = docs.documents().create(body={"title": doc_title}).execute()
+        doc_id = doc["documentId"]
+
+        text = (row["text"] or "").strip()
+        if text:
+            docs.documents().batchUpdate(
+                documentId=doc_id,
+                body={"requests": [{"insertText": {"location": {"index": 1}, "text": text}}]},
+            ).execute()
+
+        return jsonify({"ok": True, "url": f"https://docs.google.com/document/d/{doc_id}/edit"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
