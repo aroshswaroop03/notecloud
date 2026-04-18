@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Cloud -->
+  <path d="M145 95c0-16.6-13.4-30-30-30-4.4 0-8.6 1-12.4 2.7C99.3 57.4 89 50 77 50c-16.6 0-30 13.4-30 30 0 .7 0 1.4.1 2.1C38.5 84.5 32 92.5 32 102c0 12.2 9.8 22 22 22h89c12.2 0 22-9.8 22-22 0-4.1-1.1-7.9-3-11.1z" fill="#c9a96e" opacity="0.15"/>
+  <path d="M145 95c0-16.6-13.4-30-30-30-4.4 0-8.6 1-12.4 2.7C99.3 57.4 89 50 77 50c-16.6 0-30 13.4-30 30 0 .7 0 1.4.1 2.1C38.5 84.5 32 92.5 32 102c0 12.2 9.8 22 22 22h89c12.2 0 22-9.8 22-22 0-4.1-1.1-7.9-3-11.1z" stroke="#c9a96e" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Pen body -->
+  <g transform="translate(68, 88) rotate(-35)">
+    <!-- Pen shaft -->
+    <rect x="-5" y="-38" width="10" height="38" rx="2" fill="#c9a96e"/>
+    <!-- Pen tip -->
+    <polygon points="-5,0 5,0 0,14" fill="#c9a96e"/>
+    <!-- Pen top clip -->
+    <rect x="-5" y="-44" width="10" height="8" rx="2" fill="#c9a96e" opacity="0.6"/>
+    <!-- Pen highlight -->
+    <rect x="-2" y="-36" width="3" height="28" rx="1.5" fill="white" opacity="0.2"/>
+  </g>
+
+  <!-- Writing line flowing from pen to cloud -->
+  <path d="M76 148 Q90 130 105 118 Q118 108 128 100" stroke="#c9a96e" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.7"/>
+
+  <!-- Ink dot at tip -->
+  <circle cx="76" cy="149" r="2.5" fill="#c9a96e"/>
+</svg>
