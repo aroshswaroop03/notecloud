@@ -9,22 +9,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:        #0e0e10;
-      --surface:   #18181c;
+      --bg:        #06060f;
+      --surface:   #0d0d1a;
       --border:    rgba(255,255,255,.08);
-      --accent:    #c9a96e;
-      --accent-dim:#8a6e42;
-      --text:      #e8e6e0;
-      --muted:     #6b6b72;
-      --success:   #5cb88a;
-      --error:     #e07070;
+      --accent:    #818cf8;
+      --accent-dim:#5b5fd4;
+      --text:      #f1f5f9;
+      --muted:     #475569;
+      --success:   #34d399;
+      --error:     #f87171;
       --radius:    14px;
 
-      /* Direction-sensitive colors that flip in light mode */
-      --grid-line:      rgba(255,255,255,.015);
+      --grid-line:      rgba(255,255,255,.014);
       --drop-border:    rgba(255,255,255,.10);
-      --preview-fade:   rgba(14,14,16,.70);
-      --clear-bg:       rgba(14,14,16,.75);
+      --preview-fade:   rgba(6,6,15,.70);
+      --clear-bg:       rgba(6,6,15,.78);
       --bar-track-bg:   rgba(255,255,255,.07);
       --item-hover-bg:  rgba(255,255,255,.04);
       --btn-secondary-bg: rgba(255,255,255,.07);
@@ -32,14 +31,14 @@
 
     /* ── Light mode overrides ── */
     body.light {
-      --bg:        #f5f2ec;
+      --bg:        #f0efff;
       --surface:   #ffffff;
-      --border:    rgba(0,0,0,.10);
-      --text:      #1a1a1e;
-      --muted:     #8a8a92;
-      --grid-line:      rgba(0,0,0,.04);
-      --drop-border:    rgba(0,0,0,.12);
-      --preview-fade:   rgba(245,242,236,.70);
+      --border:    rgba(99,102,241,.10);
+      --text:      #1e1b4b;
+      --muted:     #64748b;
+      --grid-line:      rgba(99,102,241,.04);
+      --drop-border:    rgba(99,102,241,.15);
+      --preview-fade:   rgba(240,239,255,.70);
       --clear-bg:       rgba(255,255,255,.85);
       --bar-track-bg:   rgba(0,0,0,.08);
       --item-hover-bg:  rgba(0,0,0,.04);
@@ -77,7 +76,7 @@
       top: 0; left: 50%;
       transform: translateX(-50%);
       width: 600px; height: 300px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(201,169,110,.12), transparent 70%);
+      background: radial-gradient(ellipse at 50% 0%, rgba(129,140,248,.12), transparent 70%);
       pointer-events: none;
     }
     .logo {
@@ -118,15 +117,18 @@
       padding: 3.5rem 2rem;
       text-align: center;
       cursor: pointer;
-      transition: border-color .25s, background .25s;
+      transition: border-color .3s, background .3s, box-shadow .3s;
       border: 2px dashed var(--drop-border);
       border-radius: var(--radius);
       background: var(--surface);
       position: relative;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     #drop-zone:hover, #drop-zone.drag-over {
       border-color: var(--accent);
-      background: rgba(201,169,110,.05);
+      background: rgba(129,140,248,.07);
+      box-shadow: 0 0 40px rgba(99,102,241,.15), inset 0 0 40px rgba(99,102,241,.04);
     }
     #drop-zone.drag-over::after {
       content: '';
@@ -165,14 +167,14 @@
       cursor: pointer;
       transition: background .15s, transform .15s;
     }
-    .drop-label:hover { background: #d9b97e; transform: translateY(-1px); }
+    .drop-label:hover { background: #9499f5; transform: translateY(-1px); }
     .drop-buttons { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
     .drop-label-camera {
       background: transparent;
       border: 1.5px solid var(--border);
       color: var(--text);
     }
-    .drop-label-camera:hover { background: rgba(201,169,110,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .drop-label-camera:hover { background: rgba(129,140,248,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
     #drop-zone p { margin-top: .75rem; color: var(--muted); font-size: .875rem; }
     #file-input, #gallery-input, #camera-input { display: none; }
 
@@ -234,17 +236,25 @@
     #transcribe-btn {
       width: 100%;
       padding: .9rem;
-      background: var(--accent);
-      color: #0e0e10;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      color: #fff;
       border: none;
       border-radius: var(--radius);
       font-size: 1rem;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background .15s, transform .15s, opacity .2s;
+      transition: transform .2s, box-shadow .25s, opacity .2s, filter .2s;
+      box-shadow: 0 4px 28px rgba(99,102,241,.4);
       position: relative;
       overflow: hidden;
+    }
+    #transcribe-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,.15) 0%, transparent 60%);
+      pointer-events: none;
     }
     /* ── Scribble loading overlay ── */
     #loading-overlay {
@@ -370,9 +380,9 @@
 
     #transcribe-label { transition: opacity .2s; }
     #transcribe-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-    #transcribe-btn.empty { opacity: .55; }
-    #transcribe-btn.empty:hover { background: var(--accent); transform: none; }
-    #transcribe-btn:not(:disabled):not(.empty):hover { background: #d9b97e; transform: translateY(-1px); }
+    #transcribe-btn.empty { opacity: .5; }
+    #transcribe-btn.empty:hover { transform: none; box-shadow: 0 4px 28px rgba(99,102,241,.4); }
+    #transcribe-btn:not(:disabled):not(.empty):hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(99,102,241,.58); filter: brightness(1.07); }
 
     /* ── Status ── */
     #status {
@@ -452,7 +462,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #copy-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); }
+    #copy-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); }
     #copy-btn.copied { border-color: var(--success); color: var(--success); }
     #share-btn {
       padding: .45rem 1.1rem;
@@ -468,7 +478,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #share-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); color: var(--accent); }
+    #share-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); color: var(--accent); }
     #share-btn.copied { border-color: var(--success); color: var(--success); }
 
     #cleanup-btn {
@@ -485,7 +495,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #cleanup-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); color: var(--accent); }
+    #cleanup-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); color: var(--accent); }
     #cleanup-btn:disabled { opacity: .5; cursor: not-allowed; }
 
     /* Download buttons sit in a small group to the right of share */
@@ -508,7 +518,7 @@
       transition: border-color .2s, color .2s, background .2s;
       white-space: nowrap;
     }
-    .dl-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); color: var(--accent); }
+    .dl-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); color: var(--accent); }
 
     /* ── History sidebar ── */
     #sidebar-overlay {
@@ -782,7 +792,7 @@
     }
     .notebook-row.drag-over {
       border-color: var(--accent);
-      background: rgba(201,169,110,.07);
+      background: rgba(129,140,248,.07);
     }
 
     .notebook-header {
@@ -988,8 +998,9 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,.6);
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
       z-index: 200;
       display: flex;
       align-items: center;
@@ -997,18 +1008,19 @@
       padding: 1.25rem;
       opacity: 0;
       pointer-events: none;
-      transition: opacity .2s;
+      transition: opacity .25s;
     }
     .modal-overlay.open { opacity: 1; pointer-events: all; }
     .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: rgba(13,13,26,.85);
+      border: 1px solid rgba(129,140,248,.18);
       border-radius: var(--radius);
       padding: 2rem;
       width: 100%;
       max-width: 400px;
-      transform: translateY(12px) scale(.97);
-      transition: transform .25s cubic-bezier(.2,.8,.4,1);
+      transform: translateY(16px) scale(.96);
+      transition: transform .3s cubic-bezier(.16,1,.3,1);
+      box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 80px rgba(99,102,241,.1);
     }
     .modal-overlay.open .modal { transform: translateY(0) scale(1); }
     .modal h3 {
@@ -1415,14 +1427,14 @@
       position: relative;
       border-radius: var(--radius);
       overflow: hidden;
-      border: 1px solid rgba(201,169,110,.25);
+      border: 1px solid rgba(129,140,248,.25);
       background: var(--surface);
     }
     .upgrade-pitch-glow {
       position: absolute;
       top: -80px; right: -80px;
       width: 340px; height: 340px;
-      background: radial-gradient(circle, rgba(201,169,110,.12), transparent 65%);
+      background: radial-gradient(circle, rgba(129,140,248,.12), transparent 65%);
       pointer-events: none;
     }
     .upgrade-pitch-inner {
@@ -1461,8 +1473,8 @@
     }
     .upgrade-pitch-plan:hover { transform: translateY(-2px); }
     .upgrade-pitch-plan.featured {
-      border-color: rgba(201,169,110,.5);
-      background: rgba(201,169,110,.04);
+      border-color: rgba(129,140,248,.5);
+      background: rgba(129,140,248,.04);
     }
     .upgrade-pitch-plan.featured:hover { border-color: var(--accent); }
     .upgrade-pitch-plan-badge {
@@ -1656,7 +1668,7 @@
     }
     @keyframes ob-box-glow {
       0%, 30% { border-color: var(--border); }
-      50%, 70% { border-color: var(--accent); background: rgba(201,169,110,.06); }
+      50%, 70% { border-color: var(--accent); background: rgba(129,140,248,.06); }
       90%, 100% { border-color: var(--border); }
     }
 
@@ -1673,7 +1685,7 @@
     }
     @keyframes ob-btn-pulse {
       0%, 30% { transform: scale(1); box-shadow: none; }
-      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(201,169,110,.15); }
+      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(129,140,248,.15); }
       70%      { transform: scale(1.02); }
       100%     { transform: scale(1); }
     }
@@ -1798,7 +1810,7 @@
       cursor: pointer;
       transition: background .15s, transform .15s;
     }
-    #ob-next:hover { background: #d9b97e; transform: translateY(-1px); }
+    #ob-next:hover { background: #9499f5; transform: translateY(-1px); }
 
     /* ── Theme toggle button ── */
     #theme-toggle {
@@ -2044,7 +2056,7 @@
       transition: border-color .15s, color .15s, background .15s;
     }
     .font-size-btn:hover { border-color: var(--accent); color: var(--text); }
-    .font-size-btn.active { background: rgba(201,169,110,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .font-size-btn.active { background: rgba(129,140,248,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
     /* Stats grid tiles */
     .stat-tile {
@@ -2154,10 +2166,71 @@
       max-width: 0;
       opacity: 0;
     }
+
+    /* ── Background orbs ── */
+    .bg-orbs {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .bg-orbs .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+    }
+    .bg-orbs .orb-1 {
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, #6366f1 0%, transparent 68%);
+      top: -300px; left: -200px;
+      opacity: .12;
+      animation: gorb1 26s ease-in-out infinite;
+    }
+    .bg-orbs .orb-2 {
+      width: 580px; height: 580px;
+      background: radial-gradient(circle, #a855f7 0%, transparent 68%);
+      bottom: -200px; right: -150px;
+      opacity: .09;
+      animation: gorb2 32s ease-in-out infinite;
+    }
+    .bg-orbs .orb-3 {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, #3b82f6 0%, transparent 68%);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      opacity: .05;
+      animation: gorb3 22s ease-in-out infinite;
+    }
+    @keyframes gorb1 {
+      0%,100% { transform: translate(0,0); }
+      50%     { transform: translate(120px, 80px); }
+    }
+    @keyframes gorb2 {
+      0%,100% { transform: translate(0,0); }
+      50%     { transform: translate(-90px,-70px); }
+    }
+    @keyframes gorb3 {
+      0%,100% { transform: translate(-50%,-50%) scale(1); }
+      50%     { transform: translate(-50%,-50%) scale(1.4); }
+    }
+    body.light .bg-orbs .orb-1 { opacity: .05; }
+    body.light .bg-orbs .orb-2 { opacity: .04; }
+    body.light .bg-orbs .orb-3 { opacity: .03; }
+
+    /* Ensure all app content sits above the orbs */
+    body > *:not(.bg-orbs) { position: relative; z-index: 1; }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
+
+  <!-- Background ambience -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
 
   <!-- Hamburger button — fixed top-left, opens history sidebar -->
   <button id="hamburger-btn" title="History" aria-label="Open history">
@@ -2169,21 +2242,21 @@
     <!-- Pencil-N: the left leg of the N is drawn as a pencil -->
     <svg id="logo-pencil-n" viewBox="0 0 22 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <!-- Eraser cap -->
-      <rect x="1" y="0" width="5.5" height="4" rx="1.2" fill="#e87070"/>
+      <rect x="1" y="0" width="5.5" height="4" rx="1.2" fill="#c084fc"/>
       <!-- Eraser band -->
-      <rect x="1" y="3.2" width="5.5" height="1.2" fill="#c05050"/>
+      <rect x="1" y="3.2" width="5.5" height="1.2" fill="#9333ea"/>
       <!-- Pencil body (left leg of N) -->
-      <rect x="1" y="4.2" width="5.5" height="17" fill="#c9a96e"/>
+      <rect x="1" y="4.2" width="5.5" height="17" fill="#818cf8"/>
       <!-- Wood tip -->
-      <polygon points="1,21.2 6.5,21.2 3.75,27" fill="#d4a070"/>
+      <polygon points="1,21.2 6.5,21.2 3.75,27" fill="#a78bfa"/>
       <!-- Graphite tip -->
-      <polygon points="2.4,24 5.1,24 3.75,27" fill="#777"/>
+      <polygon points="2.4,24 5.1,24 3.75,27" fill="#6366f1"/>
 
       <!-- N diagonal (top-left of pencil body to bottom of right leg) -->
-      <line x1="6.5" y1="4.2" x2="18" y2="25" stroke="#c9a96e" stroke-width="3.2" stroke-linecap="round"/>
+      <line x1="6.5" y1="4.2" x2="18" y2="25" stroke="#818cf8" stroke-width="3.2" stroke-linecap="round"/>
 
       <!-- Right leg of N -->
-      <rect x="15.5" y="4.2" width="5.5" height="24" rx="1" fill="#c9a96e"/>
+      <rect x="15.5" y="4.2" width="5.5" height="24" rx="1" fill="#818cf8"/>
     </svg>
 
     <!-- "ote" collapses on scroll -->
@@ -2293,7 +2366,7 @@
           Notebooks
         </button>
       </div>
-      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.18);border-radius:10px;">
+      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(129,140,248,.06);border:1px solid rgba(129,140,248,.18);border-radius:10px;">
         <div style="font-size:.75rem;font-weight:600;color:var(--accent);margin-bottom:.3rem;">Student &amp; Pro</div>
         <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.6rem;">Organise your transcriptions into notebooks.</div>
         <button onclick="document.getElementById('upgrade-modal').classList.add('open')" style="width:100%;padding:.45rem;background:var(--accent);color:#0e0e10;border:none;border-radius:7px;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Upgrade to unlock</button>
@@ -2312,7 +2385,7 @@
         <div id="new-notebook-form">
           <input id="notebook-name-input" type="text" placeholder="Notebook name…" maxlength="40" />
           <div id="color-swatches">
-            <button class="color-swatch selected" data-color="#c9a96e" style="background:#c9a96e" title="Gold"></button>
+            <button class="color-swatch selected" data-color="#818cf8" style="background:#818cf8" title="Gold"></button>
             <button class="color-swatch" data-color="#6e9dc9" style="background:#6e9dc9" title="Blue"></button>
             <button class="color-swatch" data-color="#7dc96e" style="background:#7dc96e" title="Green"></button>
             <button class="color-swatch" data-color="#c96e9d" style="background:#c96e9d" title="Pink"></button>
@@ -2365,7 +2438,7 @@
       <button class="dropdown-item" id="open-subscription-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         Subscription
-        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:rgba(201,169,110,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
+        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:rgba(129,140,248,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
       </button>
       <a class="dropdown-item danger" href="/logout">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2495,7 +2568,7 @@
               <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">Unlimited tokens</div>
             {% endif %}
           </div>
-          <span style="background:rgba(201,169,110,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:99px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
+          <span style="background:rgba(129,140,248,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:99px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
         </div>
       </div>
 
@@ -2670,7 +2743,7 @@
           </div>
         </div>
         <div id="accent-swatches" style="display:flex;gap:.5rem;padding:.6rem 0 .75rem;flex-wrap:wrap">
-          <button class="accent-swatch selected" data-accent="#c9a96e" style="background:#c9a96e" title="Gold (default)"></button>
+          <button class="accent-swatch selected" data-accent="#818cf8" style="background:#818cf8" title="Gold (default)"></button>
           <button class="accent-swatch" data-accent="#7eb8f7" style="background:#7eb8f7" title="Blue"></button>
           <button class="accent-swatch" data-accent="#7dc98a" style="background:#7dc98a" title="Green"></button>
           <button class="accent-swatch" data-accent="#c97eb8" style="background:#c97eb8" title="Pink"></button>
@@ -4133,7 +4206,7 @@
     const cancelNotebookBtn = document.getElementById("cancel-notebook-btn");
     const colorSwatches     = document.querySelectorAll(".color-swatch");
 
-    let selectedColor = "#c9a96e"; // default: gold
+    let selectedColor = "#818cf8"; // default: gold
 
     // Toggle notebooks section open/closed
     notebooksToggle.addEventListener("click", () => {
