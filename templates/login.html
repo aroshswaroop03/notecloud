@@ -312,10 +312,8 @@
       overflow: hidden;
       border-top: 1px solid rgba(255,255,255,.05);
       border-bottom: 1px solid rgba(255,255,255,.05);
-      padding: .5rem 0;
+      padding: .85rem 0 1.7rem;
       margin: 2rem 0 0;
-      mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
-      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
       animation: fade-up .7s .6s both;
     }
     body.light .ticker-track {
@@ -329,11 +327,11 @@
       animation: ticker-scroll 28s linear infinite;
       font-size: .73rem;
       font-weight: 500;
+      line-height: 1.6;
       color: var(--text2);
       letter-spacing: .03em;
       white-space: nowrap;
     }
-    .ticker-inner:hover { animation-play-state: paused; }
     .td { color: var(--accent); opacity: .45; font-size: .6rem; }
     @keyframes ticker-scroll {
       from { transform: translateX(0); }
@@ -528,40 +526,113 @@
       width: 100%;
       max-width: 560px;
       margin-top: 4rem;
-      padding: 2.8rem 2.5rem;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: var(--radius);
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
       text-align: left;
       opacity: 0;
-      transform: translateY(32px);
+      transform: translateY(36px);
       transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
       position: relative;
-      overflow: hidden;
-    }
-    .landing-about::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
     }
     .landing-about.visible { opacity: 1; transform: translateY(0); }
-    body.light .landing-about { background: rgba(255,255,255,.65); border-color: rgba(99,102,241,.15); }
-    .landing-about-label {
-      font-size: .66rem; font-weight: 700; letter-spacing: .16em;
-      text-transform: uppercase; color: var(--accent); margin-bottom: .85rem;
+
+    .about-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .67rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
     }
-    .landing-about h2 {
+    .about-tag::before {
+      content: '';
+      width: 18px; height: 1.5px;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .about-heading {
       font-family: 'Playfair Display', serif;
-      font-size: 1.6rem; font-weight: 700; color: var(--text);
-      margin-bottom: 1.1rem; line-height: 1.2;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -1.5px;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, #f1f5f9 0%, #c7d2fe 50%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    .landing-about p { color: var(--text2); font-size: .875rem; line-height: 1.92; font-weight: 300; }
-    .landing-about p + p { margin-top: .9rem; }
-    .landing-about .sig { margin-top: 1.6rem; font-style: italic; color: var(--accent); font-size: .8rem; opacity: .75; }
+    body.light .about-heading {
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .about-quote {
+      position: relative;
+      padding: 1.75rem 2rem 1.75rem 2.25rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-left: 3px solid;
+      border-image: linear-gradient(180deg, #6366f1, #a855f7) 1;
+      border-radius: 0 14px 14px 0;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      margin-bottom: 1.25rem;
+    }
+    body.light .about-quote { background: rgba(255,255,255,.6); border-color: rgba(99,102,241,.15); }
+    .about-quote p {
+      color: var(--text2);
+      font-size: .925rem;
+      line-height: 1.85;
+      font-weight: 300;
+    }
+    .about-quote p + p { margin-top: .9rem; }
+    .about-highlight {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .about-footer {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.2rem 1.5rem;
+      background: rgba(129,140,248,.06);
+      border: 1px solid rgba(129,140,248,.15);
+      border-radius: 14px;
+      margin-top: 1rem;
+    }
+    .about-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .9rem;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(99,102,241,.4);
+    }
+    .about-sig-name {
+      font-size: .88rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .about-sig-role {
+      font-size: .76rem;
+      color: var(--muted);
+      margin-top: .15rem;
+      font-style: italic;
+    }
 
     @keyframes fade-up {
       from { opacity: 0; transform: translateY(20px); }
@@ -826,11 +897,21 @@
         </div>
 
         <div class="landing-about" id="landing-about">
-          <div class="landing-about-label">The story</div>
-          <h2>Why I built this</h2>
-          <p>As a student, I loved taking notes on my computer — until I hit a strict "no device policy" in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
-          <p>Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.</p>
-          <p class="sig">— Built with curiosity and a lot of notebooks.</p>
+          <div class="about-tag">The story</div>
+          <h2 class="about-heading">Why I built this</h2>
+
+          <div class="about-quote">
+            <p>As a student, I loved taking notes on my computer — until I hit a strict <span class="about-highlight">"no device policy"</span> in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
+            <p>Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.</p>
+          </div>
+
+          <div class="about-footer">
+            <div class="about-avatar">A</div>
+            <div>
+              <div class="about-sig-name">Arosh</div>
+              <div class="about-sig-role">Built with curiosity and a lot of notebooks ✦</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
