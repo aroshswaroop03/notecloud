@@ -2616,21 +2616,7 @@
 
   {% if tier == 'free' %}
   <!-- ── Interstitial upgrade ad (free users only) ── -->
-  <div class="modal-overlay" id="ad-modal">
-    <div class="modal ad-modal-inner">
-      <div class="ad-top-bar">
-        <span class="ad-label">Advertisement</span>
-        <button id="ad-close-btn" disabled>Close in <span id="ad-countdown">5</span>s</button>
-      </div>
-      <div style="text-align:center;padding:.5rem 0 1rem">
-        <div style="font-size:2rem;margin-bottom:.5rem">✏️</div>
-        <h3 id="ad-headline" style="font-size:1.15rem;font-weight:700;color:var(--text);margin-bottom:.5rem"></h3>
-        <p id="ad-body" style="font-size:.875rem;color:var(--muted);line-height:1.6;margin-bottom:1.25rem"></p>
-        <button class="modal-btn primary" style="width:100%" onclick="document.getElementById('ad-modal').classList.remove('open');document.getElementById('upgrade-modal').classList.add('open')">
-          See upgrade options →
-        </button>
-      </div>
-    </div>
+  <div class="modal-overlay" id="ad-modal" style="display:none"></div>
   </div>
   {% endif %}
 
@@ -3796,79 +3782,6 @@
     }, { rootMargin: "-15% 0px -15% 0px", threshold: 0 });
     revealEls.forEach(el => revealObserver.observe(el));
 
-    // ── Interstitial ad (free users only) ────────────────────────────────────
-    if (USER_TIER === "free") {
-    const adModal      = document.getElementById("ad-modal");
-    const adCloseBtn   = document.getElementById("ad-close-btn");
-    const adCountdown  = document.getElementById("ad-countdown");
-    const adHeadline   = document.getElementById("ad-headline");
-    const adBody       = document.getElementById("ad-body");
-
-    const adMessages = [
-      {
-        headline: "Still on the free plan?",
-        body: "You're getting ~2 pages a day. Student plan users get 10× that — enough for a full week of lectures without hitting a wall.",
-      },
-      {
-        headline: "Your notes deserve better.",
-        body: "Free users see this ad. Pro users don't. Upgrade for unlimited transcriptions and zero interruptions.",
-      },
-      {
-        headline: "Running low on tokens?",
-        body: "The free plan resets every 24 hours. Student plan gives you 5,000 tokens daily — that's a full stack of notes.",
-      },
-      {
-        headline: "Did you know?",
-        body: "Pro users get unlimited pages, AI cleanup, multi-page upload, and no ads — all for less than a coffee a week.",
-      },
-      {
-        headline: "One less thing to worry about.",
-        body: "Stop counting tokens mid-study session. Upgrade to Student or Pro and just focus on your notes.",
-      },
-    ];
-
-    // Track visits: no ad for first 3 visits, show on visit 4, then every 2nd visit (4, 6, 8, …)
-    const visitKey = "notecloud-visit-count";
-    const visitCount = parseInt(localStorage.getItem(visitKey) || "0", 10) + 1;
-    localStorage.setItem(visitKey, visitCount);
-    const shouldShowAd = visitCount >= 4 && (visitCount - 4) % 2 === 0;
-
-    let adShown = false;
-
-    function showAd() {
-      if (adShown) return;
-      adShown = true;
-      const msg = adMessages[Math.floor(Math.random() * adMessages.length)];
-      adHeadline.textContent = msg.headline;
-      adBody.textContent = msg.body;
-      adCloseBtn.disabled = true;
-      adCountdown.textContent = "5";
-      adModal.classList.add("open");
-
-      let secs = 5;
-      const tick = setInterval(() => {
-        secs--;
-        adCountdown.textContent = secs;
-        if (secs <= 0) {
-          clearInterval(tick);
-          adCloseBtn.disabled = false;
-          adCloseBtn.textContent = "Close";
-        }
-      }, 1000);
-    }
-
-    adCloseBtn.addEventListener("click", () => {
-      if (!adCloseBtn.disabled) {
-        adModal.classList.remove("open");
-      }
-    });
-
-    // Only show ad on qualifying visits (4th, 6th, 8th, …)
-    if (shouldShowAd) {
-      const firstAdDelay = (45 + Math.random() * 45) * 1000;
-      setTimeout(showAd, firstAdDelay);
-    }
-    } // end free-user ad block
 
     // ── Google Docs export ────────────────────────────────────────────────────
     if (gdocsBtn) {
