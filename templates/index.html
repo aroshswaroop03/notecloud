@@ -2136,7 +2136,7 @@
     /* ── Site logo (scroll-shrink effect) ── */
     #site-logo {
       position: fixed;
-      top: .9rem;
+      top: .75rem;
       left: 50%;
       transform: translateX(-50%);
       z-index: 50;
@@ -2145,28 +2145,28 @@
       gap: 0;
       pointer-events: none;
       font-family: 'Playfair Display', serif;
-      font-size: 1.15rem;
-      color: var(--accent);
+      font-size: 1.1rem;
+      color: var(--text);
       letter-spacing: .01em;
       line-height: 1;
+      padding: .45rem 1rem .45rem .7rem;
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,.18);
+      border-top: 1px solid rgba(255,255,255,.32);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      box-shadow:
+        0 2px 0 rgba(255,255,255,.12) inset,
+        0 -1px 0 rgba(0,0,0,.2) inset,
+        0 8px 32px rgba(0,0,0,.3),
+        0 2px 8px rgba(0,0,0,.2);
     }
-    #logo-pencil-n {
-      height: 1.25em;
-      width: auto;
-      flex-shrink: 0;
-      display: block;
-    }
-    .logo-collapse {
-      display: inline-block;
-      overflow: hidden;
-      white-space: nowrap;
-      max-width: 6em;
-      opacity: 1;
-      transition: max-width .4s cubic-bezier(.4,0,.2,1), opacity .3s ease;
-    }
-    #site-logo.scrolled .logo-collapse {
-      max-width: 0;
-      opacity: 0;
+    body.light #site-logo {
+      background: rgba(255,255,255,.55);
+      border-color: rgba(255,255,255,.8);
+      box-shadow: 0 2px 0 rgba(255,255,255,.9) inset, 0 8px 24px rgba(99,102,241,.12);
     }
 
     /* ── Background orbs ── */
@@ -2239,34 +2239,10 @@
     <span></span><span></span><span></span>
   </button>
 
-  <!-- Logo — fixed top-center: "NoteCloud" shrinks to "NC" on scroll -->
+  <!-- Logo — fixed top-center -->
   <div id="site-logo" aria-label="Note-Cloud">
-    <!-- Pencil-N: the left leg of the N is drawn as a pencil -->
-    <svg id="logo-pencil-n" viewBox="0 0 22 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <!-- Eraser cap -->
-      <rect x="1" y="0" width="5.5" height="4" rx="1.2" fill="#c084fc"/>
-      <!-- Eraser band -->
-      <rect x="1" y="3.2" width="5.5" height="1.2" fill="#9333ea"/>
-      <!-- Pencil body (left leg of N) -->
-      <rect x="1" y="4.2" width="5.5" height="17" fill="#818cf8"/>
-      <!-- Wood tip -->
-      <polygon points="1,21.2 6.5,21.2 3.75,27" fill="#a78bfa"/>
-      <!-- Graphite tip -->
-      <polygon points="2.4,24 5.1,24 3.75,27" fill="#6366f1"/>
-
-      <!-- N diagonal (top-left of pencil body to bottom of right leg) -->
-      <line x1="6.5" y1="4.2" x2="18" y2="25" stroke="#818cf8" stroke-width="3.2" stroke-linecap="round"/>
-
-      <!-- Right leg of N -->
-      <rect x="15.5" y="4.2" width="5.5" height="24" rx="1" fill="#818cf8"/>
-    </svg>
-
-    <!-- "ote" collapses on scroll -->
-    <span class="logo-collapse">ote</span>
-    <!-- "C" stays visible always -->
-    <span>C</span>
-    <!-- "loud" collapses on scroll -->
-    <span class="logo-collapse">loud</span>
+    <img src="/static/nc-logo.svg" alt="N" style="height:1.6rem;width:auto;margin-right:.4rem">
+    <span>NoteCloud</span>
   </div>
 
   <!-- Onboarding tutorial modal -->
