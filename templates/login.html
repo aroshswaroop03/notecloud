@@ -7,40 +7,31 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
-
   <style>
     :root {
-      --bg:        #06060f;
-      --surface:   rgba(255,255,255,.05);
-      --surface2:  rgba(255,255,255,.08);
-      --border:    rgba(255,255,255,.09);
-      --border2:   rgba(255,255,255,.17);
-      --accent:    #818cf8;
-      --accent2:   #a78bfa;
-      --accent-dim:rgba(129,140,248,.2);
-      --text:      #f1f5f9;
-      --text2:     #94a3b8;
-      --muted:     #475569;
-      --success:   #34d399;
-      --error:     #f87171;
-      --radius:    18px;
+      --bg: #04040c;
+      --surface: rgba(255,255,255,.05);
+      --border: rgba(255,255,255,.09);
+      --accent: #818cf8;
+      --accent2: #a78bfa;
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --muted: #475569;
+      --success: #34d399;
+      --error: #f87171;
+      --radius: 18px;
       --radius-sm: 12px;
-      --grid-line: rgba(255,255,255,.016);
     }
     body.light {
-      --bg:        #f0efff;
-      --surface:   rgba(255,255,255,.85);
-      --surface2:  #ffffff;
-      --border:    rgba(99,102,241,.12);
-      --border2:   rgba(99,102,241,.24);
-      --text:      #1e1b4b;
-      --text2:     #4338ca;
-      --muted:     #7c86e8;
-      --grid-line: rgba(99,102,241,.04);
+      --bg: #f0efff;
+      --surface: rgba(255,255,255,.85);
+      --border: rgba(99,102,241,.14);
+      --text: #1e1b4b;
+      --text2: #4338ca;
+      --muted: #7c86e8;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     html, body { height: 100%; overflow: hidden; }
 
     body {
@@ -49,7 +40,39 @@
       color: var(--text);
     }
 
-    /* ── Animated orbs ── */
+    /* Noise texture */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      pointer-events: none;
+      opacity: .028;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 160px;
+    }
+
+    /* Canvas particle field */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Cursor glow */
+    #cursor-glow {
+      position: fixed;
+      width: 600px; height: 600px;
+      pointer-events: none;
+      z-index: 1;
+      background: radial-gradient(circle, rgba(129,140,248,.07) 0%, transparent 65%);
+      transform: translate(-50%, -50%);
+      top: 0; left: 0;
+      transition: opacity .3s;
+    }
+
+    /* Orbs */
     .bg-orbs {
       position: fixed;
       inset: 0;
@@ -63,92 +86,89 @@
       filter: blur(90px);
     }
     .orb-1 {
-      width: 720px; height: 720px;
-      background: radial-gradient(circle, #6366f1 0%, transparent 68%);
-      top: -300px; left: -160px;
-      opacity: .18;
+      width: 800px; height: 800px;
+      background: radial-gradient(circle, #6366f1 0%, transparent 65%);
+      top: -350px; left: -200px;
+      opacity: .2;
       animation: orb1 24s ease-in-out infinite;
     }
     .orb-2 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, #a855f7 0%, transparent 68%);
-      bottom: -180px; right: -120px;
-      opacity: .14;
+      width: 650px; height: 650px;
+      background: radial-gradient(circle, #a855f7 0%, transparent 65%);
+      bottom: -200px; right: -150px;
+      opacity: .16;
       animation: orb2 30s ease-in-out infinite;
     }
     .orb-3 {
-      width: 460px; height: 460px;
-      background: radial-gradient(circle, #3b82f6 0%, transparent 68%);
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #3b82f6 0%, transparent 65%);
       top: 40%; left: 40%;
-      transform: translate(-50%, -50%);
+      transform: translate(-50%,-50%);
       opacity: .07;
       animation: orb3 20s ease-in-out infinite;
     }
     .orb-4 {
-      width: 320px; height: 320px;
-      background: radial-gradient(circle, #ec4899 0%, transparent 68%);
-      top: 10%; right: 15%;
-      opacity: .08;
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, #ec4899 0%, transparent 65%);
+      top: 8%; right: 10%;
+      opacity: .1;
       animation: orb4 17s ease-in-out infinite;
     }
     @keyframes orb1 {
       0%,100% { transform: translate(0,0) scale(1); }
-      33%     { transform: translate(130px,100px) scale(1.07); }
-      66%     { transform: translate(-60px,150px) scale(.93); }
+      33%     { transform: translate(140px,110px) scale(1.07); }
+      66%     { transform: translate(-70px,160px) scale(.93); }
     }
     @keyframes orb2 {
       0%,100% { transform: translate(0,0) scale(1); }
-      40%     { transform: translate(-100px,-80px) scale(1.06); }
-      70%     { transform: translate(60px,-120px) scale(.91); }
+      40%     { transform: translate(-110px,-90px) scale(1.06); }
+      70%     { transform: translate(65px,-130px) scale(.91); }
     }
     @keyframes orb3 {
       0%,100% { transform: translate(-50%,-50%) scale(1); }
-      50%     { transform: translate(-50%,-50%) scale(1.4); }
+      50%     { transform: translate(-50%,-50%) scale(1.45); }
     }
     @keyframes orb4 {
-      0%,100% { transform: translate(0,0) scale(1); }
-      50%     { transform: translate(-80px,60px) scale(1.15); }
+      0%,100% { transform: translate(0,0); }
+      50%     { transform: translate(-90px,70px) scale(1.18); }
     }
     body.light .orb-1 { opacity: .06; }
     body.light .orb-2 { opacity: .05; }
-    body.light .orb-3 { opacity: .04; }
+    body.light .orb-3 { opacity: .03; }
     body.light .orb-4 { opacity: .04; }
 
-    /* Grid overlay */
+    /* Grid */
     .bg-grid {
       position: fixed;
       inset: 0;
       z-index: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(var(--grid-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+        linear-gradient(rgba(255,255,255,.014) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
       background-size: 44px 44px;
     }
+    body.light .bg-grid {
+      background-image:
+        linear-gradient(rgba(99,102,241,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,.04) 1px, transparent 1px);
+    }
 
-    /* ── Slide container ── */
+    /* Slide container */
     #slide-container {
       position: relative;
-      z-index: 1;
+      z-index: 2;
       display: flex;
       width: 200vw;
       height: 100vh;
-      transition: transform .75s cubic-bezier(.76,0,.24,1);
+      transition: transform .78s cubic-bezier(.76,0,.24,1);
     }
     #slide-container.show-auth { transform: translateX(-50%); }
 
-    .panel {
-      width: 50%;
-      height: 100%;
-      position: relative;
-    }
+    .panel { width: 50%; height: 100%; position: relative; }
 
-    /* ── Landing panel ── */
-    #landing-panel {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+    /* Landing panel */
+    #landing-panel { display: flex; flex-direction: column; overflow: hidden; }
 
     #landing-content {
       position: relative;
@@ -160,9 +180,15 @@
       flex-direction: column;
       align-items: center;
       padding: 0 1.5rem 5rem;
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(129,140,248,.4) transparent;
     }
-    #landing-content::-webkit-scrollbar { display: none; }
+    #landing-content::-webkit-scrollbar { width: 3px; }
+    #landing-content::-webkit-scrollbar-track { background: transparent; }
+    #landing-content::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #6366f1, #a855f7);
+      border-radius: 99px;
+    }
 
     .landing-main {
       min-height: 100vh;
@@ -182,53 +208,93 @@
       align-items: center;
       gap: .5rem;
       background: rgba(129,140,248,.1);
-      border: 1px solid rgba(129,140,248,.3);
+      border: 1px solid rgba(129,140,248,.32);
       border-radius: 99px;
       padding: .4rem 1.1rem;
-      font-size: .7rem;
+      font-size: .69rem;
       font-weight: 600;
       color: var(--accent);
-      letter-spacing: .09em;
+      letter-spacing: .1em;
       text-transform: uppercase;
       margin-bottom: 2.5rem;
       animation: fade-up .7s cubic-bezier(.16,1,.3,1) both;
-      box-shadow: 0 0 28px rgba(129,140,248,.18), 0 0 0 1px rgba(129,140,248,.08) inset;
+      box-shadow: 0 0 30px rgba(129,140,248,.2);
     }
     .landing-badge-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
       background: var(--accent);
       animation: pulse-dot 2s ease-in-out infinite;
-      box-shadow: 0 0 10px var(--accent);
+      box-shadow: 0 0 12px var(--accent);
     }
     @keyframes pulse-dot {
       0%,100% { opacity: 1; transform: scale(1); }
-      50%     { opacity: .4; transform: scale(.62); }
+      50%     { opacity: .4; transform: scale(.6); }
     }
 
-    /* Hero logo */
+    /* Hero logo — word-mask reveal */
     .landing-logo {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(4.4rem, 11.5vw, 6.8rem);
+      font-size: clamp(4.8rem, 12vw, 7.2rem);
       font-weight: 700;
-      letter-spacing: -5px;
+      letter-spacing: -6px;
       line-height: .88;
-      background: linear-gradient(148deg, #ffffff 0%, #c7d2fe 30%, #a78bfa 60%, #f0abfc 100%);
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 0;
+      position: relative;
+    }
+    .word-wrap {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: bottom;
+    }
+    .word {
+      display: inline-block;
+      background: linear-gradient(145deg, #ffffff 0%, #c7d2fe 30%, #a78bfa 60%, #f0abfc 95%);
+      background-size: 200% 200%;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      animation: fade-up .7s .09s cubic-bezier(.16,1,.3,1) both;
-      filter: drop-shadow(0 0 55px rgba(129,140,248,.35));
+      animation: word-rise .95s cubic-bezier(.16,1,.3,1) both, gradient-pulse 6s ease infinite;
+      filter: drop-shadow(0 0 60px rgba(129,140,248,.4));
     }
-    body.light .landing-logo {
-      background: linear-gradient(148deg, #1e1b4b 0%, #4338ca 45%, #7c3aed 80%, #a21caf 100%);
+    .word-wrap:nth-child(1) .word { animation-delay: .2s, 0s; }
+    .word-wrap:nth-child(3) .word { animation-delay: .38s, .5s; }
+    .logo-dash {
+      display: inline-block;
+      font-style: italic;
+      background: linear-gradient(135deg, #818cf8, #c084fc);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: fade-up .5s .28s both;
+      letter-spacing: 0;
+    }
+    @keyframes word-rise {
+      from { transform: translateY(110%); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes gradient-pulse {
+      0%,100% { background-position: 0% 50%; }
+      50%     { background-position: 100% 50%; }
+    }
+    body.light .word {
+      background: linear-gradient(145deg, #1e1b4b, #4338ca, #7c3aed, #a21caf);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
       background-clip: text;
       filter: none;
     }
-    .landing-logo em { font-style: italic; }
+    body.light .logo-dash {
+      background: linear-gradient(135deg, #4338ca, #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
 
+    /* Tagline */
     .landing-tagline {
       margin-top: 1.8rem;
       color: var(--text2);
@@ -236,60 +302,147 @@
       font-weight: 400;
       line-height: 1.75;
       max-width: 400px;
-      animation: fade-up .7s .17s cubic-bezier(.16,1,.3,1) both;
+      min-height: 1.75em;
+      animation: fade-up .7s .55s cubic-bezier(.16,1,.3,1) both;
     }
 
-    /* Feature pills */
-    .landing-features {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: .6rem;
-      margin-top: 2.4rem;
-      margin-bottom: 2.9rem;
-      animation: fade-up .7s .26s cubic-bezier(.16,1,.3,1) both;
+    /* Ticker strip */
+    .ticker-track {
+      width: 100vw;
+      overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,.05);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      padding: .5rem 0;
+      margin: 2rem 0 0;
+      mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+      animation: fade-up .7s .6s both;
     }
-    .landing-feature {
+    body.light .ticker-track {
+      border-color: rgba(99,102,241,.1);
+    }
+    .ticker-inner {
       display: flex;
       align-items: center;
-      gap: .5rem;
-      padding: .52rem 1.15rem;
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 99px;
-      font-size: .8rem;
+      gap: 2rem;
+      width: max-content;
+      animation: ticker-scroll 28s linear infinite;
+      font-size: .73rem;
+      font-weight: 500;
       color: var(--text2);
+      letter-spacing: .03em;
+      white-space: nowrap;
+    }
+    .ticker-inner:hover { animation-play-state: paused; }
+    .td { color: var(--accent); opacity: .45; font-size: .6rem; }
+    @keyframes ticker-scroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* Bento feature grid */
+    .features-bento {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .65rem;
+      width: 100%;
+      max-width: 500px;
+      margin: 1.75rem 0 2.25rem;
+      animation: fade-up .7s .7s cubic-bezier(.16,1,.3,1) both;
+    }
+    .bento-card {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 14px;
+      padding: 1.2rem 1.25rem;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      transition: background .25s, border-color .25s, transform .25s, box-shadow .25s;
+      transition: background .25s, border-color .28s, transform .28s, box-shadow .28s;
       cursor: default;
+      position: relative;
+      overflow: hidden;
+      text-align: left;
     }
-    .landing-feature:hover {
-      background: rgba(129,140,248,.1);
-      border-color: rgba(129,140,248,.35);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 20px rgba(129,140,248,.15);
+    .bento-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--sx, 50%) var(--sy, 50%), rgba(129,140,248,.14) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
     }
-    body.light .landing-feature {
-      background: rgba(99,102,241,.07);
-      border-color: rgba(99,102,241,.18);
+    .bento-card:hover::after { opacity: 1; }
+    .bento-card:hover {
+      background: rgba(129,140,248,.08);
+      border-color: rgba(129,140,248,.28);
+      transform: translateY(-3px) scale(1.01);
+      box-shadow: 0 8px 32px rgba(99,102,241,.22);
     }
-    .landing-feature svg { color: var(--accent); flex-shrink: 0; }
+    .bento-wide { grid-column: 1 / -1; }
+    body.light .bento-card {
+      background: rgba(255,255,255,.7);
+      border-color: rgba(99,102,241,.14);
+    }
+    .bento-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: .8rem;
+      box-shadow: 0 4px 18px rgba(99,102,241,.45);
+      flex-shrink: 0;
+    }
+    .bento-icon svg { width: 17px; height: 17px; color: #fff; }
+    .bento-title {
+      font-size: .88rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .28rem;
+    }
+    .bento-desc {
+      font-size: .76rem;
+      color: var(--text2);
+      line-height: 1.55;
+    }
+    .bento-tags {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+      margin-top: .75rem;
+    }
+    .bento-tags span {
+      padding: .2rem .6rem;
+      background: rgba(129,140,248,.14);
+      border: 1px solid rgba(129,140,248,.28);
+      border-radius: 99px;
+      font-size: .68rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    /* Wide card horizontal layout */
+    .bento-wide .bento-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .bento-wide .bento-body { flex: 1; }
 
     /* CTA */
     .landing-cta {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.15rem;
-      animation: fade-up .7s .34s cubic-bezier(.16,1,.3,1) both;
+      gap: .9rem;
+      animation: fade-up .7s .82s cubic-bezier(.16,1,.3,1) both;
     }
-
     #get-started-btn {
       display: inline-flex;
       align-items: center;
       gap: .7rem;
-      padding: 1.1rem 3rem;
+      padding: 1.1rem 3.2rem;
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
       color: #fff;
       border: none;
@@ -298,11 +451,8 @@
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .3s;
-      box-shadow:
-        0 4px 36px rgba(99,102,241,.5),
-        0 0 0 1px rgba(255,255,255,.12) inset,
-        0 1px 0 rgba(255,255,255,.2) inset;
+      transition: transform .28s cubic-bezier(.16,1,.3,1), box-shadow .3s;
+      box-shadow: 0 4px 40px rgba(99,102,241,.52), 0 0 0 1px rgba(255,255,255,.12) inset;
       position: relative;
       overflow: hidden;
     }
@@ -314,16 +464,27 @@
       pointer-events: none;
     }
     #get-started-btn:hover {
-      transform: translateY(-3px) scale(1.025);
-      box-shadow:
-        0 14px 60px rgba(99,102,241,.65),
-        0 0 0 1px rgba(255,255,255,.15) inset,
-        0 1px 0 rgba(255,255,255,.25) inset;
+      box-shadow: 0 16px 65px rgba(99,102,241,.7), 0 0 0 1px rgba(255,255,255,.15) inset;
     }
-    #get-started-btn:active { transform: translateY(0) scale(.99); }
     #get-started-btn svg { transition: transform .28s cubic-bezier(.16,1,.3,1); }
     #get-started-btn:hover svg { transform: translateX(5px); }
+    /* Particle burst children */
+    .btn-spark {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: spark-fly .55s ease forwards;
+    }
+    @keyframes spark-fly {
+      0%   { transform: translate(0,0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
 
+    .landing-footnote {
+      font-size: .76rem;
+      color: var(--muted);
+      letter-spacing: .02em;
+    }
     .landing-signin {
       font-size: .85rem;
       color: var(--muted);
@@ -348,12 +509,12 @@
       flex-direction: column;
       align-items: center;
       gap: .4rem;
-      margin-top: 2.8rem;
+      margin-top: 2.5rem;
       color: var(--muted);
-      font-size: .67rem;
+      font-size: .66rem;
       letter-spacing: .13em;
       text-transform: uppercase;
-      animation: scroll-bob 2.3s ease-in-out infinite, fade-up .7s .42s both;
+      animation: scroll-bob 2.3s ease-in-out infinite, fade-up .7s .92s both;
       transition: opacity .4s;
     }
     .scroll-hint.hidden { opacity: 0; pointer-events: none; }
@@ -367,14 +528,14 @@
       width: 100%;
       max-width: 560px;
       margin-top: 4rem;
-      padding: 2.6rem 2.4rem;
+      padding: 2.8rem 2.5rem;
       background: rgba(255,255,255,.04);
       border: 1px solid rgba(255,255,255,.08);
       border-radius: var(--radius);
       text-align: left;
       opacity: 0;
-      transform: translateY(30px);
-      transition: opacity .85s cubic-bezier(.16,1,.3,1), transform .85s cubic-bezier(.16,1,.3,1);
+      transform: translateY(32px);
+      transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
       position: relative;
@@ -388,40 +549,19 @@
       background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
     }
     .landing-about.visible { opacity: 1; transform: translateY(0); }
-    body.light .landing-about {
-      background: rgba(255,255,255,.65);
-      border-color: rgba(99,102,241,.15);
-    }
+    body.light .landing-about { background: rgba(255,255,255,.65); border-color: rgba(99,102,241,.15); }
     .landing-about-label {
-      font-size: .67rem;
-      font-weight: 700;
-      letter-spacing: .15em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: .85rem;
+      font-size: .66rem; font-weight: 700; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: .85rem;
     }
     .landing-about h2 {
       font-family: 'Playfair Display', serif;
-      font-size: 1.55rem;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 1.1rem;
-      line-height: 1.22;
+      font-size: 1.6rem; font-weight: 700; color: var(--text);
+      margin-bottom: 1.1rem; line-height: 1.2;
     }
-    .landing-about p {
-      color: var(--text2);
-      font-size: .875rem;
-      line-height: 1.92;
-      font-weight: 300;
-    }
+    .landing-about p { color: var(--text2); font-size: .875rem; line-height: 1.92; font-weight: 300; }
     .landing-about p + p { margin-top: .9rem; }
-    .landing-about .sig {
-      margin-top: 1.6rem;
-      font-style: italic;
-      color: var(--accent);
-      font-size: .8rem;
-      opacity: .75;
-    }
+    .landing-about .sig { margin-top: 1.6rem; font-style: italic; color: var(--accent); font-size: .8rem; opacity: .75; }
 
     @keyframes fade-up {
       from { opacity: 0; transform: translateY(20px); }
@@ -436,7 +576,6 @@
       overflow-y: auto;
       padding: 2rem 1.5rem;
     }
-
     .auth-inner {
       position: relative;
       z-index: 1;
@@ -444,88 +583,66 @@
       max-width: 420px;
       margin: auto;
     }
-
     .auth-back {
-      display: inline-flex;
-      align-items: center;
-      gap: .4rem;
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-family: inherit;
-      font-size: .85rem;
-      cursor: pointer;
-      padding: 0;
-      margin-bottom: 1.75rem;
-      transition: color .15s;
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: none; border: none; color: var(--muted);
+      font-family: inherit; font-size: .85rem; cursor: pointer;
+      padding: 0; margin-bottom: 1.75rem; transition: color .15s;
     }
     .auth-back:hover { color: var(--text); }
-
     .auth-logo {
       font-family: 'Playfair Display', serif;
-      font-size: 1.85rem;
-      font-weight: 700;
-      letter-spacing: -1px;
+      font-size: 1.85rem; font-weight: 700; letter-spacing: -1px;
       margin-bottom: 1.5rem;
       background: linear-gradient(135deg, var(--text) 20%, var(--accent2) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    body.light .auth-logo {
-      background: linear-gradient(135deg, #1e1b4b, #6366f1);
-      -webkit-background-clip: text;
-      background-clip: text;
+    body.light .auth-logo { background: linear-gradient(135deg, #1e1b4b, #6366f1); -webkit-background-clip: text; background-clip: text; }
+
+    /* Animated gradient border wrapper */
+    .card-wrapper {
+      position: relative;
+      border-radius: calc(var(--radius) + 2px);
+      padding: 2px;
+      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #3b82f6, #6366f1);
+      background-size: 300% 300%;
+      animation: border-shift 5s ease infinite;
+      box-shadow: 0 30px 100px rgba(0,0,0,.65), 0 0 120px rgba(99,102,241,.12);
+    }
+    @keyframes border-shift {
+      0%,100% { background-position: 0% 50%; }
+      50%     { background-position: 100% 50%; }
     }
 
     /* Glass card */
     .card {
-      background: rgba(255,255,255,.055);
-      border: 1px solid rgba(255,255,255,.11);
+      background: rgba(8,8,20,.88);
       border-radius: var(--radius);
       overflow: hidden;
       backdrop-filter: blur(32px);
       -webkit-backdrop-filter: blur(32px);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,.04) inset,
-        0 30px 100px rgba(0,0,0,.6),
-        0 0 150px rgba(99,102,241,.09);
+      transition: transform .3s cubic-bezier(.16,1,.3,1);
     }
-    body.light .card {
-      background: rgba(255,255,255,.72);
-      border-color: rgba(99,102,241,.16);
-      box-shadow: 0 20px 60px rgba(99,102,241,.12), 0 4px 20px rgba(0,0,0,.06);
-    }
+    body.light .card { background: rgba(255,255,255,.88); }
 
     /* Tab bar */
     .tab-bar {
       display: flex;
-      background: rgba(0,0,0,.28);
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.3);
+      border-bottom: 1px solid rgba(255,255,255,.07);
     }
-    body.light .tab-bar {
-      background: rgba(99,102,241,.05);
-      border-bottom-color: rgba(99,102,241,.1);
-    }
+    body.light .tab-bar { background: rgba(99,102,241,.06); border-bottom-color: rgba(99,102,241,.1); }
     .tab-btn {
-      flex: 1;
-      padding: 1.05rem;
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      font-family: inherit;
-      font-size: .88rem;
-      font-weight: 500;
-      cursor: pointer;
-      position: relative;
-      transition: color .2s;
+      flex: 1; padding: 1.05rem;
+      background: transparent; border: none;
+      color: var(--muted); font-family: inherit;
+      font-size: .88rem; font-weight: 500; cursor: pointer;
+      position: relative; transition: color .2s;
     }
     .tab-btn:hover { color: var(--text2); }
     .tab-btn::after {
       content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 16px; right: 16px;
+      position: absolute; bottom: -1px; left: 16px; right: 16px;
       height: 2px;
       background: linear-gradient(90deg, #6366f1, #a855f7);
       border-radius: 99px;
@@ -535,156 +652,86 @@
     .tab-btn.active { color: var(--text); }
     .tab-btn.active::after { transform: scaleX(1); }
 
-    /* Form body */
-    .form-body {
-      padding: 1.65rem 1.65rem 1.95rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.1rem;
-    }
-
-    /* Social buttons */
+    /* Form */
+    .form-body { padding: 1.65rem 1.65rem 1.95rem; display: flex; flex-direction: column; gap: 1.1rem; }
     .social-btns { display: flex; flex-direction: column; gap: .6rem; }
     .social-btn {
-      width: 100%;
-      padding: .8rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: .6rem;
-      border-radius: var(--radius-sm);
-      font-family: inherit;
-      font-size: .88rem;
-      font-weight: 500;
-      cursor: pointer;
+      width: 100%; padding: .8rem 1rem;
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      border-radius: var(--radius-sm); font-family: inherit;
+      font-size: .88rem; font-weight: 500; cursor: pointer;
       transition: opacity .15s, transform .22s;
     }
     .social-btn:hover { opacity: .88; transform: translateY(-1px); }
-    .social-btn:active { transform: translateY(0); }
-    .social-btn.google {
-      background: #fff;
-      color: #3c4043;
-      border: 1px solid rgba(0,0,0,.08);
-      box-shadow: 0 2px 8px rgba(0,0,0,.12);
-    }
-    .social-btn.apple {
-      background: #111;
-      color: #fff;
-      border: 1px solid rgba(255,255,255,.1);
-    }
+    .social-btn.google { background: #fff; color: #3c4043; border: 1px solid rgba(0,0,0,.08); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+    .social-btn.apple { background: #111; color: #fff; border: 1px solid rgba(255,255,255,.1); }
     body.light .social-btn.apple { background: #1a1a1a; }
-
-    /* Divider */
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: .75rem;
-      color: var(--muted);
-      font-size: .75rem;
-      letter-spacing: .03em;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    /* Fields */
+    .divider { display: flex; align-items: center; gap: .75rem; color: var(--muted); font-size: .75rem; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     .field { display: flex; flex-direction: column; gap: .44rem; }
     .field-row { display: flex; gap: .65rem; }
     .field-row .field { flex: 1; }
-    .field label {
-      font-size: .71rem;
-      font-weight: 600;
-      color: var(--text2);
-      letter-spacing: .07em;
-      text-transform: uppercase;
-    }
+    .field label { font-size: .71rem; font-weight: 600; color: var(--text2); letter-spacing: .07em; text-transform: uppercase; }
     .field input {
-      width: 100%;
-      padding: .8rem 1.08rem;
+      width: 100%; padding: .82rem 1.08rem;
       background: rgba(255,255,255,.07);
       border: 1px solid rgba(255,255,255,.1);
       border-radius: var(--radius-sm);
-      color: var(--text);
-      font-family: inherit;
-      font-size: .9rem;
-      outline: none;
+      color: var(--text); font-family: inherit; font-size: .9rem; outline: none;
       transition: border-color .22s, box-shadow .22s, background .22s;
     }
     .field input:focus {
       background: rgba(255,255,255,.1);
       border-color: rgba(129,140,248,.65);
-      box-shadow: 0 0 0 3px rgba(129,140,248,.14), 0 0 28px rgba(129,140,248,.08);
+      box-shadow: 0 0 0 3px rgba(129,140,248,.15), 0 0 28px rgba(129,140,248,.08);
     }
     .field input::placeholder { color: var(--muted); }
-    body.light .field input {
-      background: rgba(255,255,255,.9);
-      border-color: rgba(99,102,241,.22);
-      color: var(--text);
-    }
-    body.light .field input:focus {
-      background: #fff;
-      border-color: rgba(99,102,241,.65);
-      box-shadow: 0 0 0 3px rgba(99,102,241,.13);
-    }
+    body.light .field input { background: rgba(255,255,255,.9); border-color: rgba(99,102,241,.22); color: var(--text); }
+    body.light .field input:focus { background: #fff; border-color: rgba(99,102,241,.65); box-shadow: 0 0 0 3px rgba(99,102,241,.13); }
     .signup-only { display: none; }
 
-    /* Submit button */
     .submit-btn {
-      width: 100%;
-      padding: .92rem;
+      width: 100%; padding: .92rem;
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: .93rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
+      color: #fff; border: none; border-radius: var(--radius-sm);
+      font-size: .93rem; font-weight: 600; font-family: inherit; cursor: pointer;
       transition: transform .22s, box-shadow .3s, opacity .15s;
       box-shadow: 0 4px 26px rgba(99,102,241,.42);
-      position: relative;
-      overflow: hidden;
-      margin-top: .1rem;
+      position: relative; overflow: hidden; margin-top: .1rem;
     }
     .submit-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
+      content: ''; position: absolute; inset: 0;
       background: linear-gradient(to bottom, rgba(255,255,255,.16) 0%, transparent 65%);
       pointer-events: none;
     }
-    .submit-btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 40px rgba(99,102,241,.56);
-    }
+    .submit-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 40px rgba(99,102,241,.56); }
     .submit-btn:disabled { opacity: .36; cursor: not-allowed; transform: none; }
     .submit-btn.loading::after {
-      content: '';
-      position: absolute;
-      top: 0; left: -100%;
-      width: 60%; height: 100%;
+      content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
       background: linear-gradient(90deg, transparent, rgba(255,255,255,.24), transparent);
-      animation: shimmer 1.2s infinite;
-      z-index: 1;
+      animation: shimmer 1.2s infinite; z-index: 1;
     }
     @keyframes shimmer { to { left: 160%; } }
+    #error-msg { min-height: 1.2em; font-size: .82rem; color: var(--error); text-align: center; }
 
-    /* Error message */
-    #error-msg {
-      min-height: 1.2em;
-      font-size: .82rem;
-      color: var(--error);
-      text-align: center;
+    /* Card shake on error */
+    .card.shake {
+      animation: card-shake .4s cubic-bezier(.36,.07,.19,.97);
+    }
+    @keyframes card-shake {
+      10%,90% { transform: translateX(-2px); }
+      20%,80% { transform: translateX(3px); }
+      30%,50%,70% { transform: translateX(-4px); }
+      40%,60% { transform: translateX(4px); }
     }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
 
-  <!-- Animated background -->
+  <canvas id="particle-canvas"></canvas>
+  <div id="cursor-glow"></div>
+
   <div class="bg-orbs">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -697,34 +744,69 @@
 
     <!-- ── Panel 1: Landing ── -->
     <div class="panel" id="landing-panel">
-
-      <!-- Scrollable content -->
       <div id="landing-content">
-
         <div class="landing-main">
+
           <div class="landing-badge">
             <span class="landing-badge-dot"></span>
             Powered by Claude AI
           </div>
 
-          <h1 class="landing-logo">Note<em>-</em>Cloud</h1>
+          <h1 class="landing-logo">
+            <span class="word-wrap"><span class="word">Note</span></span><span class="logo-dash">-</span><span class="word-wrap"><span class="word">Cloud</span></span>
+          </h1>
 
-          <p class="landing-tagline">
-            Turn handwritten notes into clean digital text — instantly, accurately, effortlessly.
-          </p>
+          <p class="landing-tagline"></p>
 
-          <div class="landing-features">
-            <div class="landing-feature">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Snap &amp; transcribe in seconds
+          <!-- Scrolling ticker -->
+          <div class="ticker-track" aria-hidden="true">
+            <div class="ticker-inner">
+              <span>✦ Powered by Claude AI</span><span class="td">◈</span>
+              <span>Instant transcription</span><span class="td">◈</span>
+              <span>Reads any handwriting</span><span class="td">◈</span>
+              <span>Export to .txt &amp; .docx</span><span class="td">◈</span>
+              <span>Google Docs sync</span><span class="td">◈</span>
+              <span>Share with a link</span><span class="td">◈</span>
+              <span>Free to start</span><span class="td">◈</span>
+              <span>✦ Powered by Claude AI</span><span class="td">◈</span>
+              <span>Instant transcription</span><span class="td">◈</span>
+              <span>Reads any handwriting</span><span class="td">◈</span>
+              <span>Export to .txt &amp; .docx</span><span class="td">◈</span>
+              <span>Google Docs sync</span><span class="td">◈</span>
+              <span>Share with a link</span><span class="td">◈</span>
+              <span>Free to start</span><span class="td">◈</span>
             </div>
-            <div class="landing-feature">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Reads even messy handwriting
+          </div>
+
+          <!-- Bento feature grid -->
+          <div class="features-bento">
+            <div class="bento-card">
+              <div class="bento-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <div class="bento-title">Instant</div>
+              <div class="bento-desc">Seconds, not hours. Snap and get clean text.</div>
             </div>
-            <div class="landing-feature">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Export to .txt, .docx, or share
+            <div class="bento-card">
+              <div class="bento-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div class="bento-title">AI Vision</div>
+              <div class="bento-desc">Claude reads even doctor-level handwriting.</div>
+            </div>
+            <div class="bento-card bento-wide">
+              <div class="bento-inner">
+                <div class="bento-icon" style="margin-bottom:0;flex-shrink:0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="bento-body">
+                  <div class="bento-title">Export Anywhere</div>
+                  <div class="bento-desc">Send your notes wherever you need them.</div>
+                  <div class="bento-tags">
+                    <span>.txt</span><span>.docx</span><span>Share link</span><span>Google Docs</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -733,6 +815,7 @@
               Get started
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
+            <p class="landing-footnote">Free to start · No credit card required</p>
             <p class="landing-signin">Already have an account? <button id="go-login-btn">Log in</button></p>
           </div>
 
@@ -745,15 +828,10 @@
         <div class="landing-about" id="landing-about">
           <div class="landing-about-label">The story</div>
           <h2>Why I built this</h2>
-          <p>
-            As a student, I loved taking notes on my computer — until I hit a strict "no device policy" in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.
-          </p>
-          <p>
-            Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.
-          </p>
+          <p>As a student, I loved taking notes on my computer — until I hit a strict "no device policy" in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
+          <p>Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.</p>
           <p class="sig">— Built with curiosity and a lot of notebooks.</p>
         </div>
-
       </div>
     </div>
 
@@ -768,233 +846,346 @@
 
         <div class="auth-logo">Note<span>-</span>Cloud</div>
 
-        <div class="card">
-
-          <div class="tab-bar">
-            <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
-            <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
+        <div class="card-wrapper">
+          <div class="card" id="auth-card">
+            <div class="tab-bar">
+              <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
+              <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
+            </div>
+            <form class="form-body" id="auth-form" novalidate>
+              <div class="social-btns">
+                <button type="button" class="social-btn google" id="btn-google">
+                  <svg width="17" height="17" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84l6.1-6.1C34.36 3.02 29.45 1 24 1 14.82 1 7.07 6.48 3.64 14.22l7.1 5.52C12.4 13.67 17.73 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.56 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.7c-.55 2.96-2.2 5.46-4.68 7.14l7.18 5.58C43.25 37.26 46.56 31.36 46.56 24.5z"/>
+                    <path fill="#FBBC05" d="M10.74 28.26A14.52 14.52 0 0 1 9.5 24c0-1.48.26-2.92.72-4.26l-7.1-5.52A23.93 23.93 0 0 0 0 24c0 3.86.92 7.5 2.56 10.72l8.18-6.46z"/>
+                    <path fill="#34A853" d="M24 47c5.45 0 10.02-1.8 13.36-4.88l-7.18-5.58C28.34 38.32 26.28 39 24 39c-6.27 0-11.6-4.17-13.52-9.74l-8.18 6.46C5.94 42.28 14.28 47 24 47z"/>
+                  </svg>
+                  Continue with Google
+                </button>
+                <button type="button" class="social-btn apple" id="btn-apple">
+                  <svg width="14" height="17" viewBox="0 0 15 18" xmlns="http://www.w3.org/2000/svg" fill="white">
+                    <path d="M14.25 13.16c-.28.65-.61 1.25-1 1.8-.52.75-.95 1.27-1.28 1.56-.51.47-1.06.71-1.65.72-.42 0-.93-.12-1.52-.36-.59-.24-1.13-.36-1.63-.36-.52 0-1.08.12-1.68.36-.6.24-1.08.37-1.46.38-.57.02-1.13-.23-1.68-.75-.36-.31-.81-.85-1.35-1.62C1.44 14.1.97 13.2.6 12.15.2 11.03 0 9.94 0 8.88c0-1.22.26-2.27.79-3.14A4.63 4.63 0 0 1 2.45 4.1a4.42 4.42 0 0 1 2.22-.63c.44 0 1.01.13 1.73.4.71.26 1.17.4 1.37.4.15 0 .67-.16 1.53-.47.82-.29 1.51-.41 2.08-.36 1.54.12 2.69.73 3.46 1.83-1.37.83-2.05 2-2.04 3.48.01 1.16.43 2.13 1.26 2.88.37.36.79.63 1.25.83-.1.29-.21.57-.33.84zM10.9.36c0 .91-.33 1.76-.99 2.54-.79.93-1.75 1.46-2.79 1.38a2.8 2.8 0 0 1-.02-.34c0-.87.38-1.8 1.05-2.56.34-.39.77-.71 1.29-.97C9.96.15 10.46 0 10.93 0c.01.12.02.24.02.36z"/>
+                  </svg>
+                  Continue with Apple
+                </button>
+              </div>
+              <div class="divider">or continue with email</div>
+              <div class="field-row signup-only" id="name-row">
+                <div class="field">
+                  <label for="first-name">First name</label>
+                  <input type="text" id="first-name" name="first_name" placeholder="Alex" autocomplete="given-name" />
+                </div>
+                <div class="field">
+                  <label for="last-name">Last name</label>
+                  <input type="text" id="last-name" name="last_name" placeholder="Smith" autocomplete="family-name" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+              </div>
+              <div class="field signup-only" id="confirm-field">
+                <label for="confirm">Confirm password</label>
+                <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password" />
+              </div>
+              <div class="field signup-only" id="referral-field">
+                <label for="referral-code">Referral code <span style="font-weight:400;opacity:.6">(optional)</span></label>
+                <input type="text" id="referral-code" name="referral_code" placeholder="e.g. XK9MPQ2R" autocomplete="off" style="text-transform:uppercase" />
+              </div>
+              <button class="submit-btn" type="submit" id="submit-btn">Log in</button>
+              <p id="error-msg"></p>
+            </form>
           </div>
-
-          <form class="form-body" id="auth-form" novalidate>
-
-            <div class="social-btns">
-              <button type="button" class="social-btn google" id="btn-google">
-                <svg width="17" height="17" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84l6.1-6.1C34.36 3.02 29.45 1 24 1 14.82 1 7.07 6.48 3.64 14.22l7.1 5.52C12.4 13.67 17.73 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.56 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.7c-.55 2.96-2.2 5.46-4.68 7.14l7.18 5.58C43.25 37.26 46.56 31.36 46.56 24.5z"/>
-                  <path fill="#FBBC05" d="M10.74 28.26A14.52 14.52 0 0 1 9.5 24c0-1.48.26-2.92.72-4.26l-7.1-5.52A23.93 23.93 0 0 0 0 24c0 3.86.92 7.5 2.56 10.72l8.18-6.46z"/>
-                  <path fill="#34A853" d="M24 47c5.45 0 10.02-1.8 13.36-4.88l-7.18-5.58C28.34 38.32 26.28 39 24 39c-6.27 0-11.6-4.17-13.52-9.74l-8.18 6.46C5.94 42.28 14.28 47 24 47z"/>
-                </svg>
-                Continue with Google
-              </button>
-              <button type="button" class="social-btn apple" id="btn-apple">
-                <svg width="14" height="17" viewBox="0 0 15 18" xmlns="http://www.w3.org/2000/svg" fill="white">
-                  <path d="M14.25 13.16c-.28.65-.61 1.25-1 1.8-.52.75-.95 1.27-1.28 1.56-.51.47-1.06.71-1.65.72-.42 0-.93-.12-1.52-.36-.59-.24-1.13-.36-1.63-.36-.52 0-1.08.12-1.68.36-.6.24-1.08.37-1.46.38-.57.02-1.13-.23-1.68-.75-.36-.31-.81-.85-1.35-1.62C1.44 14.1.97 13.2.6 12.15.2 11.03 0 9.94 0 8.88c0-1.22.26-2.27.79-3.14A4.63 4.63 0 0 1 2.45 4.1a4.42 4.42 0 0 1 2.22-.63c.44 0 1.01.13 1.73.4.71.26 1.17.4 1.37.4.15 0 .67-.16 1.53-.47.82-.29 1.51-.41 2.08-.36 1.54.12 2.69.73 3.46 1.83-1.37.83-2.05 2-2.04 3.48.01 1.16.43 2.13 1.26 2.88.37.36.79.63 1.25.83-.1.29-.21.57-.33.84zM10.9.36c0 .91-.33 1.76-.99 2.54-.79.93-1.75 1.46-2.79 1.38a2.8 2.8 0 0 1-.02-.34c0-.87.38-1.8 1.05-2.56.34-.39.77-.71 1.29-.97C9.96.15 10.46 0 10.93 0c.01.12.02.24.02.36z"/>
-                </svg>
-                Continue with Apple
-              </button>
-            </div>
-
-            <div class="divider">or continue with email</div>
-
-            <div class="field-row signup-only" id="name-row">
-              <div class="field">
-                <label for="first-name">First name</label>
-                <input type="text" id="first-name" name="first_name" placeholder="Alex" autocomplete="given-name" />
-              </div>
-              <div class="field">
-                <label for="last-name">Last name</label>
-                <input type="text" id="last-name" name="last_name" placeholder="Smith" autocomplete="family-name" />
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="email">Email</label>
-              <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
-            </div>
-
-            <div class="field">
-              <label for="password">Password</label>
-              <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
-            </div>
-
-            <div class="field signup-only" id="confirm-field">
-              <label for="confirm">Confirm password</label>
-              <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password" />
-            </div>
-
-            <div class="field signup-only" id="referral-field">
-              <label for="referral-code">Referral code <span style="font-weight:400;opacity:.6">(optional)</span></label>
-              <input type="text" id="referral-code" name="referral_code" placeholder="e.g. XK9MPQ2R" autocomplete="off" style="text-transform:uppercase" />
-            </div>
-
-            <button class="submit-btn" type="submit" id="submit-btn">Log in</button>
-            <p id="error-msg"></p>
-
-          </form>
         </div>
 
       </div>
     </div>
-
-  </div><!-- /slide-container -->
+  </div>
 
   <script>
-    // ── CSRF: attach token to every non-GET fetch automatically ──────────────
+    // ── CSRF ─────────────────────────────────────────────────────────────────
     (function() {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-      const _fetch = window.fetch;
-      window.fetch = function(url, opts = {}) {
-        if (opts.method && opts.method.toUpperCase() !== 'GET') {
-          opts.headers = Object.assign({}, opts.headers, { 'X-CSRFToken': csrfToken });
-        }
-        return _fetch(url, opts);
+      const tok = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+      const _f = window.fetch;
+      window.fetch = function(url, opts={}) {
+        if (opts.method && opts.method.toUpperCase() !== 'GET')
+          opts.headers = Object.assign({}, opts.headers, { 'X-CSRFToken': tok });
+        return _f(url, opts);
       };
     })();
 
-    // ── Slide transition ──────────────────────────────────────────────────────
-    const container    = document.getElementById("slide-container");
-    const getStarted   = document.getElementById("get-started-btn");
-    const goLoginBtn   = document.getElementById("go-login-btn");
-    const backBtn      = document.getElementById("back-btn");
-    const tabSignup    = document.getElementById("tab-signup");
+    // ── Canvas particles ─────────────────────────────────────────────────────
+    (function() {
+      const canvas = document.getElementById('particle-canvas');
+      const ctx = canvas.getContext('2d');
+      let W, H;
+      function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      const count = window.innerWidth < 768 ? 40 : 90;
+      const pts = Array.from({length: count}, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.2 + 0.3,
+        dx: (Math.random() - .5) * .25,
+        dy: (Math.random() - .5) * .25,
+        o: Math.random() * .35 + .05,
+        to: Math.random() * .35 + .05,
+        dt: (Math.random() - .5) * .004,
+      }));
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        pts.forEach(p => {
+          p.o += p.dt;
+          if (p.o > p.to + .1 || p.o < .04) p.dt *= -1;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(129,140,248,${Math.max(0, p.o)})`;
+          ctx.fill();
+          p.x += p.dx; p.y += p.dy;
+          if (p.x < 0) p.x = W;
+          if (p.x > W) p.x = 0;
+          if (p.y < 0) p.y = H;
+          if (p.y > H) p.y = 0;
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ── Cursor glow ──────────────────────────────────────────────────────────
+    (function() {
+      const glow = document.getElementById('cursor-glow');
+      let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+      let gx = mx, gy = my;
+      document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+      function loop() {
+        gx += (mx - gx) * .07;
+        gy += (my - gy) * .07;
+        glow.style.left = gx + 'px';
+        glow.style.top  = gy + 'px';
+        requestAnimationFrame(loop);
+      }
+      loop();
+    })();
+
+    // ── Typewriter tagline ───────────────────────────────────────────────────
+    (function() {
+      const el = document.querySelector('.landing-tagline');
+      const text = 'Turn handwritten notes into clean digital text — instantly, accurately, effortlessly.';
+      let i = 0;
+      function type() {
+        if (i < text.length) {
+          el.textContent += text[i++];
+          setTimeout(type, i < 20 ? 40 : 22);
+        }
+      }
+      setTimeout(type, 900);
+    })();
+
+    // ── Magnetic "Get started" button ────────────────────────────────────────
+    (function() {
+      const btn = document.getElementById('get-started-btn');
+      let reset;
+      btn.addEventListener('mousemove', e => {
+        clearTimeout(reset);
+        const r = btn.getBoundingClientRect();
+        const x = e.clientX - r.left - r.width / 2;
+        const y = e.clientY - r.top  - r.height / 2;
+        btn.style.transition = 'box-shadow .3s';
+        btn.style.transform  = `translate(${x * .28}px, ${y * .28}px) scale(1.03)`;
+        btn.style.boxShadow  = `${-x * .06}px ${20 - y * .06}px 65px rgba(99,102,241,.68)`;
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.transition = 'transform .5s cubic-bezier(.16,1,.3,1), box-shadow .5s';
+        btn.style.transform  = '';
+        btn.style.boxShadow  = '';
+      });
+      // Particle burst on click
+      btn.addEventListener('click', e => {
+        const r = btn.getBoundingClientRect();
+        const ox = e.clientX - r.left;
+        const oy = e.clientY - r.top;
+        for (let i = 0; i < 14; i++) {
+          const sp = document.createElement('span');
+          sp.className = 'btn-spark';
+          const angle = (i / 14) * Math.PI * 2;
+          const dist  = 35 + Math.random() * 40;
+          sp.style.cssText = `left:${ox}px;top:${oy}px;width:${3+Math.random()*4}px;height:${3+Math.random()*4}px;
+            background:${Math.random()>.5?'#818cf8':'#c084fc'};
+            --dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px;`;
+          btn.appendChild(sp);
+          setTimeout(() => sp.remove(), 560);
+        }
+      });
+    })();
+
+    // ── 3D card tilt ─────────────────────────────────────────────────────────
+    (function() {
+      const card = document.getElementById('auth-card');
+      if (!card) return;
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width  - .5;
+        const y = (e.clientY - r.top)  / r.height - .5;
+        card.style.transform = `perspective(900px) rotateX(${-y*6}deg) rotateY(${x*6}deg) scale3d(1.015,1.015,1.015)`;
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transition = 'transform .55s cubic-bezier(.16,1,.3,1)';
+        card.style.transform  = 'perspective(900px) rotateX(0) rotateY(0) scale3d(1,1,1)';
+        setTimeout(() => { card.style.transition = ''; }, 550);
+      });
+    })();
+
+    // ── Bento card spotlight ─────────────────────────────────────────────────
+    document.querySelectorAll('.bento-card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--sx', ((e.clientX - r.left) / r.width  * 100) + '%');
+        card.style.setProperty('--sy', ((e.clientY - r.top)  / r.height * 100) + '%');
+      });
+    });
+
+    // ── Slide transition ─────────────────────────────────────────────────────
+    const container  = document.getElementById('slide-container');
+    const getStarted = document.getElementById('get-started-btn');
+    const goLoginBtn = document.getElementById('go-login-btn');
+    const backBtn    = document.getElementById('back-btn');
 
     function showAuth(startOnSignup) {
-      container.classList.add("show-auth");
-      if (startOnSignup) switchTab("signup");
+      container.classList.add('show-auth');
+      if (startOnSignup) switchTab('signup');
     }
-    function showLanding() {
-      container.classList.remove("show-auth");
-    }
+    function showLanding() { container.classList.remove('show-auth'); }
 
-    getStarted.addEventListener("click",  () => showAuth(true));
-    goLoginBtn.addEventListener("click",  () => showAuth(false));
-    backBtn.addEventListener("click",     showLanding);
+    getStarted.addEventListener('click', () => showAuth(true));
+    goLoginBtn.addEventListener('click', () => showAuth(false));
+    backBtn.addEventListener('click', showLanding);
 
-    // ── Tab switching ─────────────────────────────────────────────────────────
-    const tabLogin       = document.getElementById("tab-login");
-    const nameRow        = document.getElementById("name-row");
-    const confirmField   = document.getElementById("confirm-field");
-    const referralField  = document.getElementById("referral-field");
-    const referralInput  = document.getElementById("referral-code");
-    const firstNameInput = document.getElementById("first-name");
-    const lastNameInput  = document.getElementById("last-name");
-    const confirmInput   = document.getElementById("confirm");
-    const submitBtn      = document.getElementById("submit-btn");
-    const emailInput     = document.getElementById("email");
-    const passwordInput  = document.getElementById("password");
-    const errorMsg       = document.getElementById("error-msg");
-    const form           = document.getElementById("auth-form");
-
-    let activeTab = "login";
+    // ── Tab switching ────────────────────────────────────────────────────────
+    const tabLogin      = document.getElementById('tab-login');
+    const tabSignup     = document.getElementById('tab-signup');
+    const nameRow       = document.getElementById('name-row');
+    const confirmField  = document.getElementById('confirm-field');
+    const referralField = document.getElementById('referral-field');
+    const referralInput = document.getElementById('referral-code');
+    const firstNameInput= document.getElementById('first-name');
+    const lastNameInput = document.getElementById('last-name');
+    const confirmInput  = document.getElementById('confirm');
+    const submitBtn     = document.getElementById('submit-btn');
+    const emailInput    = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const errorMsg      = document.getElementById('error-msg');
+    const form          = document.getElementById('auth-form');
+    const authCard      = document.getElementById('auth-card');
+    let activeTab = 'login';
 
     function switchTab(tab) {
       activeTab = tab;
-      errorMsg.textContent = "";
-      const isSignup = tab === "signup";
-
-      tabLogin.classList.toggle("active", !isSignup);
-      tabSignup.classList.toggle("active",  isSignup);
-
-      nameRow.style.display       = isSignup ? "flex"  : "none";
-      confirmField.style.display  = isSignup ? "flex"  : "none";
-      referralField.style.display = isSignup ? "flex"  : "none";
-      firstNameInput.disabled     = !isSignup;
-      lastNameInput.disabled      = !isSignup;
-      confirmInput.disabled       = !isSignup;
-      referralInput.disabled      = !isSignup;
-
-      submitBtn.textContent = isSignup ? "Create account" : "Log in";
-      passwordInput.setAttribute("autocomplete", isSignup ? "new-password" : "current-password");
+      errorMsg.textContent = '';
+      const s = tab === 'signup';
+      tabLogin.classList.toggle('active', !s);
+      tabSignup.classList.toggle('active',  s);
+      nameRow.style.display       = s ? 'flex' : 'none';
+      confirmField.style.display  = s ? 'flex' : 'none';
+      referralField.style.display = s ? 'flex' : 'none';
+      firstNameInput.disabled = !s;
+      lastNameInput.disabled  = !s;
+      confirmInput.disabled   = !s;
+      referralInput.disabled  = !s;
+      submitBtn.textContent = s ? 'Create account' : 'Log in';
+      passwordInput.setAttribute('autocomplete', s ? 'new-password' : 'current-password');
     }
 
-    tabLogin.addEventListener("click",  () => switchTab("login"));
-    tabSignup.addEventListener("click", () => switchTab("signup"));
+    tabLogin.addEventListener('click',  () => switchTab('login'));
+    tabSignup.addEventListener('click', () => switchTab('signup'));
+    firstNameInput.disabled = true; lastNameInput.disabled = true;
+    confirmInput.disabled = true;   referralInput.disabled = true;
 
-    firstNameInput.disabled = true;
-    lastNameInput.disabled  = true;
-    confirmInput.disabled   = true;
-    referralInput.disabled  = true;
-
-    // ── Social buttons ────────────────────────────────────────────────────────
-    document.getElementById("btn-google").addEventListener("click", () => {
-      errorMsg.style.color = "var(--muted)";
-      errorMsg.textContent = "Google login coming soon — use email for now.";
+    // Social stubs
+    document.getElementById('btn-google').addEventListener('click', () => {
+      errorMsg.style.color = 'var(--muted)';
+      errorMsg.textContent = 'Google login coming soon — use email for now.';
     });
-    document.getElementById("btn-apple").addEventListener("click", () => {
-      errorMsg.style.color = "var(--muted)";
-      errorMsg.textContent = "Apple login coming soon — use email for now.";
+    document.getElementById('btn-apple').addEventListener('click', () => {
+      errorMsg.style.color = 'var(--muted)';
+      errorMsg.textContent = 'Apple login coming soon — use email for now.';
     });
 
-    // ── Form submit ───────────────────────────────────────────────────────────
-    form.addEventListener("submit", async (e) => {
+    // ── Form submit ──────────────────────────────────────────────────────────
+    form.addEventListener('submit', async e => {
       e.preventDefault();
-      errorMsg.textContent = "";
-      errorMsg.style.color = "var(--error)";
+      errorMsg.textContent = '';
+      errorMsg.style.color = 'var(--error)';
 
-      const email     = emailInput.value.trim();
-      const password  = passwordInput.value;
-      const confirm   = confirmInput.value;
-      const firstName = firstNameInput.value.trim();
-      const lastName  = lastNameInput.value.trim();
+      const email    = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) { errorMsg.textContent = 'Please fill in all fields.'; return; }
 
-      if (!email || !password) { errorMsg.textContent = "Please fill in all fields."; return; }
-
-      const endpoint = activeTab === "login" ? "/login" : "/signup";
-      const body = activeTab === "login"
+      const endpoint = activeTab === 'login' ? '/login' : '/signup';
+      const body = activeTab === 'login'
         ? { email, password }
-        : { email, password, confirm, first_name: firstName, last_name: lastName,
+        : { email, password, confirm: confirmInput.value,
+            first_name: firstNameInput.value.trim(),
+            last_name:  lastNameInput.value.trim(),
             referral_code: referralInput.value.trim().toUpperCase() };
 
-      submitBtn.classList.add("loading");
+      submitBtn.classList.add('loading');
       submitBtn.disabled = true;
-      const originalLabel = submitBtn.textContent;
-      submitBtn.textContent = activeTab === "login" ? "Logging in…" : "Creating account…";
+      const orig = submitBtn.textContent;
+      submitBtn.textContent = activeTab === 'login' ? 'Logging in…' : 'Creating account…';
 
       try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const res  = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-        const data = await response.json();
+        const data = await res.json();
         if (data.ok) {
-          window.location.href = "/";
+          window.location.href = '/';
         } else {
-          errorMsg.textContent = data.error || "Something went wrong.";
+          errorMsg.textContent = data.error || 'Something went wrong.';
+          authCard.classList.add('shake');
+          setTimeout(() => authCard.classList.remove('shake'), 400);
         }
       } catch {
-        errorMsg.textContent = "Network error — is the server running?";
+        errorMsg.textContent = 'Network error — is the server running?';
       } finally {
-        submitBtn.classList.remove("loading");
+        submitBtn.classList.remove('loading');
         submitBtn.disabled = false;
-        submitBtn.textContent = originalLabel;
+        submitBtn.textContent = orig;
       }
     });
 
-    // ── Scroll-reveal for about section ──────────────────────────────────────
-    const landingContent = document.getElementById("landing-content");
-    const landingAbout   = document.getElementById("landing-about");
-    const scrollHint     = document.getElementById("scroll-hint");
+    // ── Scroll reveal ────────────────────────────────────────────────────────
+    const landingContent = document.getElementById('landing-content');
+    const landingAbout   = document.getElementById('landing-about');
+    const scrollHint     = document.getElementById('scroll-hint');
 
-    function checkAboutReveal() {
+    function checkReveal() {
       if (!landingAbout) return;
-      const contentRect = landingContent.getBoundingClientRect();
-      const aboutRect   = landingAbout.getBoundingClientRect();
-      const relTop = aboutRect.top - contentRect.top;
-      if (relTop < landingContent.clientHeight * 0.88) {
-        landingAbout.classList.add("visible");
-        if (scrollHint) scrollHint.classList.add("hidden");
+      const cr = landingContent.getBoundingClientRect();
+      const ar = landingAbout.getBoundingClientRect();
+      if (ar.top - cr.top < landingContent.clientHeight * .88) {
+        landingAbout.classList.add('visible');
+        if (scrollHint) scrollHint.classList.add('hidden');
       }
     }
+    landingContent.addEventListener('scroll', checkReveal, { passive: true });
+    checkReveal();
 
-    landingContent.addEventListener("scroll", checkAboutReveal, { passive: true });
-    checkAboutReveal();
-
-    // ── Theme ─────────────────────────────────────────────────────────────────
-    if (localStorage.getItem("notecloud-theme") === "light") {
-      document.body.classList.add("light");
-    }
+    // ── Theme ────────────────────────────────────────────────────────────────
+    if (localStorage.getItem('notecloud-theme') === 'light')
+      document.body.classList.add('light');
   </script>
 
 </body>
