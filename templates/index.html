@@ -67,9 +67,11 @@
     header {
       width: 100%;
       text-align: center;
-      padding: 4rem 1rem 2.5rem;
+      padding: 3.5rem 1rem 1rem;
       position: relative;
     }
+    header .logo { display: none; }
+    header .tagline { display: none; }
     header::before {
       content: '';
       position: absolute;
@@ -952,7 +954,7 @@
       width: 100%;
       max-width: 780px;
       padding: 0 1.25rem;
-      margin-bottom: .75rem;
+      margin-bottom: 1rem;
     }
     .upload-bar-inner {
       display: flex;
@@ -2218,8 +2220,8 @@
     body.light .bg-orbs .orb-2 { opacity: .04; }
     body.light .bg-orbs .orb-3 { opacity: .03; }
 
-    /* Ensure all app content sits above the orbs */
-    body > *:not(.bg-orbs) { position: relative; z-index: 1; }
+    /* Ensure main content sits above the orbs */
+    header, #upload-bar, main { position: relative; z-index: 1; }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
