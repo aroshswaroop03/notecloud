@@ -60,7 +60,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") != "development"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
 
 # ── Security extensions ───────────────────────────────────────────────────────
 csrf    = CSRFProtect(app)
