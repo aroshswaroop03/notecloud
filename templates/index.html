@@ -9,40 +9,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:        #06060f;
-      --surface:   #0d0d1a;
-      --border:    rgba(255,255,255,.08);
-      --accent:    #818cf8;
-      --accent-dim:#5b5fd4;
-      --text:      #f1f5f9;
-      --muted:     #475569;
-      --success:   #34d399;
-      --error:     #f87171;
+      --bg:        #f2ead8;
+      --surface:   #fffef9;
+      --border:    rgba(160,125,60,.18);
+      --accent:    #b8902a;
+      --accent-dim:#9a7820;
+      --text:      #1a1208;
+      --muted:     #8a7860;
+      --success:   #4a7a48;
+      --error:     #a84040;
       --radius:    14px;
 
-      --grid-line:      rgba(255,255,255,.014);
-      --drop-border:    rgba(255,255,255,.10);
-      --preview-fade:   rgba(6,6,15,.70);
-      --clear-bg:       rgba(6,6,15,.78);
-      --bar-track-bg:   rgba(255,255,255,.07);
-      --item-hover-bg:  rgba(255,255,255,.04);
-      --btn-secondary-bg: rgba(255,255,255,.07);
-    }
-
-    /* ── Light mode overrides ── */
-    body.light {
-      --bg:        #f0efff;
-      --surface:   #ffffff;
-      --border:    rgba(99,102,241,.10);
-      --text:      #1e1b4b;
-      --muted:     #64748b;
-      --grid-line:      rgba(99,102,241,.04);
-      --drop-border:    rgba(99,102,241,.15);
-      --preview-fade:   rgba(240,239,255,.70);
-      --clear-bg:       rgba(255,255,255,.85);
-      --bar-track-bg:   rgba(0,0,0,.08);
-      --item-hover-bg:  rgba(0,0,0,.04);
-      --btn-secondary-bg: rgba(0,0,0,.06);
+      --grid-line:      rgba(160,125,60,.055);
+      --drop-border:    rgba(160,125,60,.25);
+      --preview-fade:   rgba(242,234,216,.80);
+      --clear-bg:       rgba(255,254,249,.88);
+      --bar-track-bg:   rgba(160,125,60,.12);
+      --item-hover-bg:  rgba(160,125,60,.05);
+      --btn-secondary-bg: rgba(160,125,60,.08);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,7 +62,7 @@
       top: 0; left: 50%;
       transform: translateX(-50%);
       width: 600px; height: 300px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(129,140,248,.12), transparent 70%);
+      background: radial-gradient(ellipse at 50% 0%, rgba(184,144,42,.12), transparent 70%);
       pointer-events: none;
     }
     .logo {
@@ -129,8 +113,8 @@
     }
     #drop-zone:hover, #drop-zone.drag-over {
       border-color: var(--accent);
-      background: rgba(129,140,248,.07);
-      box-shadow: 0 0 40px rgba(99,102,241,.15), inset 0 0 40px rgba(99,102,241,.04);
+      background: rgba(184,144,42,.07);
+      box-shadow: 0 0 40px rgba(184,144,42,.15), inset 0 0 40px rgba(184,144,42,.04);
     }
     #drop-zone.drag-over::after {
       content: '';
@@ -169,14 +153,14 @@
       cursor: pointer;
       transition: background .15s, transform .15s;
     }
-    .drop-label:hover { background: #9499f5; transform: translateY(-1px); }
+    .drop-label:hover { background: #c9a04a; transform: translateY(-1px); }
     .drop-buttons { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
     .drop-label-camera {
       background: transparent;
       border: 1.5px solid var(--border);
       color: var(--text);
     }
-    .drop-label-camera:hover { background: rgba(129,140,248,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .drop-label-camera:hover { background: rgba(184,144,42,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
     #drop-zone p { margin-top: .75rem; color: var(--muted); font-size: .875rem; }
     #file-input, #gallery-input, #camera-input { display: none; }
 
@@ -238,7 +222,7 @@
     #transcribe-btn {
       width: 100%;
       padding: .9rem;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      background: linear-gradient(135deg, #b8902a 0%, #c9a04a 50%, #d4a843 100%);
       color: #fff;
       border: none;
       border-radius: var(--radius);
@@ -247,7 +231,7 @@
       font-family: inherit;
       cursor: pointer;
       transition: transform .2s, box-shadow .25s, opacity .2s, filter .2s;
-      box-shadow: 0 4px 28px rgba(99,102,241,.4);
+      box-shadow: 0 4px 28px rgba(184,144,42,.4);
       position: relative;
       overflow: hidden;
     }
@@ -383,8 +367,8 @@
     #transcribe-label { transition: opacity .2s; }
     #transcribe-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
     #transcribe-btn.empty { opacity: .5; }
-    #transcribe-btn.empty:hover { transform: none; box-shadow: 0 4px 28px rgba(99,102,241,.4); }
-    #transcribe-btn:not(:disabled):not(.empty):hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(99,102,241,.58); filter: brightness(1.07); }
+    #transcribe-btn.empty:hover { transform: none; box-shadow: 0 4px 28px rgba(184,144,42,.4); }
+    #transcribe-btn:not(:disabled):not(.empty):hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(184,144,42,.58); filter: brightness(1.07); }
 
     /* ── Status ── */
     #status {
@@ -464,7 +448,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #copy-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); }
+    #copy-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); }
     #copy-btn.copied { border-color: var(--success); color: var(--success); }
     #share-btn {
       padding: .45rem 1.1rem;
@@ -480,7 +464,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #share-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); color: var(--accent); }
+    #share-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); color: var(--accent); }
     #share-btn.copied { border-color: var(--success); color: var(--success); }
 
     #cleanup-btn {
@@ -497,7 +481,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #cleanup-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); color: var(--accent); }
+    #cleanup-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); color: var(--accent); }
     #cleanup-btn:disabled { opacity: .5; cursor: not-allowed; }
 
     /* Download buttons sit in a small group to the right of share */
@@ -520,7 +504,7 @@
       transition: border-color .2s, color .2s, background .2s;
       white-space: nowrap;
     }
-    .dl-btn:hover { border-color: var(--accent); background: rgba(129,140,248,.06); color: var(--accent); }
+    .dl-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); color: var(--accent); }
 
     /* ── History sidebar ── */
     #sidebar-overlay {
@@ -794,7 +778,7 @@
     }
     .notebook-row.drag-over {
       border-color: var(--accent);
-      background: rgba(129,140,248,.07);
+      background: rgba(184,144,42,.07);
     }
 
     .notebook-header {
@@ -1015,14 +999,14 @@
     .modal-overlay.open { opacity: 1; pointer-events: all; }
     .modal {
       background: rgba(13,13,26,.85);
-      border: 1px solid rgba(129,140,248,.18);
+      border: 1px solid rgba(184,144,42,.18);
       border-radius: var(--radius);
       padding: 2rem;
       width: 100%;
       max-width: 400px;
       transform: translateY(16px) scale(.96);
       transition: transform .3s cubic-bezier(.16,1,.3,1);
-      box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 80px rgba(99,102,241,.1);
+      box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 80px rgba(184,144,42,.1);
     }
     .modal-overlay.open .modal { transform: translateY(0) scale(1); }
     .modal h3 {
@@ -1429,14 +1413,14 @@
       position: relative;
       border-radius: var(--radius);
       overflow: hidden;
-      border: 1px solid rgba(129,140,248,.25);
+      border: 1px solid rgba(184,144,42,.25);
       background: var(--surface);
     }
     .upgrade-pitch-glow {
       position: absolute;
       top: -80px; right: -80px;
       width: 340px; height: 340px;
-      background: radial-gradient(circle, rgba(129,140,248,.12), transparent 65%);
+      background: radial-gradient(circle, rgba(184,144,42,.12), transparent 65%);
       pointer-events: none;
     }
     .upgrade-pitch-inner {
@@ -1475,8 +1459,8 @@
     }
     .upgrade-pitch-plan:hover { transform: translateY(-2px); }
     .upgrade-pitch-plan.featured {
-      border-color: rgba(129,140,248,.5);
-      background: rgba(129,140,248,.04);
+      border-color: rgba(184,144,42,.5);
+      background: rgba(184,144,42,.04);
     }
     .upgrade-pitch-plan.featured:hover { border-color: var(--accent); }
     .upgrade-pitch-plan-badge {
@@ -1670,7 +1654,7 @@
     }
     @keyframes ob-box-glow {
       0%, 30% { border-color: var(--border); }
-      50%, 70% { border-color: var(--accent); background: rgba(129,140,248,.06); }
+      50%, 70% { border-color: var(--accent); background: rgba(184,144,42,.06); }
       90%, 100% { border-color: var(--border); }
     }
 
@@ -1687,7 +1671,7 @@
     }
     @keyframes ob-btn-pulse {
       0%, 30% { transform: scale(1); box-shadow: none; }
-      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(129,140,248,.15); }
+      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(184,144,42,.15); }
       70%      { transform: scale(1.02); }
       100%     { transform: scale(1); }
     }
@@ -1812,7 +1796,7 @@
       cursor: pointer;
       transition: background .15s, transform .15s;
     }
-    #ob-next:hover { background: #9499f5; transform: translateY(-1px); }
+    #ob-next:hover { background: #c9a04a; transform: translateY(-1px); }
 
     /* ── Theme toggle button ── */
     #theme-toggle {
@@ -2058,7 +2042,7 @@
       transition: border-color .15s, color .15s, background .15s;
     }
     .font-size-btn:hover { border-color: var(--accent); color: var(--text); }
-    .font-size-btn.active { background: rgba(129,140,248,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .font-size-btn.active { background: rgba(184,144,42,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
     /* Stats grid tiles */
     .stat-tile {
@@ -2166,7 +2150,7 @@
     body.light #site-logo {
       background: rgba(255,255,255,.55);
       border-color: rgba(255,255,255,.8);
-      box-shadow: 0 2px 0 rgba(255,255,255,.9) inset, 0 8px 24px rgba(99,102,241,.12);
+      box-shadow: 0 2px 0 rgba(255,255,255,.9) inset, 0 8px 24px rgba(184,144,42,.12);
     }
 
     /* ── Background orbs ── */
@@ -2184,21 +2168,21 @@
     }
     .bg-orbs .orb-1 {
       width: 700px; height: 700px;
-      background: radial-gradient(circle, #6366f1 0%, transparent 68%);
+      background: radial-gradient(circle, #b8902a 0%, transparent 68%);
       top: -300px; left: -200px;
       opacity: .12;
       animation: gorb1 26s ease-in-out infinite;
     }
     .bg-orbs .orb-2 {
       width: 580px; height: 580px;
-      background: radial-gradient(circle, #a855f7 0%, transparent 68%);
+      background: radial-gradient(circle, #d4a843 0%, transparent 68%);
       bottom: -200px; right: -150px;
       opacity: .09;
       animation: gorb2 32s ease-in-out infinite;
     }
     .bg-orbs .orb-3 {
       width: 420px; height: 420px;
-      background: radial-gradient(circle, #3b82f6 0%, transparent 68%);
+      background: radial-gradient(circle, #c9a04a 0%, transparent 68%);
       top: 50%; left: 50%;
       transform: translate(-50%,-50%);
       opacity: .05;
@@ -2344,7 +2328,7 @@
           Notebooks
         </button>
       </div>
-      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(129,140,248,.06);border:1px solid rgba(129,140,248,.18);border-radius:10px;">
+      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(184,144,42,.06);border:1px solid rgba(184,144,42,.18);border-radius:10px;">
         <div style="font-size:.75rem;font-weight:600;color:var(--accent);margin-bottom:.3rem;">Student &amp; Pro</div>
         <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.6rem;">Organise your transcriptions into notebooks.</div>
         <button onclick="document.getElementById('upgrade-modal').classList.add('open')" style="width:100%;padding:.45rem;background:var(--accent);color:#0e0e10;border:none;border-radius:7px;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Upgrade to unlock</button>
@@ -2363,7 +2347,7 @@
         <div id="new-notebook-form">
           <input id="notebook-name-input" type="text" placeholder="Notebook name…" maxlength="40" />
           <div id="color-swatches">
-            <button class="color-swatch selected" data-color="#818cf8" style="background:#818cf8" title="Gold"></button>
+            <button class="color-swatch selected" data-color="#b8902a" style="background:#b8902a" title="Gold"></button>
             <button class="color-swatch" data-color="#6e9dc9" style="background:#6e9dc9" title="Blue"></button>
             <button class="color-swatch" data-color="#7dc96e" style="background:#7dc96e" title="Green"></button>
             <button class="color-swatch" data-color="#c96e9d" style="background:#c96e9d" title="Pink"></button>
@@ -2416,7 +2400,7 @@
       <button class="dropdown-item" id="open-subscription-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         Subscription
-        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:rgba(129,140,248,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
+        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:rgba(184,144,42,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
       </button>
       <a class="dropdown-item danger" href="/logout">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2546,7 +2530,7 @@
               <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">Unlimited tokens</div>
             {% endif %}
           </div>
-          <span style="background:rgba(129,140,248,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:99px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
+          <span style="background:rgba(184,144,42,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:99px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
         </div>
       </div>
 
@@ -2707,7 +2691,7 @@
           </div>
         </div>
         <div id="accent-swatches" style="display:flex;gap:.5rem;padding:.6rem 0 .75rem;flex-wrap:wrap">
-          <button class="accent-swatch selected" data-accent="#818cf8" style="background:#818cf8" title="Gold (default)"></button>
+          <button class="accent-swatch selected" data-accent="#b8902a" style="background:#b8902a" title="Gold (default)"></button>
           <button class="accent-swatch" data-accent="#7eb8f7" style="background:#7eb8f7" title="Blue"></button>
           <button class="accent-swatch" data-accent="#7dc98a" style="background:#7dc98a" title="Green"></button>
           <button class="accent-swatch" data-accent="#c97eb8" style="background:#c97eb8" title="Pink"></button>
@@ -4097,7 +4081,7 @@
     const cancelNotebookBtn = document.getElementById("cancel-notebook-btn");
     const colorSwatches     = document.querySelectorAll(".color-swatch");
 
-    let selectedColor = "#818cf8"; // default: gold
+    let selectedColor = "#b8902a"; // default: gold
 
     // Toggle notebooks section open/closed
     notebooksToggle.addEventListener("click", () => {
