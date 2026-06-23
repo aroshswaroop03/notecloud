@@ -818,7 +818,7 @@
     firstNameInput.disabled=true; lastNameInput.disabled=true;
     confirmInput.disabled=true; referralInput.disabled=true;
 
-    document.getElementById('btn-google').addEventListener('click',()=>{ errorMsg.style.color='var(--muted)'; errorMsg.textContent='Google login coming soon — use email for now.'; });
+    document.getElementById('btn-google').addEventListener('click',()=>{ window.location.href='/auth/google'; });
     document.getElementById('btn-apple').addEventListener('click',()=>{ errorMsg.style.color='var(--muted)'; errorMsg.textContent='Apple login coming soon — use email for now.'; });
 
     // ── Form submit ───────────────────────────────────────────────────────────
@@ -854,6 +854,15 @@
     }
     landingContent.addEventListener('scroll', checkReveal, {passive:true});
     checkReveal();
+
+    // ── Google error param ────────────────────────────────────────────────────
+    const _gErr = new URLSearchParams(window.location.search).get('error');
+    if (_gErr) {
+      const msgs = { google_not_configured:'Google login isn\'t set up yet.', access_denied:'Google sign-in was cancelled.', invalid_state:'Something went wrong. Please try again.', no_email:'Couldn\'t get your email from Google.', account_error:'Account error. Please try again.' };
+      showAuth(false);
+      setTimeout(() => { errorMsg.style.color='var(--error)'; errorMsg.textContent = msgs[_gErr] || 'Google sign-in failed.'; }, 400);
+      history.replaceState({}, '', '/login');
+    }
 
     // ── Theme ─────────────────────────────────────────────────────────────────
     if (localStorage.getItem('notecloud-theme')==='light') document.body.classList.add('light');

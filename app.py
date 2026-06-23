@@ -107,11 +107,17 @@ OWNER_CODE = os.getenv("OWNER_CODE", "")
 
 # Google OAuth 2.0 credentials — set these in .env
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/google/callback")
+GOOGLE_CLIENT_SECRET      = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI       = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/google/callback")
+GOOGLE_LOGIN_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_REDIRECT_URI", "http://localhost:5000/auth/google/callback")
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive.file",
+]
+GOOGLE_LOGIN_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
 # The maximum upload size Flask will accept — 10 MB should be plenty for a photo
@@ -1522,7 +1528,110 @@ def export_to_gdocs(trans_id):
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
+# ── Google Login (OAuth for authentication) ───────────────────────────────────
+
+@app.route("/auth/google")
+def google_login():
+    """Redirect to Google's consent screen for sign-in."""
+    if not GOOGLE_LIBS_AVAILABLE or not GOOGLE_CLIENT_ID:
+        return redirect("/login?error=google_not_configured")
+    flow = Flow.from_client_config(
+        {"web": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [GOOGLE_LOGIN_REDIRECT_URI],
+        }},
+        scopes=GOOGLE_LOGIN_SCOPES,
+        redirect_uri=GOOGLE_LOGIN_REDIRECT_URI,
+    )
+    auth_url, state = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="select_account",
+    )
+    session["google_login_state"] = state
+    return redirect(auth_url)
+
+
+@app.route("/auth/google/callback")
+def google_login_callback():
+    """Exchange code for tokens, fetch profile, create or log in user."""
+    if not GOOGLE_LIBS_AVAILABLE or not GOOGLE_CLIENT_ID:
+        return redirect("/login?error=google_not_configured")
+
+    state = session.pop("google_login_state", None)
+    if not state or request.args.get("state") != state:
+        return redirect("/login?error=invalid_state")
+
+    if "error" in request.args:
+        return redirect("/login?error=access_denied")
+
+    flow = Flow.from_client_config(
+        {"web": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [GOOGLE_LOGIN_REDIRECT_URI],
+        }},
+        scopes=GOOGLE_LOGIN_SCOPES,
+        redirect_uri=GOOGLE_LOGIN_REDIRECT_URI,
+        state=state,
+    )
+    flow.fetch_token(authorization_response=request.url)
+    creds = flow.credentials
+
+    # Fetch user profile from Google
+    import urllib.request, json as _json
+    req = urllib.request.Request(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        headers={"Authorization": f"Bearer {creds.token}"}
+    )
+    with urllib.request.urlopen(req) as resp:
+        profile = _json.loads(resp.read().decode())
+
+    email      = profile.get("email", "").lower().strip()
+    first_name = profile.get("given_name", "")
+    last_name  = profile.get("family_name", "")
+    avatar_url = profile.get("picture", "")
+
+    if not email:
+        return redirect("/login?error=no_email")
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+
+    if user:
+        # Existing account — just log in
+        session["user_id"]    = user["id"]
+        session["user_email"] = user["email"]
+        conn.close()
+    else:
+        # New account via Google — create with random password
+        pw_hash      = generate_password_hash(secrets.token_hex(32))
+        created_at   = datetime.utcnow().isoformat()
+        ref_code     = secrets.token_urlsafe(6).upper()[:8]
+        try:
+            cursor = conn.execute(
+                """INSERT INTO users
+                   (email, password_hash, first_name, last_name, created_at, referral_code, tier)
+                   VALUES (?, ?, ?, ?, ?, ?, 'free')""",
+                (email, pw_hash, first_name or "User", last_name or "", created_at, ref_code),
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
+        except Exception:
+            conn.close()
+            return redirect("/login?error=account_error")
+
+        session["user_id"]    = new_id
+        session["user_email"] = email
+        conn.close()
+
+    return redirect("/")
+
+
 if __name__ == "__main__":
-    # debug=True gives helpful error pages and auto-reloads when you edit the code.
-    # Never use debug=True in a real production deployment.
     app.run(debug=True, port=5000)
