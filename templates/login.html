@@ -575,6 +575,44 @@
     @keyframes shimmer { from{left:-60%} to{left:140%} }
     #error-msg { min-height: 1.2em; font-size: .82rem; color: var(--error); text-align: center; }
 
+    /* ── Scroll draw line ── */
+    #scroll-draw-track {
+      position: fixed;
+      left: 2rem; top: 0;
+      height: 100vh; width: 28px;
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0;
+      transition: opacity .5s;
+    }
+    #scroll-draw-track.visible { opacity: 1; }
+    #scroll-draw-track.hidden  { opacity: 0; }
+
+    #scroll-draw-svg {
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      overflow: visible;
+    }
+
+    #scroll-pencil-icon {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      font-size: 15px;
+      line-height: 1;
+      transform: translateX(-50%) rotate(160deg);
+      transform-origin: center center;
+      transition: top .08s linear;
+      filter: drop-shadow(0 0 6px rgba(212,168,67,.7));
+      animation: pencil-jiggle .25s ease-in-out infinite alternate;
+    }
+    @keyframes pencil-jiggle {
+      from { transform: translateX(-50%) rotate(157deg) scale(1);   }
+      to   { transform: translateX(-50%) rotate(163deg) scale(1.04); }
+    }
+    #scroll-pencil-icon.idle { animation: none; }
+
     /* ── Global keyframes ── */
     @keyframes rise { from{opacity:0;transform:translateY(26px)} to{opacity:1;transform:translateY(0)} }
     @keyframes fade { from{opacity:0} to{opacity:1} }
@@ -598,6 +636,21 @@
   </div>
   <div class="bg-grid"></div>
   <div class="noise"></div>
+
+  <!-- Scroll draw line -->
+  <div id="scroll-draw-track">
+    <svg id="scroll-draw-svg" viewBox="0 0 28 800" preserveAspectRatio="none">
+      <!-- Faint guide track -->
+      <line x1="14" y1="0" x2="14" y2="800"
+        stroke="rgba(212,168,67,.07)" stroke-width="1.5"/>
+      <!-- Gold drawn line, animated by JS -->
+      <line id="scroll-drawn-line" x1="14" y1="0" x2="14" y2="800"
+        stroke="rgba(212,168,67,.55)" stroke-width="1.5"
+        stroke-linecap="round"
+        style="stroke-dasharray:800;stroke-dashoffset:800"/>
+    </svg>
+    <div id="scroll-pencil-icon" class="idle">✏️</div>
+  </div>
 
   <!-- Custom cursor -->
   <div class="cursor-dot"  id="cursor-dot"></div>
@@ -1115,6 +1168,66 @@
   }
   lc.addEventListener('scroll', checkReveal, { passive: true });
   checkReveal();
+
+  // ── Scroll draw line ──────────────────────────────────────────────────────
+  (function(){
+    const track   = document.getElementById('scroll-draw-track');
+    const lineEl  = document.getElementById('scroll-drawn-line');
+    const pencil  = document.getElementById('scroll-pencil-icon');
+    if (!track || !lineEl || !pencil) return;
+
+    const TOTAL = 800; // matches SVG viewBox height
+    let lastScroll = 0, scrolling = false, idleTimer;
+
+    function updateLine(){
+      const scrollTop  = lc.scrollTop;
+      const scrollMax  = lc.scrollHeight - lc.clientHeight;
+      if (scrollMax <= 0) return;
+
+      const progress   = Math.min(scrollTop / scrollMax, 1);
+      const drawn      = TOTAL * progress;
+
+      // Draw the line
+      lineEl.style.strokeDashoffset = TOTAL - drawn;
+
+      // Move pencil to the tip (as % of viewport height, mapped from progress)
+      const tipVH = progress * 95; // never go fully off-screen
+      pencil.style.top = tipVH + 'vh';
+
+      // Show track once scrolling starts
+      if (scrollTop > 8){
+        track.classList.add('visible');
+        track.classList.remove('hidden');
+      }
+
+      // Pencil jiggle only while actively scrolling
+      const moved = Math.abs(scrollTop - lastScroll) > 1;
+      lastScroll = scrollTop;
+      if (moved){
+        pencil.classList.remove('idle');
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => pencil.classList.add('idle'), 120);
+      }
+    }
+
+    lc.addEventListener('scroll', updateLine, { passive: true });
+
+    // Hide when auth panel is shown
+    document.getElementById('get-started-btn').addEventListener('click', () => {
+      track.classList.remove('visible');
+      track.classList.add('hidden');
+    });
+    document.getElementById('go-login-btn').addEventListener('click', () => {
+      track.classList.remove('visible');
+      track.classList.add('hidden');
+    });
+    document.getElementById('back-btn').addEventListener('click', () => {
+      if (lc.scrollTop > 8) track.classList.add('visible');
+      track.classList.remove('hidden');
+    });
+
+    updateLine();
+  })();
 
   // ── Google OAuth error param ──────────────────────────────────────────────
   const _gErr = new URLSearchParams(window.location.search).get('error');
