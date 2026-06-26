@@ -3,588 +3,674 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Note-Cloud</title>
+  <title>Note-Cloud — Handwriting Transcriber</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
     :root {
-      --bg:        #f2ead8;
-      --surface:   #fffef9;
-      --surface2:  #f7f2e6;
-      --border:    rgba(160,125,60,.18);
-      --border2:   rgba(160,125,60,.35);
-      --accent:    #b8902a;
-      --accent2:   #d4a843;
-      --accent-dim:rgba(184,144,42,.18);
-      --text:      #1a1208;
-      --text2:     #4e3d20;
-      --muted:     #8a7860;
-      --success:   #4a7a48;
-      --error:     #a84040;
-      --radius:    18px;
-      --radius-sm: 12px;
-      --grid-line: rgba(160,125,60,.055);
+      --bg:       #080605;
+      --bg2:      #0f0c08;
+      --surface:  #141008;
+      --surface2: #1c1610;
+      --border:   rgba(212,168,67,.13);
+      --border2:  rgba(212,168,67,.32);
+      --gold:     #d4a843;
+      --gold2:    #f0c560;
+      --gold-dim: rgba(212,168,67,.07);
+      --text:     #f2ead8;
+      --text2:    #c4b898;
+      --muted:    rgba(242,234,216,.38);
+      --success:  #5a9e58;
+      --error:    #e05555;
+      --radius:   18px;
+      --radius-sm:12px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; }
+    html { height: 100%; }
+    html, body { overflow: hidden; }
 
     body {
       font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
+      height: 100%;
     }
 
-    /* Noise texture */
-    body::after {
-      content: '';
-      position: fixed; inset: 0; z-index: 999; pointer-events: none;
-      opacity: .032;
+    /* ── Cursor (desktop only) ── */
+    @media (pointer: fine) and (hover: hover) {
+      body { cursor: none; }
+      a, button, input, label, [role="button"], .feature-pill { cursor: none; }
+    }
+
+    .cursor-dot {
+      display: none;
+      position: fixed;
+      width: 6px; height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      top: 0; left: 0;
+      transform: translate(-50%,-50%);
+      will-change: left, top;
+      transition: width .2s, height .2s, opacity .2s;
+    }
+    .cursor-ring {
+      display: none;
+      position: fixed;
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(212,168,67,.45);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      top: 0; left: 0;
+      transform: translate(-50%,-50%);
+      will-change: left, top;
+      transition: width .3s cubic-bezier(.16,1,.3,1), height .3s cubic-bezier(.16,1,.3,1), border-color .25s, opacity .2s;
+    }
+    @media (pointer: fine) and (hover: hover) {
+      .cursor-dot, .cursor-ring { display: block; }
+    }
+    body.cur-hover .cursor-dot  { width: 10px; height: 10px; background: var(--gold2); }
+    body.cur-hover .cursor-ring { width: 56px; height: 56px; border-color: rgba(212,168,67,.75); }
+    body.cur-click .cursor-dot  { width: 4px; height: 4px; opacity: .6; }
+    body.cur-click .cursor-ring { width: 28px; height: 28px; border-color: var(--gold); }
+
+    /* ── Noise ── */
+    .noise {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: .048;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 180px;
+      background-size: 200px;
     }
 
-    /* Warm radial ambient */
-    .bg-warm {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-    }
-    .bg-warm::before {
-      content: '';
+    /* ── Ambient glows ── */
+    .ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .amb-blob {
       position: absolute;
-      width: 900px; height: 700px;
-      top: -200px; left: -200px;
-      background: radial-gradient(ellipse, rgba(210,165,60,.18) 0%, transparent 65%);
-      animation: wa1 20s ease-in-out infinite;
+      border-radius: 50%;
+      filter: blur(80px);
+      animation: amb-float linear infinite;
     }
-    .bg-warm::after {
-      content: '';
-      position: absolute;
-      width: 700px; height: 600px;
-      bottom: -150px; right: -150px;
-      background: radial-gradient(ellipse, rgba(180,135,50,.12) 0%, transparent 65%);
-      animation: wa2 26s ease-in-out infinite;
+    .amb-blob-1 {
+      width: 70vmax; height: 55vmax;
+      top: -25vmax; left: -10vmax;
+      background: radial-gradient(circle, rgba(212,168,67,.07) 0%, transparent 65%);
+      animation-duration: 20s;
     }
-    @keyframes wa1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(80px,60px)} }
-    @keyframes wa2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-60px,-80px)} }
+    .amb-blob-2 {
+      width: 55vmax; height: 55vmax;
+      bottom: -20vmax; right: -15vmax;
+      background: radial-gradient(circle, rgba(180,120,30,.05) 0%, transparent 65%);
+      animation-duration: 26s;
+      animation-direction: reverse;
+    }
+    .amb-blob-3 {
+      width: 40vmax; height: 40vmax;
+      top: 40%; left: 30%;
+      background: radial-gradient(circle, rgba(212,168,67,.03) 0%, transparent 65%);
+      animation-duration: 34s;
+    }
+    @keyframes amb-float {
+      0%,100% { transform: translate(0,0) scale(1);   }
+      33%      { transform: translate(40px,30px) scale(1.05); }
+      66%      { transform: translate(-30px,20px) scale(.96); }
+    }
 
-    /* Map grid */
+    /* ── Map grid ── */
     .bg-grid {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-image:
-        linear-gradient(var(--grid-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+        linear-gradient(rgba(212,168,67,.038) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(212,168,67,.038) 1px, transparent 1px);
       background-size: 44px 44px;
     }
 
-    /* Globe canvas */
+    /* ── Globe canvas ── */
     #globe-canvas {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
       pointer-events: none;
-      opacity: .28;
       z-index: 0;
     }
 
-    /* Slide container */
+    /* ── Particle canvas ── */
+    #particle-canvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      opacity: .7;
+    }
+
+    /* ── Slide container ── */
     #slide-container {
-      position: relative; z-index: 1;
+      position: relative; z-index: 2;
       display: flex; width: 200vw; height: 100vh;
-      transition: transform .78s cubic-bezier(.76,0,.24,1);
+      transition: transform .9s cubic-bezier(.76,0,.24,1);
     }
     #slide-container.show-auth { transform: translateX(-50%); }
-
     .panel { width: 50%; height: 100%; position: relative; }
 
-    /* Landing panel */
-    #landing-panel { display: flex; flex-direction: column; overflow: hidden; }
-
+    /* ── Landing panel ── */
+    #landing-panel  { display: flex; flex-direction: column; overflow: hidden; }
     #landing-content {
       position: relative; z-index: 1; flex: 1;
       overflow-y: auto; overflow-x: hidden;
       display: flex; flex-direction: column; align-items: center;
-      padding: 0 1.5rem 5rem;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(160,125,60,.3) transparent;
+      padding: 0 1.5rem 6rem;
+      scrollbar-width: none;
     }
-    #landing-content::-webkit-scrollbar { width: 3px; }
-    #landing-content::-webkit-scrollbar-track { background: transparent; }
-    #landing-content::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 99px;
-    }
+    #landing-content::-webkit-scrollbar { display: none; }
 
+    /* ── Hero ── */
     .landing-main {
       min-height: 100vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       text-align: center;
       padding: 3rem 0 2rem;
-      width: 100%; max-width: 560px;
+      width: 100%; max-width: 720px;
       position: relative;
     }
 
-    /* Badge — cartouche style */
+    /* Badge */
     .landing-badge {
-      display: inline-flex; align-items: center; gap: .5rem;
-      background: rgba(184,144,42,.1);
-      border: 1px solid rgba(184,144,42,.35);
+      display: inline-flex; align-items: center; gap: .6rem;
+      background: rgba(212,168,67,.08);
+      border: 1px solid rgba(212,168,67,.22);
       border-radius: 99px;
-      padding: .4rem 1.1rem;
-      font-size: .7rem; font-weight: 600;
-      color: var(--accent); letter-spacing: .1em; text-transform: uppercase;
+      padding: .5rem 1.3rem;
+      font-size: .68rem; font-weight: 600;
+      color: var(--gold); letter-spacing: .13em; text-transform: uppercase;
       margin-bottom: 2.5rem;
-      animation: fade-up .7s cubic-bezier(.16,1,.3,1) both;
-      box-shadow: 0 0 20px rgba(184,144,42,.12);
+      opacity: 0; animation: rise .8s .08s cubic-bezier(.16,1,.3,1) forwards;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 0 24px rgba(212,168,67,.1), inset 0 0 20px rgba(212,168,67,.04);
     }
-    .landing-badge-dot {
-      width: 5px; height: 5px; border-radius: 50%;
-      background: var(--accent);
-      animation: pulse-dot 2.2s ease-in-out infinite;
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 10px var(--gold), 0 0 20px rgba(212,168,67,.5);
+      animation: badge-pulse 2.2s ease-in-out infinite;
     }
-    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.6)} }
+    @keyframes badge-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.5)} }
 
-    /* Hero */
-    .landing-logo {
+    /* Hero title */
+    .hero-title {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(4.2rem, 11vw, 6.8rem);
+      font-size: clamp(5.5rem, 14vw, 9.5rem);
       font-weight: 700;
-      letter-spacing: -4px; line-height: .9;
+      letter-spacing: -5px;
+      line-height: .88;
       color: var(--text);
-      animation: fade-up .7s .09s cubic-bezier(.16,1,.3,1) both;
+      opacity: 0; animation: rise .95s .2s cubic-bezier(.16,1,.3,1) forwards;
       position: relative;
     }
-    .landing-logo em {
+    .hero-title em {
       font-style: italic;
-      color: var(--accent);
+      background: linear-gradient(135deg, #d4a843 0%, #f5d070 40%, #d4a843 70%, #f0c560 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gold-shift 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 30px rgba(212,168,67,.4));
     }
-    .landing-logo .word-wrap { display: inline-block; overflow: hidden; vertical-align: bottom; }
-    .landing-logo .word {
-      display: inline-block;
-      animation: word-rise .95s cubic-bezier(.16,1,.3,1) both;
-    }
-    .landing-logo .word-wrap:nth-child(1) .word { animation-delay: .2s; }
-    .landing-logo .word-wrap:nth-child(3) .word { animation-delay: .38s; }
-    @keyframes word-rise { from{transform:translateY(110%);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes gold-shift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
 
+    /* Tagline */
     .landing-tagline {
-      margin-top: 1.75rem;
-      color: var(--text2); font-size: 1.05rem;
-      font-weight: 400; line-height: 1.72;
-      max-width: 400px; min-height: 1.72em;
-      animation: fade-up .7s .55s cubic-bezier(.16,1,.3,1) both;
+      margin-top: 1.6rem;
+      color: var(--text2);
+      font-size: 1.05rem; font-weight: 300;
+      line-height: 1.75; max-width: 460px;
+      min-height: 1.75em;
+      opacity: 0; animation: rise .8s .42s cubic-bezier(.16,1,.3,1) forwards;
     }
 
     /* Ticker */
-    .ticker-track {
+    .ticker-wrap {
       width: 100vw; overflow: hidden;
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
-      padding: .85rem 0 1.7rem;
-      margin: 2rem 0 0;
-      animation: fade-up .7s .6s both;
+      padding: .95rem 0;
+      margin: 2.2rem 0;
+      opacity: 0; animation: fade .6s .58s forwards;
+      mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
     }
     .ticker-inner {
-      display: flex; align-items: center; gap: 2rem;
+      display: flex; align-items: center; gap: 2.5rem;
       width: max-content;
-      animation: ticker-scroll 30s linear infinite;
-      font-size: .73rem; font-weight: 500; line-height: 1.6;
-      color: var(--muted); letter-spacing: .03em; white-space: nowrap;
+      animation: ticker-move 38s linear infinite;
+      font-size: .72rem; font-weight: 500;
+      color: var(--muted); letter-spacing: .04em; white-space: nowrap;
     }
-    .td { color: var(--accent); opacity: .5; font-size: .6rem; }
-    @keyframes ticker-scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+    .ticker-inner:hover { animation-play-state: paused; }
+    .tsep { color: var(--gold); opacity: .4; font-size: .5rem; }
+    @keyframes ticker-move { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 
-    /* Bento feature grid */
-    .features-bento {
-      display: grid; grid-template-columns: 1fr 1fr; gap: .65rem;
-      width: 100%; max-width: 500px;
-      margin: 1.75rem 0 2.25rem;
-      animation: fade-up .7s .7s cubic-bezier(.16,1,.3,1) both;
+    /* Feature pills */
+    .feature-pills {
+      display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center;
+      margin-bottom: 2.75rem;
+      opacity: 0; animation: rise .7s .68s cubic-bezier(.16,1,.3,1) forwards;
     }
-    .bento-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.2rem 1.25rem;
-      transition: background .25s, border-color .28s, transform .28s, box-shadow .28s;
-      cursor: default; position: relative; overflow: hidden; text-align: left;
-    }
-    .bento-card::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: radial-gradient(circle at var(--sx,50%) var(--sy,50%), rgba(184,144,42,.1) 0%, transparent 60%);
-      opacity: 0; transition: opacity .3s; pointer-events: none;
-    }
-    .bento-card:hover::after { opacity: 1; }
-    .bento-card:hover {
-      background: #fffcf2;
-      border-color: rgba(184,144,42,.35);
-      transform: translateY(-3px);
-      box-shadow: 0 8px 32px rgba(160,125,60,.15);
-    }
-    .bento-wide { grid-column: 1 / -1; }
-    .bento-icon {
-      width: 34px; height: 34px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: .8rem;
-      box-shadow: 0 4px 14px rgba(184,144,42,.35);
-    }
-    .bento-icon svg { width: 17px; height: 17px; color: #fff; }
-    .bento-title { font-size: .88rem; font-weight: 600; color: var(--text); margin-bottom: .28rem; }
-    .bento-desc { font-size: .76rem; color: var(--text2); line-height: 1.55; }
-    .bento-wide .bento-inner { display: flex; align-items: flex-start; gap: 1rem; }
-    .bento-wide .bento-body { flex: 1; }
-    .bento-tags { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .75rem; }
-    .bento-tags span {
-      padding: .2rem .6rem;
-      background: rgba(184,144,42,.1);
-      border: 1px solid rgba(184,144,42,.25);
+    .feature-pill {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: rgba(212,168,67,.055);
+      border: 1px solid rgba(212,168,67,.14);
       border-radius: 99px;
-      font-size: .68rem; color: var(--accent); font-weight: 600;
+      padding: .42rem 1.05rem;
+      font-size: .74rem; font-weight: 500; color: var(--text2);
+      transition: background .22s, border-color .22s, color .22s, transform .22s, box-shadow .22s;
     }
+    .feature-pill:hover {
+      background: rgba(212,168,67,.14); border-color: rgba(212,168,67,.38);
+      color: var(--text); transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(212,168,67,.12);
+    }
+    .pill-icon { color: var(--gold); font-size: .8rem; }
 
     /* CTA */
-    .landing-cta {
-      display: flex; flex-direction: column; align-items: center; gap: .9rem;
-      animation: fade-up .7s .82s cubic-bezier(.16,1,.3,1) both;
+    .cta-group {
+      display: flex; flex-direction: column; align-items: center; gap: .95rem;
+      opacity: 0; animation: rise .7s .8s cubic-bezier(.16,1,.3,1) forwards;
     }
+    .cta-btn-wrap { position: relative; } /* magnetic wrapper */
+
     #get-started-btn {
-      display: inline-flex; align-items: center; gap: .65rem;
-      padding: 1rem 2.75rem;
-      background: var(--text); color: var(--bg);
+      position: relative;
+      display: inline-flex; align-items: center; gap: .75rem;
+      padding: 1.15rem 3.2rem;
+      background: var(--gold);
+      color: #0a0805;
       border: none; border-radius: var(--radius-sm);
-      font-size: 1rem; font-weight: 600; font-family: inherit;
-      cursor: pointer;
-      transition: transform .22s cubic-bezier(.16,1,.3,1), box-shadow .25s, background .2s;
-      box-shadow: 0 4px 20px rgba(26,18,8,.2);
-      position: relative; overflow: hidden;
+      font-size: 1rem; font-weight: 700; font-family: inherit;
+      cursor: none;
+      overflow: hidden;
+      transition: box-shadow .3s, filter .3s;
+      box-shadow:
+        0 0 0 1px rgba(212,168,67,.3),
+        0 0 40px rgba(212,168,67,.25),
+        0 8px 32px rgba(212,168,67,.18);
     }
     #get-started-btn::before {
       content: '';
       position: absolute; inset: 0;
-      background: linear-gradient(to bottom, rgba(255,255,255,.08) 0%, transparent 60%);
+      background: linear-gradient(160deg, rgba(255,255,255,.22) 0%, transparent 55%);
       pointer-events: none;
     }
+    /* shimmer sweep on hover */
+    #get-started-btn::after {
+      content: '';
+      position: absolute;
+      width: 50%; height: 100%; top: 0; left: -60%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+      skewX: -15deg;
+      transition: left 0s;
+    }
     #get-started-btn:hover {
-      background: #2c2010;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(26,18,8,.28);
+      filter: brightness(1.1);
+      box-shadow: 0 0 0 1px rgba(212,168,67,.5), 0 0 70px rgba(212,168,67,.4), 0 12px 48px rgba(212,168,67,.28);
     }
-    #get-started-btn svg { transition: transform .25s cubic-bezier(.16,1,.3,1); }
-    #get-started-btn:hover svg { transform: translateX(4px); }
+    #get-started-btn:hover::after { left: 140%; transition: left .55s ease; }
+    .btn-arrow { transition: transform .3s cubic-bezier(.16,1,.3,1); }
+    #get-started-btn:hover .btn-arrow { transform: translateX(5px); }
 
-    .landing-footnote { font-size: .76rem; color: var(--muted); }
-    .landing-signin { font-size: .85rem; color: var(--muted); }
-    .landing-signin button {
+    .cta-note { font-size: .74rem; color: var(--muted); }
+    .cta-signin { font-size: .84rem; color: var(--muted); }
+    .cta-signin button {
       background: none; border: none; color: var(--text2);
-      font-family: inherit; font-size: inherit; cursor: pointer; padding: 0;
+      font-family: inherit; font-size: inherit; cursor: none;
       text-decoration: underline; text-underline-offset: 3px;
-      text-decoration-color: var(--border2); transition: color .15s;
+      text-decoration-color: rgba(212,168,67,.25);
+      transition: color .18s, text-decoration-color .18s;
     }
-    .landing-signin button:hover { color: var(--accent); }
+    .cta-signin button:hover { color: var(--gold); text-decoration-color: rgba(212,168,67,.7); }
 
     /* Scroll hint */
     .scroll-hint {
-      display: flex; flex-direction: column; align-items: center; gap: .4rem;
-      margin-top: 2.5rem; color: var(--muted);
-      font-size: .66rem; letter-spacing: .13em; text-transform: uppercase;
-      animation: scroll-bob 2.3s ease-in-out infinite, fade-up .7s .92s both;
+      position: absolute; bottom: 2.25rem;
+      display: flex; flex-direction: column; align-items: center; gap: .55rem;
+      color: var(--muted); font-size: .6rem; letter-spacing: .17em; text-transform: uppercase;
+      opacity: 0; animation: fade .6s 1.2s forwards;
       transition: opacity .4s;
     }
-    .scroll-hint.hidden { opacity: 0; pointer-events: none; }
-    @keyframes scroll-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(7px)} }
+    .scroll-hint.hidden { opacity: 0 !important; pointer-events: none; }
+    .scroll-needle {
+      width: 1px; height: 44px;
+      background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: needle-drip 2.4s ease-in-out infinite;
+    }
+    @keyframes needle-drip {
+      0%,100% { transform: scaleY(1); transform-origin: top; opacity: .7; }
+      50%      { transform: scaleY(.5); transform-origin: top; opacity: .25; }
+    }
 
-    /* About section */
+    /* ── About section ── */
     .landing-about {
-      width: 100%; max-width: 560px; margin-top: 4rem;
-      opacity: 0; transform: translateY(36px);
-      transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1);
+      width: 100%; max-width: 580px; margin-top: 5.5rem;
+      opacity: 0; transform: translateY(44px);
+      transition: opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1);
     }
     .landing-about.visible { opacity: 1; transform: translateY(0); }
+
     .about-tag {
-      display: inline-flex; align-items: center; gap: .4rem;
-      font-size: .67rem; font-weight: 700; letter-spacing: .14em;
-      text-transform: uppercase; color: var(--accent); margin-bottom: 1.25rem;
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-size: .63rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--gold); margin-bottom: 1.3rem;
     }
-    .about-tag::before { content:''; width:18px; height:1.5px; background:var(--accent); display:inline-block; }
+    .about-tag::before { content:''; width:22px; height:1px; background:var(--gold); display:inline-block; opacity:.55; }
+
     .about-heading {
       font-family: 'Playfair Display', serif;
-      font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 700;
-      line-height: 1.12; letter-spacing: -1.5px;
-      color: var(--text); margin-bottom: 2rem;
+      font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 700;
+      line-height: 1.08; letter-spacing: -2px;
+      color: var(--text); margin-bottom: 2.25rem;
     }
+
     .about-quote {
-      padding: 1.75rem 2rem 1.75rem 2.25rem;
-      background: var(--surface);
+      padding: 1.85rem 2.1rem 1.85rem 2.3rem;
+      background: rgba(212,168,67,.04);
       border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
+      border-left: 2.5px solid var(--gold);
       border-radius: 0 14px 14px 0;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.4rem;
     }
-    .about-quote p { color: var(--text2); font-size: .925rem; line-height: 1.85; font-weight: 300; }
-    .about-quote p + p { margin-top: .9rem; }
-    .about-highlight { color: var(--text); font-weight: 500; }
+    .about-quote p { color: var(--text2); font-size: .93rem; line-height: 1.88; font-weight: 300; }
+    .about-quote p + p { margin-top: .95rem; }
+    .about-hl { color: var(--text); font-weight: 500; }
+
     .about-footer {
-      display: flex; align-items: center; gap: 1rem;
-      padding: 1.2rem 1.5rem;
-      background: rgba(184,144,42,.07);
-      border: 1px solid rgba(184,144,42,.2);
-      border-radius: 14px; margin-top: 1rem;
+      display: flex; align-items: center; gap: 1.1rem;
+      padding: 1.25rem 1.6rem;
+      background: rgba(212,168,67,.05);
+      border: 1px solid var(--border);
+      border-radius: 14px;
     }
     .about-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: .9rem; color: #fff; flex-shrink: 0;
-      box-shadow: 0 4px 14px rgba(184,144,42,.35);
+      font-weight: 700; font-size: .9rem; color: var(--bg); flex-shrink: 0;
+      box-shadow: 0 4px 18px rgba(212,168,67,.35);
     }
     .about-sig-name { font-size: .88rem; font-weight: 600; color: var(--text); }
-    .about-sig-role { font-size: .76rem; color: var(--muted); margin-top: .15rem; font-style: italic; }
+    .about-sig-role { font-size: .74rem; color: var(--muted); margin-top: .18rem; font-style: italic; }
 
-    @keyframes fade-up { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-
-    /* Auth panel */
+    /* ── Auth panel ── */
     #auth-panel {
-      display: flex; flex-direction: column; align-items: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow-y: auto; padding: 2rem 1.5rem;
     }
-    .auth-inner {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 420px; margin: auto;
-    }
+    .auth-inner { position: relative; z-index: 1; width: 100%; max-width: 430px; }
+
     .auth-back {
-      display: inline-flex; align-items: center; gap: .4rem;
+      display: inline-flex; align-items: center; gap: .45rem;
       background: none; border: none; color: var(--muted);
-      font-family: inherit; font-size: .85rem; cursor: pointer;
-      padding: 0; margin-bottom: 1.75rem; transition: color .15s;
+      font-family: inherit; font-size: .84rem; cursor: none;
+      padding: 0; margin-bottom: 2.25rem;
+      transition: color .18s, gap .22s;
     }
-    .auth-back:hover { color: var(--text); }
+    .auth-back:hover { color: var(--text); gap: .6rem; }
+
     .auth-logo {
       font-family: 'Playfair Display', serif;
-      font-size: 1.85rem; font-weight: 700; letter-spacing: -1px;
-      margin-bottom: 1.5rem; color: var(--text);
+      font-size: 2rem; font-weight: 700; letter-spacing: -1.5px;
+      margin-bottom: 1.85rem; color: var(--text);
     }
-    .auth-logo span { color: var(--accent); }
+    .auth-logo span { color: var(--gold); }
 
-    /* Card — clean paper style */
-    .card-wrapper {
-      border-radius: calc(var(--radius) + 1px);
-      padding: 1px;
-      background: linear-gradient(145deg, rgba(184,144,42,.5), rgba(160,125,60,.2), rgba(184,144,42,.4));
-      box-shadow: 0 20px 60px rgba(26,18,8,.15), 0 4px 20px rgba(26,18,8,.08);
+    /* Gradient border card */
+    .card-shell {
+      position: relative;
+      border-radius: calc(var(--radius) + 2px);
+      padding: 1.5px;
+      background: linear-gradient(
+        145deg,
+        rgba(212,168,67,.75) 0%,
+        rgba(140,100,28,.15) 35%,
+        rgba(212,168,67,.6) 65%,
+        rgba(100,72,18,.12) 85%,
+        rgba(212,168,67,.65) 100%
+      );
+      box-shadow:
+        0 0 0 1px rgba(212,168,67,.06),
+        0 0 60px rgba(212,168,67,.1),
+        0 28px 90px rgba(0,0,0,.65);
+      transition: box-shadow .4s;
+      animation: shell-breathe 4s ease-in-out infinite;
     }
-    .card {
+    @keyframes shell-breathe {
+      0%,100% { box-shadow: 0 0 0 1px rgba(212,168,67,.06), 0 0 60px rgba(212,168,67,.08), 0 28px 90px rgba(0,0,0,.65); }
+      50%      { box-shadow: 0 0 0 1px rgba(212,168,67,.1),  0 0 80px rgba(212,168,67,.16), 0 28px 90px rgba(0,0,0,.65); }
+    }
+    .card-shell:hover {
+      box-shadow: 0 0 0 1px rgba(212,168,67,.12), 0 0 100px rgba(212,168,67,.2), 0 36px 100px rgba(0,0,0,.72);
+    }
+
+    .auth-card {
       background: var(--surface);
       border-radius: var(--radius);
       overflow: hidden;
+      transition: transform .12s ease;
     }
-    .card.shake { animation: card-shake .4s cubic-bezier(.36,.07,.19,.97); }
+    .auth-card.shake { animation: card-shake .42s cubic-bezier(.36,.07,.19,.97); }
     @keyframes card-shake {
       10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(3px)}
-      30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)}
+      30%,50%,70%{transform:translateX(-5px)} 40%,60%{transform:translateX(5px)}
     }
 
-    /* Card hover */
-    .card-wrapper:hover {
-      box-shadow: 0 28px 80px rgba(26,18,8,.2), 0 6px 24px rgba(26,18,8,.1);
-      transform: translateY(-4px);
-      transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s;
-    }
-
-    /* Tab bar */
+    /* Tabs */
     .tab-bar {
       display: flex;
       background: var(--surface2);
       border-bottom: 1px solid var(--border);
     }
     .tab-btn {
-      flex: 1; padding: 1.05rem;
+      flex: 1; padding: 1.1rem;
       background: transparent; border: none;
       color: var(--muted); font-family: inherit;
-      font-size: .88rem; font-weight: 500; cursor: pointer;
-      position: relative; transition: color .2s;
+      font-size: .875rem; font-weight: 500; cursor: none;
+      position: relative; transition: color .22s;
     }
     .tab-btn:hover { color: var(--text2); }
     .tab-btn::after {
-      content: ''; position: absolute; bottom: -1px; left: 16px; right: 16px;
-      height: 2px; background: var(--accent);
+      content: ''; position: absolute; bottom: -1px; left: 18px; right: 18px;
+      height: 2px; background: linear-gradient(90deg, var(--gold), var(--gold2), var(--gold));
       border-radius: 99px; transform: scaleX(0);
-      transition: transform .32s cubic-bezier(.16,1,.3,1);
+      transition: transform .35s cubic-bezier(.16,1,.3,1);
     }
     .tab-btn.active { color: var(--text); }
     .tab-btn.active::after { transform: scaleX(1); }
 
     /* Form */
-    .form-body { padding: 1.65rem 1.65rem 1.95rem; display: flex; flex-direction: column; gap: 1.1rem; }
-    .social-btns { display: flex; flex-direction: column; gap: .6rem; }
+    .form-body { padding: 1.85rem; display: flex; flex-direction: column; gap: 1.15rem; }
+
+    .social-btns { display: flex; flex-direction: column; gap: .65rem; }
     .social-btn {
-      width: 100%; padding: .78rem 1rem;
-      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      width: 100%; padding: .88rem 1rem;
+      display: flex; align-items: center; justify-content: center; gap: .65rem;
       border-radius: var(--radius-sm); font-family: inherit;
-      font-size: .88rem; font-weight: 500; cursor: pointer;
-      transition: opacity .15s, transform .22s;
-      border: 1px solid var(--border);
+      font-size: .875rem; font-weight: 500; cursor: none;
+      transition: opacity .18s, transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s;
+      border: 1px solid;
     }
-    .social-btn:hover { opacity: .85; transform: translateY(-1px); }
-    .social-btn.google { background: #fff; color: #3c4043; }
-    .social-btn.apple { background: #1a1208; color: #fff; border-color: transparent; }
+    .social-btn:hover { opacity: .88; transform: translateY(-2px); }
+    .social-btn.google {
+      background: #fff; color: #3c4043; border-color: rgba(255,255,255,.18);
+      box-shadow: 0 2px 14px rgba(0,0,0,.22);
+    }
+    .social-btn.google:hover { box-shadow: 0 6px 24px rgba(0,0,0,.32); }
+    .social-btn.apple {
+      background: var(--surface2); color: var(--text); border-color: var(--border2);
+    }
+    .social-btn.apple:hover { background: rgba(242,234,216,.06); }
 
     .divider {
-      display: flex; align-items: center; gap: .75rem;
-      color: var(--muted); font-size: .75rem;
+      display: flex; align-items: center; gap: .8rem;
+      color: var(--muted); font-size: .7rem; letter-spacing: .05em;
     }
-    .divider::before, .divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
 
-    .field { display: flex; flex-direction: column; gap: .44rem; }
+    .field { display: flex; flex-direction: column; gap: .45rem; }
     .field-row { display: flex; gap: .65rem; }
     .field-row .field { flex: 1; }
     .field label {
-      font-size: .71rem; font-weight: 600; color: var(--text2);
-      letter-spacing: .07em; text-transform: uppercase;
+      font-size: .67rem; font-weight: 600; color: var(--muted);
+      letter-spacing: .1em; text-transform: uppercase;
     }
     .field input {
-      width: 100%; padding: .8rem 1.08rem;
-      background: var(--surface2);
+      width: 100%; padding: .88rem 1.12rem;
+      background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
+      border-radius: 10px;
       color: var(--text); font-family: inherit; font-size: .9rem; outline: none;
       transition: border-color .22s, box-shadow .22s, background .2s;
+      cursor: text;
     }
     .field input:focus {
-      background: #fff;
-      border-color: rgba(184,144,42,.6);
-      box-shadow: 0 0 0 3px rgba(184,144,42,.12);
+      background: rgba(212,168,67,.03);
+      border-color: rgba(212,168,67,.5);
+      box-shadow: 0 0 0 3px rgba(212,168,67,.1);
     }
-    .field input::placeholder { color: var(--muted); }
+    .field input::placeholder { color: rgba(242,234,216,.18); }
     .signup-only { display: none; }
 
     .submit-btn {
-      width: 100%; padding: .9rem;
-      background: var(--text); color: var(--bg);
+      width: 100%; padding: .98rem;
+      background: var(--gold);
+      color: #0a0805;
       border: none; border-radius: var(--radius-sm);
-      font-size: .93rem; font-weight: 600; font-family: inherit;
-      cursor: pointer;
-      transition: transform .2s, box-shadow .25s, background .2s;
-      box-shadow: 0 4px 16px rgba(26,18,8,.2);
+      font-size: .95rem; font-weight: 700; font-family: inherit;
+      cursor: none;
+      transition: transform .22s, box-shadow .28s, filter .22s;
+      box-shadow: 0 4px 24px rgba(212,168,67,.3);
       position: relative; overflow: hidden; margin-top: .1rem;
     }
     .submit-btn::before {
       content: ''; position: absolute; inset: 0;
-      background: linear-gradient(to bottom, rgba(255,255,255,.08) 0%, transparent 60%);
+      background: linear-gradient(160deg, rgba(255,255,255,.2) 0%, transparent 55%);
       pointer-events: none;
     }
-    .submit-btn:hover:not(:disabled) { background: #2c2010; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(26,18,8,.28); }
-    .submit-btn:disabled { opacity: .38; cursor: not-allowed; transform: none; }
-    .submit-btn.loading::after {
-      content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
-      animation: shimmer 1.2s infinite; z-index: 1;
+    .submit-btn::after {
+      content: ''; position: absolute;
+      width: 50%; height: 100%; top: 0; left: -60%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
     }
-    @keyframes shimmer { to { left: 160%; } }
+    .submit-btn:hover:not(:disabled) {
+      filter: brightness(1.08);
+      box-shadow: 0 8px 36px rgba(212,168,67,.42);
+      transform: translateY(-1px);
+    }
+    .submit-btn:hover:not(:disabled)::after { left: 140%; transition: left .5s ease; }
+    .submit-btn:disabled { opacity: .36; cursor: not-allowed; transform: none; }
+    .submit-btn.loading::before {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+      animation: shimmer 1.3s linear infinite;
+    }
+    @keyframes shimmer { from{left:-60%} to{left:140%} }
     #error-msg { min-height: 1.2em; font-size: .82rem; color: var(--error); text-align: center; }
+
+    /* ── Global keyframes ── */
+    @keyframes rise { from{opacity:0;transform:translateY(26px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fade { from{opacity:0} to{opacity:1} }
+
+    /* ── Mobile: restore regular cursor ── */
+    @media (max-width: 600px) {
+      .hero-title { letter-spacing: -3px; }
+      .ticker-wrap { margin: 1.5rem 0; }
+    }
   </style>
-  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
 
+  <!-- Layers (behind everything) -->
   <canvas id="globe-canvas"></canvas>
-  <div class="bg-warm"></div>
+  <canvas id="particle-canvas"></canvas>
+  <div class="ambient">
+    <div class="amb-blob amb-blob-1"></div>
+    <div class="amb-blob amb-blob-2"></div>
+    <div class="amb-blob amb-blob-3"></div>
+  </div>
   <div class="bg-grid"></div>
+  <div class="noise"></div>
 
+  <!-- Custom cursor -->
+  <div class="cursor-dot"  id="cursor-dot"></div>
+  <div class="cursor-ring" id="cursor-ring"></div>
+
+  <!-- App -->
   <div id="slide-container">
 
-    <!-- ── Panel 1: Landing ── -->
+    <!-- ─────────── PANEL 1: Landing ─────────── -->
     <div class="panel" id="landing-panel">
-
       <div id="landing-content">
         <div class="landing-main">
 
           <div class="landing-badge">
-            <span class="landing-badge-dot"></span>
+            <span class="badge-dot"></span>
             Powered by Claude AI
           </div>
 
-          <h1 class="landing-logo">
-            <span class="word-wrap"><span class="word">Note</span></span><em>-</em><span class="word-wrap"><span class="word">Cloud</span></span>
-          </h1>
+          <h1 class="hero-title">Note<em>—</em>Cloud</h1>
 
           <p class="landing-tagline"></p>
 
-          <div class="ticker-track" aria-hidden="true">
+          <div class="ticker-wrap" aria-hidden="true">
             <div class="ticker-inner">
-              <span>✦ Powered by Claude AI</span><span class="td">◈</span>
-              <span>Instant transcription</span><span class="td">◈</span>
-              <span>Reads any handwriting</span><span class="td">◈</span>
-              <span>Export to .txt &amp; .docx</span><span class="td">◈</span>
-              <span>Google Docs sync</span><span class="td">◈</span>
-              <span>Share with a link</span><span class="td">◈</span>
-              <span>Free to start</span><span class="td">◈</span>
-              <span>✦ Powered by Claude AI</span><span class="td">◈</span>
-              <span>Instant transcription</span><span class="td">◈</span>
-              <span>Reads any handwriting</span><span class="td">◈</span>
-              <span>Export to .txt &amp; .docx</span><span class="td">◈</span>
-              <span>Google Docs sync</span><span class="td">◈</span>
-              <span>Share with a link</span><span class="td">◈</span>
-              <span>Free to start</span><span class="td">◈</span>
+              <span>✦ Claude AI vision</span><span class="tsep">◈</span>
+              <span>Instant transcription</span><span class="tsep">◈</span>
+              <span>Reads any handwriting</span><span class="tsep">◈</span>
+              <span>Export .txt &amp; .docx</span><span class="tsep">◈</span>
+              <span>Google Docs sync</span><span class="tsep">◈</span>
+              <span>Share with a link</span><span class="tsep">◈</span>
+              <span>Free to start</span><span class="tsep">◈</span>
+              <span>✦ Claude AI vision</span><span class="tsep">◈</span>
+              <span>Instant transcription</span><span class="tsep">◈</span>
+              <span>Reads any handwriting</span><span class="tsep">◈</span>
+              <span>Export .txt &amp; .docx</span><span class="tsep">◈</span>
+              <span>Google Docs sync</span><span class="tsep">◈</span>
+              <span>Share with a link</span><span class="tsep">◈</span>
+              <span>Free to start</span><span class="tsep">◈</span>
             </div>
           </div>
 
-          <div class="features-bento">
-            <div class="bento-card">
-              <div class="bento-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              </div>
-              <div class="bento-title">Instant</div>
-              <div class="bento-desc">Seconds, not hours. Snap and get clean text.</div>
-            </div>
-            <div class="bento-card">
-              <div class="bento-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </div>
-              <div class="bento-title">AI Vision</div>
-              <div class="bento-desc">Claude reads even doctor-level handwriting.</div>
-            </div>
-            <div class="bento-card bento-wide">
-              <div class="bento-inner">
-                <div class="bento-icon" style="margin-bottom:0;flex-shrink:0">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                </div>
-                <div class="bento-body">
-                  <div class="bento-title">Export Anywhere</div>
-                  <div class="bento-desc">Send your notes wherever you need them.</div>
-                  <div class="bento-tags">
-                    <span>.txt</span><span>.docx</span><span>Share link</span><span>Google Docs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div class="feature-pills">
+            <span class="feature-pill"><span class="pill-icon">⚡</span> Seconds, not hours</span>
+            <span class="feature-pill"><span class="pill-icon">✦</span> Claude AI vision</span>
+            <span class="feature-pill"><span class="pill-icon">↗</span> Export anywhere</span>
+            <span class="feature-pill"><span class="pill-icon">🔒</span> Private &amp; secure</span>
           </div>
 
-          <div class="landing-cta">
-            <button id="get-started-btn">
-              Get started
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
-            <p class="landing-footnote">Free to start · No credit card required</p>
-            <p class="landing-signin">Already have an account? <button id="go-login-btn">Log in</button></p>
+          <div class="cta-group">
+            <div class="cta-btn-wrap">
+              <button id="get-started-btn">
+                Start transcribing
+                <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </button>
+            </div>
+            <p class="cta-note">Free to start · No credit card required</p>
+            <p class="cta-signin">Already have an account? <button id="go-login-btn">Log in</button></p>
           </div>
 
           <div class="scroll-hint" id="scroll-hint">
             <span>scroll</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="scroll-needle"></div>
           </div>
         </div>
 
+        <!-- About section -->
         <div class="landing-about" id="landing-about">
           <div class="about-tag">The story</div>
           <h2 class="about-heading">Why I built this</h2>
           <div class="about-quote">
-            <p>As a student, I loved taking notes on my computer — until I hit a strict <span class="about-highlight">"no device policy"</span> in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
+            <p>As a student, I loved taking notes on my computer — until I hit a strict <span class="about-hl">"no device policy"</span> in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
             <p>Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.</p>
           </div>
           <div class="about-footer">
@@ -598,19 +684,24 @@
       </div>
     </div>
 
-    <!-- ── Panel 2: Auth ── -->
+    <!-- ─────────── PANEL 2: Auth ─────────── -->
     <div class="panel" id="auth-panel">
       <div class="auth-inner">
+
         <button class="auth-back" id="back-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
           Back
         </button>
-        <div class="auth-logo">Note<span>-</span>Cloud</div>
-        <div class="card-wrapper">
-          <div class="card" id="auth-card">
+
+        <div class="auth-logo">Note<span>—</span>Cloud</div>
+
+        <div class="card-shell" id="card-shell">
+          <div class="auth-card" id="auth-card">
             <div class="tab-bar">
-              <button class="tab-btn active" id="tab-login" type="button">Log in</button>
-              <button class="tab-btn" id="tab-signup" type="button">Sign up</button>
+              <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
+              <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
             </div>
             <form class="form-body" id="auth-form" novalidate>
               <div class="social-btns">
@@ -624,248 +715,425 @@
                   Continue with Google
                 </button>
                 <button type="button" class="social-btn apple" id="btn-apple">
-                  <svg width="14" height="17" viewBox="0 0 15 18" xmlns="http://www.w3.org/2000/svg" fill="white">
+                  <svg width="14" height="17" viewBox="0 0 15 18" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
                     <path d="M14.25 13.16c-.28.65-.61 1.25-1 1.8-.52.75-.95 1.27-1.28 1.56-.51.47-1.06.71-1.65.72-.42 0-.93-.12-1.52-.36-.59-.24-1.13-.36-1.63-.36-.52 0-1.08.12-1.68.36-.6.24-1.08.37-1.46.38-.57.02-1.13-.23-1.68-.75-.36-.31-.81-.85-1.35-1.62C1.44 14.1.97 13.2.6 12.15.2 11.03 0 9.94 0 8.88c0-1.22.26-2.27.79-3.14A4.63 4.63 0 0 1 2.45 4.1a4.42 4.42 0 0 1 2.22-.63c.44 0 1.01.13 1.73.4.71.26 1.17.4 1.37.4.15 0 .67-.16 1.53-.47.82-.29 1.51-.41 2.08-.36 1.54.12 2.69.73 3.46 1.83-1.37.83-2.05 2-2.04 3.48.01 1.16.43 2.13 1.26 2.88.37.36.79.63 1.25.83-.1.29-.21.57-.33.84zM10.9.36c0 .91-.33 1.76-.99 2.54-.79.93-1.75 1.46-2.79 1.38a2.8 2.8 0 0 1-.02-.34c0-.87.38-1.8 1.05-2.56.34-.39.77-.71 1.29-.97C9.96.15 10.46 0 10.93 0c.01.12.02.24.02.36z"/>
                   </svg>
                   Continue with Apple
                 </button>
               </div>
+
               <div class="divider">or continue with email</div>
+
               <div class="field-row signup-only" id="name-row">
-                <div class="field"><label for="first-name">First name</label><input type="text" id="first-name" name="first_name" placeholder="Alex" autocomplete="given-name"/></div>
-                <div class="field"><label for="last-name">Last name</label><input type="text" id="last-name" name="last_name" placeholder="Smith" autocomplete="family-name"/></div>
+                <div class="field">
+                  <label for="first-name">First</label>
+                  <input type="text" id="first-name" name="first_name" placeholder="Alex" autocomplete="given-name"/>
+                </div>
+                <div class="field">
+                  <label for="last-name">Last</label>
+                  <input type="text" id="last-name" name="last_name" placeholder="Smith" autocomplete="family-name"/>
+                </div>
               </div>
-              <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required/></div>
-              <div class="field"><label for="password">Password</label><input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/></div>
-              <div class="field signup-only" id="confirm-field"><label for="confirm">Confirm password</label><input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password"/></div>
-              <div class="field signup-only" id="referral-field"><label for="referral-code">Referral code <span style="font-weight:400;opacity:.6">(optional)</span></label><input type="text" id="referral-code" name="referral_code" placeholder="e.g. XK9MPQ2R" autocomplete="off" style="text-transform:uppercase"/></div>
+              <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required/>
+              </div>
+              <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
+              </div>
+              <div class="field signup-only" id="confirm-field">
+                <label for="confirm">Confirm password</label>
+                <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password"/>
+              </div>
+              <div class="field signup-only" id="referral-field">
+                <label for="referral-code">Referral code <span style="font-weight:400;opacity:.5">(optional)</span></label>
+                <input type="text" id="referral-code" name="referral_code" placeholder="e.g. XK9MPQ2R" autocomplete="off" style="text-transform:uppercase"/>
+              </div>
               <button class="submit-btn" type="submit" id="submit-btn">Log in</button>
               <p id="error-msg"></p>
             </form>
           </div>
         </div>
+
       </div>
     </div>
-  </div>
+
+  </div><!-- /slide-container -->
 
   <script>
-    // ── CSRF ──────────────────────────────────────────────────────────────────
-    (function() {
-      const tok = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-      const _f = window.fetch;
-      window.fetch = function(url, opts={}) {
-        if (opts.method && opts.method.toUpperCase() !== 'GET')
-          opts.headers = Object.assign({}, opts.headers, { 'X-CSRFToken': tok });
-        return _f(url, opts);
-      };
+  // ── CSRF injection ────────────────────────────────────────────────────────
+  (function(){
+    const tok = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const _f = window.fetch;
+    window.fetch = function(url, opts={}){
+      if (opts.method && opts.method.toUpperCase() !== 'GET')
+        opts.headers = Object.assign({}, opts.headers, {'X-CSRFToken': tok});
+      return _f(url, opts);
+    };
+  })();
+
+  // ── Custom cursor ─────────────────────────────────────────────────────────
+  (function(){
+    const isFine = window.matchMedia('(pointer:fine) and (hover:hover)').matches;
+    if (!isFine) return;
+
+    const dot  = document.getElementById('cursor-dot');
+    const ring = document.getElementById('cursor-ring');
+    let mx = innerWidth/2, my = innerHeight/2;
+    let rx = mx, ry = my;
+
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    document.addEventListener('mousedown', () => document.body.classList.add('cur-click'));
+    document.addEventListener('mouseup',   () => document.body.classList.remove('cur-click'));
+
+    const hoverEls = document.querySelectorAll('button, a, input, .feature-pill');
+    hoverEls.forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('cur-hover'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('cur-hover'));
+    });
+
+    (function loop(){
+      rx += (mx - rx) * 0.11;
+      ry += (my - ry) * 0.11;
+      dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
+      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+      requestAnimationFrame(loop);
     })();
+  })();
 
-    // ── Animated globe ────────────────────────────────────────────────────────
-    (function() {
-      const canvas = document.getElementById('globe-canvas');
-      const ctx    = canvas.getContext('2d');
-      let W, H;
-      function resize() {
-        W = canvas.width  = window.innerWidth;
-        H = canvas.height = window.innerHeight;
+  // ── Magnetic CTA button ───────────────────────────────────────────────────
+  (function(){
+    const btn = document.getElementById('get-started-btn');
+    let active = false;
+    btn.addEventListener('mouseenter', () => { active = true; });
+    btn.addEventListener('mouseleave', () => {
+      active = false;
+      btn.style.transition = 'transform .55s cubic-bezier(.16,1,.3,1), box-shadow .3s, filter .3s';
+      btn.style.transform = '';
+      setTimeout(() => btn.style.transition = '', 600);
+    });
+    btn.addEventListener('mousemove', e => {
+      if (!active) return;
+      const r  = btn.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width  / 2)) * 0.32;
+      const dy = (e.clientY - (r.top  + r.height / 2)) * 0.32;
+      btn.style.transition = 'box-shadow .3s, filter .3s';
+      btn.style.transform  = `translate(${dx}px, ${dy}px)`;
+    });
+  })();
+
+  // ── Globe ─────────────────────────────────────────────────────────────────
+  (function(){
+    const canvas = document.getElementById('globe-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const R = Math.min(innerWidth, innerHeight) * .38;
+    let angle = 0, mTiltX = 0, mTiltY = 0, cTiltX = 0, cTiltY = 0;
+
+    document.addEventListener('mousemove', e => {
+      mTiltX = (e.clientX / W - .5) * .12;
+      mTiltY = (e.clientY / H - .5) * .06;
+    });
+
+    // Build dots
+    const dots = [];
+    // Latitude rings
+    for (let lat = -80; lat <= 80; lat += 15){
+      const y = Math.sin(lat * Math.PI / 180);
+      const cr = Math.cos(lat * Math.PI / 180);
+      const n = Math.max(6, Math.round(52 * cr));
+      for (let i = 0; i < n; i++){
+        const lon = (i / n) * Math.PI * 2;
+        dots.push({ x: Math.cos(lon)*cr, y, z: Math.sin(lon)*cr, r: .8, type: 0 });
       }
-      resize();
-      window.addEventListener('resize', resize);
-      const R = Math.min(window.innerWidth, window.innerHeight) * 0.38;
-      let angle = 0;
-
-      // Build globe dots: latitude/longitude grid + random land scatter
-      const dots = [];
-
-      // Grid lines (latitude parallels + longitude meridians)
-      for (let lat = -80; lat <= 80; lat += 15) {
-        const y  = Math.sin(lat * Math.PI / 180);
+    }
+    // Longitude lines
+    for (let lon = 0; lon < 360; lon += 18){
+      const a = lon * Math.PI / 180;
+      for (let lat = -85; lat <= 85; lat += 5.5){
+        const y = Math.sin(lat * Math.PI / 180);
         const cr = Math.cos(lat * Math.PI / 180);
-        const count = Math.max(6, Math.round(48 * cr));
-        for (let i = 0; i < count; i++) {
-          const lon = (i / count) * Math.PI * 2;
-          dots.push({ x: Math.cos(lon) * cr, y, z: Math.sin(lon) * cr, r: .9 });
+        dots.push({ x: Math.cos(a)*cr, y, z: Math.sin(a)*cr, r: .8, type: 0 });
+      }
+    }
+    // Land scatter dots
+    for (let i = 0; i < 600; i++){
+      const u = Math.random()*2 - 1;
+      const t = Math.random()*Math.PI*2;
+      const r = Math.sqrt(1 - u*u);
+      dots.push({ x: Math.cos(t)*r, y: u, z: Math.sin(t)*r, r: 1.7, type: 1 });
+    }
+
+    function draw(){
+      ctx.clearRect(0, 0, W, H);
+      angle += 0.0022;
+      cTiltX += (mTiltX - cTiltX) * .04;
+      cTiltY += (mTiltY - cTiltY) * .04;
+
+      // Globe atmosphere glow
+      const grd = ctx.createRadialGradient(W/2, H/2, R*.4, W/2, H/2, R*1.25);
+      grd.addColorStop(0, 'rgba(212,168,67,.025)');
+      grd.addColorStop(.7, 'rgba(212,168,67,.012)');
+      grd.addColorStop(1, 'transparent');
+      ctx.beginPath(); ctx.arc(W/2, H/2, R*1.25, 0, Math.PI*2);
+      ctx.fillStyle = grd; ctx.fill();
+
+      // Project dots
+      const proj = dots.map(d => {
+        // Auto-rotation (Y axis)
+        let x = d.x * Math.cos(angle) - d.z * Math.sin(angle);
+        let z = d.x * Math.sin(angle) + d.z * Math.cos(angle);
+        let y = d.y;
+        // Mouse tilt (X axis)
+        let y2 =  y * Math.cos(cTiltY) - z * Math.sin(cTiltY);
+        let z2 =  y * Math.sin(cTiltY) + z * Math.cos(cTiltY);
+        // Mouse tilt (Y axis tiny correction)
+        let x2 =  x * Math.cos(cTiltX) + z2 * Math.sin(cTiltX);
+        let z3 = -x * Math.sin(cTiltX) + z2 * Math.cos(cTiltX);
+        return { px: W/2 + x2*R, py: H/2 - y2*R, z: z3, r: d.r, type: d.type };
+      }).sort((a,b) => a.z - b.z);
+
+      proj.forEach(p => {
+        const depth = (p.z + 1) / 2;
+        if (depth < 0.008) return;
+        const size = p.r * (.35 + depth * 1.35);
+        let alpha;
+        if (p.type === 0) {
+          alpha = depth * .5;
+          ctx.beginPath(); ctx.arc(p.px, p.py, size, 0, Math.PI*2);
+          ctx.fillStyle = `rgba(212,168,67,${alpha})`;
+        } else {
+          alpha = depth * .85;
+          ctx.beginPath(); ctx.arc(p.px, p.py, size, 0, Math.PI*2);
+          ctx.fillStyle = `rgba(220,160,50,${alpha})`;
         }
-      }
-      for (let lon = 0; lon < 360; lon += 20) {
-        const a = lon * Math.PI / 180;
-        for (let lat = -85; lat <= 85; lat += 6) {
-          const y  = Math.sin(lat * Math.PI / 180);
-          const cr = Math.cos(lat * Math.PI / 180);
-          dots.push({ x: Math.cos(a) * cr, y, z: Math.sin(a) * cr, r: .9 });
+        ctx.fill();
+      });
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  // ── Floating gold particles ───────────────────────────────────────────────
+  (function(){
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const particles = Array.from({length: 55}, () => makeParticle(true));
+
+    function makeParticle(init){
+      return {
+        x:  Math.random() * (typeof W !== 'undefined' ? W : innerWidth),
+        y:  init ? Math.random() * innerHeight : innerHeight + 10,
+        r:  Math.random() * 1.4 + .4,
+        vx: (Math.random() - .5) * .35,
+        vy: -(Math.random() * .5 + .18),
+        alpha: Math.random() * .4 + .05,
+        life: Math.random(),
+        maxLife: Math.random() * .4 + .6,
+      };
+    }
+
+    function tick(){
+      ctx.clearRect(0, 0, W, H);
+      particles.forEach((p, i) => {
+        p.x  += p.vx;
+        p.y  += p.vy;
+        p.life += .0018;
+        if (p.y < -12 || p.life > p.maxLife){
+          particles[i] = makeParticle(false);
+          return;
         }
-      }
-
-      // Scatter dots (like land masses)
-      for (let i = 0; i < 400; i++) {
-        const u = Math.random() * 2 - 1;
-        const t = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(1 - u * u);
-        dots.push({ x: Math.cos(t)*r, y: u, z: Math.sin(t)*r, r: 1.4 });
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-        angle += 0.0025;
-
-        // Sort back-to-front
-        const projected = dots.map(d => {
-          const x = d.x * Math.cos(angle) - d.z * Math.sin(angle);
-          const z = d.x * Math.sin(angle) + d.z * Math.cos(angle);
-          return { px: W/2 + x * R, py: H/2 - d.y * R, z, r: d.r };
-        }).sort((a, b) => a.z - b.z);
-
-        projected.forEach(p => {
-          const depth = (p.z + 1) / 2;
-          if (depth < 0.02) return;
-          const size  = p.r * (0.5 + depth * 1.2);
-          const alpha = depth * 0.85;
-          ctx.beginPath();
-          ctx.arc(p.px, p.py, size, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(160,118,40,${alpha})`;
-          ctx.fill();
-        });
-
-        requestAnimationFrame(draw);
-      }
-      draw();
-    })();
-
-    // ── Cursor glow ───────────────────────────────────────────────────────────
-    (function() {
-      const glow = document.createElement('div');
-      glow.style.cssText = 'position:fixed;width:500px;height:500px;pointer-events:none;z-index:1;background:radial-gradient(circle,rgba(184,144,42,.06) 0%,transparent 65%);transform:translate(-50%,-50%);top:0;left:0';
-      document.body.appendChild(glow);
-      let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
-      document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-      (function loop() {
-        gx += (mx-gx)*.07; gy += (my-gy)*.07;
-        glow.style.left = gx+'px'; glow.style.top = gy+'px';
-        requestAnimationFrame(loop);
-      })();
-    })();
-
-    // ── Typewriter tagline ────────────────────────────────────────────────────
-    (function() {
-      const el   = document.querySelector('.landing-tagline');
-      const text = 'Turn handwritten notes into clean digital text — instantly, accurately, effortlessly.';
-      let i = 0;
-      function type() { if (i < text.length) { el.textContent += text[i++]; setTimeout(type, i < 20 ? 40 : 22); } }
-      setTimeout(type, 900);
-    })();
-
-    // ── Bento spotlight ───────────────────────────────────────────────────────
-    document.querySelectorAll('.bento-card').forEach(card => {
-      card.addEventListener('mousemove', e => {
-        const r = card.getBoundingClientRect();
-        card.style.setProperty('--sx', ((e.clientX - r.left) / r.width  * 100) + '%');
-        card.style.setProperty('--sy', ((e.clientY - r.top)  / r.height * 100) + '%');
+        const t = p.life / p.maxLife;
+        const a = p.alpha * Math.sin(t * Math.PI) * .8;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(212,168,67,${a})`;
+        ctx.fill();
       });
+      requestAnimationFrame(tick);
+    }
+    tick();
+  })();
+
+  // ── Typewriter tagline ────────────────────────────────────────────────────
+  (function(){
+    const el   = document.querySelector('.landing-tagline');
+    const text = 'Turn handwritten notes into clean digital text — instantly, accurately, effortlessly.';
+    let i = 0;
+    function type(){
+      if (i < text.length){
+        el.textContent += text[i++];
+        setTimeout(type, i < 8 ? 70 : i < 45 ? 26 : 18);
+      }
+    }
+    setTimeout(type, 850);
+  })();
+
+  // ── Cursor glow follows mouse ─────────────────────────────────────────────
+  (function(){
+    const glow = document.createElement('div');
+    glow.style.cssText = 'position:fixed;width:600px;height:600px;pointer-events:none;z-index:1;background:radial-gradient(circle,rgba(212,168,67,.05) 0%,transparent 65%);transform:translate(-50%,-50%);top:0;left:0;transition:none';
+    document.body.appendChild(glow);
+    let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    (function loop(){
+      gx += (mx - gx) * .06; gy += (my - gy) * .06;
+      glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
+      requestAnimationFrame(loop);
+    })();
+  })();
+
+  // ── Slide: landing ↔ auth ─────────────────────────────────────────────────
+  const container  = document.getElementById('slide-container');
+  const getStarted = document.getElementById('get-started-btn');
+  const goLoginBtn = document.getElementById('go-login-btn');
+  const backBtn    = document.getElementById('back-btn');
+
+  function showAuth(signup){
+    container.classList.add('show-auth');
+    if (signup) switchTab('signup');
+  }
+  function showLanding(){
+    container.classList.remove('show-auth');
+  }
+
+  getStarted.addEventListener('click', () => showAuth(true));
+  goLoginBtn.addEventListener('click', () => showAuth(false));
+  backBtn.addEventListener('click', showLanding);
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  const tabLogin   = document.getElementById('tab-login');
+  const tabSignup  = document.getElementById('tab-signup');
+  const nameRow    = document.getElementById('name-row');
+  const confirmFld = document.getElementById('confirm-field');
+  const referralFld= document.getElementById('referral-field');
+  const fNameIn    = document.getElementById('first-name');
+  const lNameIn    = document.getElementById('last-name');
+  const confirmIn  = document.getElementById('confirm');
+  const referralIn = document.getElementById('referral-code');
+  const submitBtn  = document.getElementById('submit-btn');
+  const emailIn    = document.getElementById('email');
+  const passIn     = document.getElementById('password');
+  const errorMsg   = document.getElementById('error-msg');
+  const form       = document.getElementById('auth-form');
+  const authCard   = document.getElementById('auth-card');
+  let activeTab = 'login';
+
+  function switchTab(tab){
+    activeTab = tab; errorMsg.textContent = '';
+    const s = tab === 'signup';
+    tabLogin.classList.toggle('active', !s);
+    tabSignup.classList.toggle('active', s);
+    nameRow.style.display    = s ? 'flex'  : 'none';
+    confirmFld.style.display = s ? 'flex'  : 'none';
+    referralFld.style.display= s ? 'flex'  : 'none';
+    fNameIn.disabled  = !s; lNameIn.disabled = !s;
+    confirmIn.disabled= !s; referralIn.disabled = !s;
+    submitBtn.textContent = s ? 'Create account' : 'Log in';
+    passIn.setAttribute('autocomplete', s ? 'new-password' : 'current-password');
+  }
+
+  tabLogin.addEventListener('click',  () => switchTab('login'));
+  tabSignup.addEventListener('click', () => switchTab('signup'));
+  fNameIn.disabled = true; lNameIn.disabled = true;
+  confirmIn.disabled = true; referralIn.disabled = true;
+
+  document.getElementById('btn-google').addEventListener('click', () => { window.location.href = '/auth/google'; });
+  document.getElementById('btn-apple').addEventListener('click', () => {
+    errorMsg.style.color = 'var(--muted)';
+    errorMsg.textContent = 'Apple login coming soon — use email for now.';
+  });
+
+  // ── Auth form submit ──────────────────────────────────────────────────────
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errorMsg.textContent = ''; errorMsg.style.color = 'var(--error)';
+    const email = emailIn.value.trim(), password = passIn.value;
+    if (!email || !password){ errorMsg.textContent = 'Please fill in all fields.'; return; }
+    const endpoint = activeTab === 'login' ? '/login' : '/signup';
+    const body = activeTab === 'login'
+      ? { email, password }
+      : { email, password, confirm: confirmIn.value, first_name: fNameIn.value.trim(), last_name: lNameIn.value.trim(), referral_code: referralIn.value.trim().toUpperCase() };
+    const orig = submitBtn.textContent;
+    submitBtn.classList.add('loading'); submitBtn.disabled = true;
+    submitBtn.textContent = activeTab === 'login' ? 'Logging in…' : 'Creating account…';
+    try {
+      const res  = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.ok){
+        window.location.href = '/';
+      } else {
+        errorMsg.textContent = data.error || 'Something went wrong.';
+        authCard.classList.add('shake');
+        setTimeout(() => authCard.classList.remove('shake'), 450);
+      }
+    } catch {
+      errorMsg.textContent = 'Network error — is the server running?';
+    } finally {
+      submitBtn.classList.remove('loading'); submitBtn.disabled = false; submitBtn.textContent = orig;
+    }
+  });
+
+  // ── 3D card tilt on auth ──────────────────────────────────────────────────
+  (function(){
+    const shell = document.getElementById('card-shell');
+    const card  = document.getElementById('auth-card');
+    if (!shell) return;
+    shell.addEventListener('mousemove', e => {
+      const r = shell.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width  - .5;
+      const y = (e.clientY - r.top)  / r.height - .5;
+      card.style.transition = 'transform .08s ease';
+      card.style.transform  = `perspective(900px) rotateX(${-y*7}deg) rotateY(${x*7}deg)`;
     });
-
-    // ── Card hover pop ────────────────────────────────────────────────────────
-    (function() {
-      const wrapper = document.querySelector('.card-wrapper');
-      if (!wrapper) return;
-      wrapper.addEventListener('mouseenter', () => {
-        wrapper.style.transition = 'transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s';
-        wrapper.style.transform  = 'translateY(-6px) scale(1.01)';
-        wrapper.style.boxShadow  = '0 32px 80px rgba(26,18,8,.22), 0 6px 24px rgba(26,18,8,.12)';
-      });
-      wrapper.addEventListener('mouseleave', () => {
-        wrapper.style.transition = 'transform .45s cubic-bezier(.16,1,.3,1), box-shadow .45s';
-        wrapper.style.transform  = '';
-        wrapper.style.boxShadow  = '';
-      });
-    })();
-
-    // ── Slide transition ──────────────────────────────────────────────────────
-    const container  = document.getElementById('slide-container');
-    const getStarted = document.getElementById('get-started-btn');
-    const goLoginBtn = document.getElementById('go-login-btn');
-    const backBtn    = document.getElementById('back-btn');
-    function showAuth(s) { container.classList.add('show-auth'); if(s) switchTab('signup'); }
-    function showLanding() { container.classList.remove('show-auth'); }
-    getStarted.addEventListener('click', () => showAuth(true));
-    goLoginBtn.addEventListener('click', () => showAuth(false));
-    backBtn.addEventListener('click', showLanding);
-
-    // ── Tab switching ─────────────────────────────────────────────────────────
-    const tabLogin=document.getElementById('tab-login'), tabSignup=document.getElementById('tab-signup');
-    const nameRow=document.getElementById('name-row'), confirmField=document.getElementById('confirm-field');
-    const referralField=document.getElementById('referral-field');
-    const referralInput=document.getElementById('referral-code');
-    const firstNameInput=document.getElementById('first-name'), lastNameInput=document.getElementById('last-name');
-    const confirmInput=document.getElementById('confirm'), submitBtn=document.getElementById('submit-btn');
-    const emailInput=document.getElementById('email'), passwordInput=document.getElementById('password');
-    const errorMsg=document.getElementById('error-msg'), form=document.getElementById('auth-form');
-    const authCard=document.getElementById('auth-card');
-    let activeTab='login';
-
-    function switchTab(tab) {
-      activeTab=tab; errorMsg.textContent='';
-      const s=tab==='signup';
-      tabLogin.classList.toggle('active',!s); tabSignup.classList.toggle('active',s);
-      nameRow.style.display=s?'flex':'none'; confirmField.style.display=s?'flex':'none';
-      referralField.style.display=s?'flex':'none';
-      firstNameInput.disabled=!s; lastNameInput.disabled=!s;
-      confirmInput.disabled=!s; referralInput.disabled=!s;
-      submitBtn.textContent=s?'Create account':'Log in';
-      passwordInput.setAttribute('autocomplete',s?'new-password':'current-password');
-    }
-    tabLogin.addEventListener('click',()=>switchTab('login'));
-    tabSignup.addEventListener('click',()=>switchTab('signup'));
-    firstNameInput.disabled=true; lastNameInput.disabled=true;
-    confirmInput.disabled=true; referralInput.disabled=true;
-
-    document.getElementById('btn-google').addEventListener('click',()=>{ window.location.href='/auth/google'; });
-    document.getElementById('btn-apple').addEventListener('click',()=>{ errorMsg.style.color='var(--muted)'; errorMsg.textContent='Apple login coming soon — use email for now.'; });
-
-    // ── Form submit ───────────────────────────────────────────────────────────
-    form.addEventListener('submit', async e => {
-      e.preventDefault(); errorMsg.textContent=''; errorMsg.style.color='var(--error)';
-      const email=emailInput.value.trim(), password=passwordInput.value;
-      if (!email||!password) { errorMsg.textContent='Please fill in all fields.'; return; }
-      const endpoint=activeTab==='login'?'/login':'/signup';
-      const body=activeTab==='login'?{email,password}:{email,password,confirm:confirmInput.value,first_name:firstNameInput.value.trim(),last_name:lastNameInput.value.trim(),referral_code:referralInput.value.trim().toUpperCase()};
-      submitBtn.classList.add('loading'); submitBtn.disabled=true;
-      const orig=submitBtn.textContent;
-      submitBtn.textContent=activeTab==='login'?'Logging in…':'Creating account…';
-      try {
-        const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        const data=await res.json();
-        if (data.ok) { window.location.href='/'; }
-        else { errorMsg.textContent=data.error||'Something went wrong.'; authCard.classList.add('shake'); setTimeout(()=>authCard.classList.remove('shake'),400); }
-      } catch { errorMsg.textContent='Network error — is the server running?'; }
-      finally { submitBtn.classList.remove('loading'); submitBtn.disabled=false; submitBtn.textContent=orig; }
+    shell.addEventListener('mouseleave', () => {
+      card.style.transition = 'transform .65s cubic-bezier(.16,1,.3,1)';
+      card.style.transform  = '';
     });
+  })();
 
-    // ── Scroll reveal ─────────────────────────────────────────────────────────
-    const landingContent=document.getElementById('landing-content');
-    const landingAbout=document.getElementById('landing-about');
-    const scrollHint=document.getElementById('scroll-hint');
-    function checkReveal() {
-      if (!landingAbout) return;
-      const cr=landingContent.getBoundingClientRect(), ar=landingAbout.getBoundingClientRect();
-      if (ar.top-cr.top < landingContent.clientHeight*.88) {
-        landingAbout.classList.add('visible');
-        if (scrollHint) scrollHint.classList.add('hidden');
-      }
+  // ── Scroll reveal (about section) ────────────────────────────────────────
+  const lc    = document.getElementById('landing-content');
+  const about = document.getElementById('landing-about');
+  const hint  = document.getElementById('scroll-hint');
+  function checkReveal(){
+    if (!about) return;
+    const cr = lc.getBoundingClientRect();
+    const ar = about.getBoundingClientRect();
+    if (ar.top - cr.top < lc.clientHeight * .86){
+      about.classList.add('visible');
+      if (hint) hint.classList.add('hidden');
     }
-    landingContent.addEventListener('scroll', checkReveal, {passive:true});
-    checkReveal();
+  }
+  lc.addEventListener('scroll', checkReveal, { passive: true });
+  checkReveal();
 
-    // ── Google error param ────────────────────────────────────────────────────
-    const _gErr = new URLSearchParams(window.location.search).get('error');
-    if (_gErr) {
-      const msgs = { google_not_configured:'Google login isn\'t set up yet.', access_denied:'Google sign-in was cancelled.', invalid_state:'Something went wrong. Please try again.', no_email:'Couldn\'t get your email from Google.', account_error:'Account error. Please try again.' };
-      showAuth(false);
-      setTimeout(() => { errorMsg.style.color='var(--error)'; errorMsg.textContent = msgs[_gErr] || 'Google sign-in failed.'; }, 400);
-      history.replaceState({}, '', '/login');
-    }
-
-    // ── Theme ─────────────────────────────────────────────────────────────────
-    if (localStorage.getItem('notecloud-theme')==='light') document.body.classList.add('light');
+  // ── Google OAuth error param ──────────────────────────────────────────────
+  const _gErr = new URLSearchParams(window.location.search).get('error');
+  if (_gErr){
+    const msgs = {
+      google_not_configured: "Google login isn't set up yet.",
+      access_denied:         "Google sign-in was cancelled.",
+      invalid_state:         "Something went wrong. Please try again.",
+      no_email:              "Couldn't get your email from Google.",
+      account_error:         "Account error. Please try again."
+    };
+    showAuth(false);
+    setTimeout(() => {
+      errorMsg.style.color = 'var(--error)';
+      errorMsg.textContent = msgs[_gErr] || 'Google sign-in failed.';
+    }, 500);
+    history.replaceState({}, '', '/login');
+  }
   </script>
+
 </body>
 </html>
