@@ -58,26 +58,12 @@
       will-change: left, top;
       transition: width .2s, height .2s, opacity .2s;
     }
-    .cursor-ring {
-      display: none;
-      position: fixed;
-      width: 36px; height: 36px;
-      border: 1.5px solid rgba(212,168,67,.45);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9998;
-      top: 0; left: 0;
-      transform: translate(-50%,-50%);
-      will-change: left, top;
-      transition: width .3s cubic-bezier(.16,1,.3,1), height .3s cubic-bezier(.16,1,.3,1), border-color .25s, opacity .2s;
-    }
     @media (pointer: fine) and (hover: hover) {
-      .cursor-dot, .cursor-ring { display: block; }
+      .cursor-dot { display: block; }
     }
-    body.cur-hover .cursor-dot  { width: 10px; height: 10px; background: var(--gold2); }
-    body.cur-hover .cursor-ring { width: 56px; height: 56px; border-color: rgba(212,168,67,.75); }
-    body.cur-click .cursor-dot  { width: 4px; height: 4px; opacity: .6; }
-    body.cur-click .cursor-ring { width: 28px; height: 28px; border-color: var(--gold); }
+    body.cur-hover .cursor-dot { width: 10px; height: 10px; background: var(--gold2); }
+    body.cur-click .cursor-dot { width: 3px; height: 3px; opacity: .5; }
+    body.cur-text  .cursor-dot { opacity: 0; }
 
     /* ── Noise ── */
     .noise {
@@ -172,7 +158,7 @@
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       text-align: center;
-      padding: 3rem 0 2rem;
+      padding: 3rem 0 7rem; /* extra bottom padding clears the scroll hint */
       width: 100%; max-width: 720px;
       position: relative;
     }
@@ -240,12 +226,13 @@
       margin: 2.2rem 0;
       opacity: 0; animation: fade .6s .58s forwards;
       mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+      display: flex; align-items: center;
     }
     .ticker-inner {
       display: flex; align-items: center; gap: 2.5rem;
       width: max-content;
       animation: ticker-move 38s linear infinite;
-      font-size: .72rem; font-weight: 500;
+      font-size: .72rem; font-weight: 500; line-height: 1;
       color: var(--muted); letter-spacing: .04em; white-space: nowrap;
     }
     .ticker-inner:hover { animation-play-state: paused; }
@@ -268,9 +255,10 @@
       transition: background .22s, border-color .22s, color .22s, transform .22s, box-shadow .22s;
     }
     .feature-pill:hover {
-      background: rgba(212,168,67,.14); border-color: rgba(212,168,67,.38);
+      background: rgba(212,168,67,.18); border-color: rgba(212,168,67,.45);
       color: var(--text); transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(212,168,67,.12);
+      box-shadow: 0 4px 20px rgba(212,168,67,.15);
+      cursor: default;
     }
     .pill-icon { color: var(--gold); font-size: .8rem; }
 
@@ -313,12 +301,25 @@
       transition: left 0s;
     }
     #get-started-btn:hover {
-      filter: brightness(1.1);
+      filter: brightness(1.06);
       box-shadow: 0 0 0 1px rgba(212,168,67,.5), 0 0 70px rgba(212,168,67,.4), 0 12px 48px rgba(212,168,67,.28);
     }
-    #get-started-btn:hover::after { left: 140%; transition: left .55s ease; }
+    #get-started-btn:active { filter: brightness(.96); }
     .btn-arrow { transition: transform .3s cubic-bezier(.16,1,.3,1); }
     #get-started-btn:hover .btn-arrow { transform: translateX(5px); }
+
+    /* Ripple */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,.35);
+      transform: scale(0);
+      animation: ripple-expand .55s cubic-bezier(.4,0,.2,1) forwards;
+      pointer-events: none;
+    }
+    @keyframes ripple-expand {
+      to { transform: scale(4); opacity: 0; }
+    }
 
     .cta-note { font-size: .74rem; color: var(--muted); }
     .cta-signin { font-size: .84rem; color: var(--muted); }
@@ -415,7 +416,7 @@
       padding: 0; margin-bottom: 2.25rem;
       transition: color .18s, gap .22s;
     }
-    .auth-back:hover { color: var(--text); gap: .6rem; }
+    .auth-back:hover { color: var(--text); gap: .6rem; background: rgba(212,168,67,.06); border-radius: 8px; padding: .2rem .5rem; margin-left: -.5rem; }
 
     .auth-logo {
       font-family: 'Playfair Display', serif;
@@ -464,28 +465,47 @@
       30%,50%,70%{transform:translateX(-5px)} 40%,60%{transform:translateX(5px)}
     }
 
-    /* Tabs */
+    /* ── iOS segmented tab control ── */
     .tab-bar {
-      display: flex;
+      padding: .75rem .75rem .6rem;
       background: var(--surface2);
       border-bottom: 1px solid var(--border);
     }
+    .tab-track {
+      position: relative;
+      display: flex;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(212,168,67,.14);
+      border-radius: 99px;
+      padding: 3px;
+    }
+    /* The sliding pill indicator */
+    .tab-pill {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: calc(50% - 3px); height: calc(100% - 6px);
+      background: rgba(212,168,67,.18);
+      border: 1px solid rgba(212,168,67,.35);
+      border-radius: 99px;
+      transition: transform .38s cubic-bezier(.34,1.4,.64,1);
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+    .tab-pill.to-signup { transform: translateX(100%); }
+
     .tab-btn {
-      flex: 1; padding: 1.1rem;
+      flex: 1; padding: .62rem .5rem;
       background: transparent; border: none;
       color: var(--muted); font-family: inherit;
-      font-size: .875rem; font-weight: 500; cursor: none;
-      position: relative; transition: color .22s;
+      font-size: .84rem; font-weight: 500; cursor: none;
+      border-radius: 99px;
+      position: relative; z-index: 1;
+      transition: color .22s, font-weight .22s, transform .3s cubic-bezier(.34,1.4,.64,1);
+      text-align: center;
     }
-    .tab-btn:hover { color: var(--text2); }
-    .tab-btn::after {
-      content: ''; position: absolute; bottom: -1px; left: 18px; right: 18px;
-      height: 2px; background: linear-gradient(90deg, var(--gold), var(--gold2), var(--gold));
-      border-radius: 99px; transform: scaleX(0);
-      transition: transform .35s cubic-bezier(.16,1,.3,1);
-    }
-    .tab-btn.active { color: var(--text); }
-    .tab-btn.active::after { transform: scaleX(1); }
+    .tab-btn:hover { color: var(--text2); transform: scale(1.06); }
+    .tab-btn.active { color: var(--text); font-weight: 600; transform: scale(1.08); }
+    .tab-btn:not(.active):hover { transform: scale(1.05); }
 
     /* Form */
     .form-body { padding: 1.85rem; display: flex; flex-direction: column; gap: 1.15rem; }
@@ -499,16 +519,22 @@
       transition: opacity .18s, transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s;
       border: 1px solid;
     }
-    .social-btn:hover { opacity: .88; transform: translateY(-2px); }
+    .social-btn:hover { transform: translateY(-2px); }
     .social-btn.google {
       background: #fff; color: #3c4043; border-color: rgba(255,255,255,.18);
       box-shadow: 0 2px 14px rgba(0,0,0,.22);
     }
-    .social-btn.google:hover { box-shadow: 0 6px 24px rgba(0,0,0,.32); }
+    .social-btn.google:hover {
+      background: #f1f1f1;
+      box-shadow: 0 6px 24px rgba(0,0,0,.32);
+    }
     .social-btn.apple {
       background: var(--surface2); color: var(--text); border-color: var(--border2);
     }
-    .social-btn.apple:hover { background: rgba(242,234,216,.06); }
+    .social-btn.apple:hover {
+      background: #2a2018;
+      border-color: rgba(212,168,67,.45);
+    }
 
     .divider {
       display: flex; align-items: center; gap: .8rem;
@@ -532,9 +558,13 @@
       transition: border-color .22s, box-shadow .22s, background .2s;
       cursor: text;
     }
+    .field input:hover:not(:focus) {
+      border-color: rgba(212,168,67,.3);
+      background: rgba(212,168,67,.02);
+    }
     .field input:focus {
-      background: rgba(212,168,67,.03);
-      border-color: rgba(212,168,67,.5);
+      background: rgba(212,168,67,.04);
+      border-color: rgba(212,168,67,.55);
       box-shadow: 0 0 0 3px rgba(212,168,67,.1);
     }
     .field input::placeholder { color: rgba(242,234,216,.18); }
@@ -575,43 +605,45 @@
     @keyframes shimmer { from{left:-60%} to{left:140%} }
     #error-msg { min-height: 1.2em; font-size: .82rem; color: var(--error); text-align: center; }
 
-    /* ── Scroll draw line ── */
-    #scroll-draw-track {
-      position: fixed;
-      left: 2rem; top: 0;
-      height: 100vh; width: 28px;
+    /* ── Scroll wave (in-flow, starts at "scroll" text) ── */
+    #scroll-wave-wrap {
+      width: 40px;
+      height: 220px;
+      flex-shrink: 0;
       pointer-events: none;
-      z-index: 3;
       opacity: 0;
       transition: opacity .5s;
+      margin-top: -1rem; /* tuck up slightly under the scroll hint */
     }
-    #scroll-draw-track.visible { opacity: 1; }
-    #scroll-draw-track.hidden  { opacity: 0; }
+    #scroll-wave-wrap.visible { opacity: 1; }
+    #scroll-wave-wrap.hidden  { opacity: 0; }
 
     #scroll-draw-svg {
-      position: absolute;
-      left: 0; top: 0;
       width: 100%; height: 100%;
+      display: block;
       overflow: visible;
     }
 
-    #scroll-pencil-icon {
-      position: absolute;
-      left: 50%;
-      top: 0;
-      font-size: 15px;
-      line-height: 1;
-      transform: translateX(-50%) rotate(160deg);
-      transform-origin: center center;
-      transition: top .08s linear;
-      filter: drop-shadow(0 0 6px rgba(212,168,67,.7));
-      animation: pencil-jiggle .25s ease-in-out infinite alternate;
+    /* ── Background explosion ── */
+    #bg-explode {
+      position: fixed; inset: 0; z-index: 1;
+      background: #fdf3c0;
+      clip-path: circle(0% at 50% 50%);
+      pointer-events: none;
+      transition: clip-path 1.6s cubic-bezier(.16,1,.3,1);
     }
-    @keyframes pencil-jiggle {
-      from { transform: translateX(-50%) rotate(157deg) scale(1);   }
-      to   { transform: translateX(-50%) rotate(163deg) scale(1.04); }
-    }
-    #scroll-pencil-icon.idle { animation: none; }
+    #bg-explode.exploding { clip-path: circle(150% at 50% 50%); }
+
+    /* About section text flips dark once yellow bg arrives */
+    body.bg-yellow .about-heading   { color: #2a1c06; }
+    body.bg-yellow .about-tag       { color: #8a6020; }
+    body.bg-yellow .about-tag::before { background: #8a6020; }
+    body.bg-yellow .about-quote     { background: rgba(180,130,20,.08); border-color: rgba(180,130,20,.25); border-left-color: #c9940a; }
+    body.bg-yellow .about-quote p   { color: #3a2a08; }
+    body.bg-yellow .about-hl        { color: #1a1005; }
+    body.bg-yellow .about-footer    { background: rgba(180,130,20,.1); border-color: rgba(180,130,20,.2); }
+    body.bg-yellow .about-sig-name  { color: #1a1005; }
+    body.bg-yellow .about-sig-role  { color: #6a5010; }
 
     /* ── Global keyframes ── */
     @keyframes rise { from{opacity:0;transform:translateY(26px)} to{opacity:1;transform:translateY(0)} }
@@ -636,25 +668,11 @@
   </div>
   <div class="bg-grid"></div>
   <div class="noise"></div>
+  <div id="bg-explode"></div>
 
-  <!-- Scroll draw line -->
-  <div id="scroll-draw-track">
-    <svg id="scroll-draw-svg" viewBox="0 0 28 800" preserveAspectRatio="none">
-      <!-- Faint guide track -->
-      <line x1="14" y1="0" x2="14" y2="800"
-        stroke="rgba(212,168,67,.07)" stroke-width="1.5"/>
-      <!-- Gold drawn line, animated by JS -->
-      <line id="scroll-drawn-line" x1="14" y1="0" x2="14" y2="800"
-        stroke="rgba(212,168,67,.55)" stroke-width="1.5"
-        stroke-linecap="round"
-        style="stroke-dasharray:800;stroke-dashoffset:800"/>
-    </svg>
-    <div id="scroll-pencil-icon" class="idle">✏️</div>
-  </div>
 
   <!-- Custom cursor -->
-  <div class="cursor-dot"  id="cursor-dot"></div>
-  <div class="cursor-ring" id="cursor-ring"></div>
+  <div class="cursor-dot" id="cursor-dot"></div>
 
   <!-- App -->
   <div id="slide-container">
@@ -708,14 +726,23 @@
                 </svg>
               </button>
             </div>
-            <p class="cta-note">Free to start · No credit card required</p>
-            <p class="cta-signin">Already have an account? <button id="go-login-btn">Log in</button></p>
+<p class="cta-signin">Already have an account? <button id="go-login-btn">Log in</button></p>
           </div>
 
           <div class="scroll-hint" id="scroll-hint">
             <span>scroll</span>
-            <div class="scroll-needle"></div>
           </div>
+        </div>
+
+        <!-- Wave: grows from "scroll" text downward as user scrolls -->
+        <div id="scroll-wave-wrap">
+          <svg id="scroll-draw-svg" viewBox="0 0 40 800" preserveAspectRatio="none">
+            <path d="M20 0 C34 55,4 90,22 160 C38 220,7 255,14 330 C24 400,36 430,10 500 C2 560,30 610,18 680 C8 730,32 770,20 800"
+              stroke="rgba(212,168,67,.07)" stroke-width="1.5" fill="none"/>
+            <path id="scroll-drawn-line"
+              d="M20 0 C34 55,4 90,22 160 C38 220,7 255,14 330 C24 400,36 430,10 500 C2 560,30 610,18 680 C8 730,32 770,20 800"
+              stroke="rgba(212,168,67,.6)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          </svg>
         </div>
 
         <!-- About section -->
@@ -753,8 +780,11 @@
         <div class="card-shell" id="card-shell">
           <div class="auth-card" id="auth-card">
             <div class="tab-bar">
-              <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
-              <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
+              <div class="tab-track">
+                <div class="tab-pill" id="tab-pill"></div>
+                <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
+                <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
+              </div>
             </div>
             <form class="form-body" id="auth-form" novalidate>
               <div class="social-btns">
@@ -831,48 +861,45 @@
     const isFine = window.matchMedia('(pointer:fine) and (hover:hover)').matches;
     if (!isFine) return;
 
-    const dot  = document.getElementById('cursor-dot');
-    const ring = document.getElementById('cursor-ring');
+    const dot = document.getElementById('cursor-dot');
+    if (!dot) return;
     let mx = innerWidth/2, my = innerHeight/2;
-    let rx = mx, ry = my;
 
     document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
     document.addEventListener('mousedown', () => document.body.classList.add('cur-click'));
     document.addEventListener('mouseup',   () => document.body.classList.remove('cur-click'));
 
-    const hoverEls = document.querySelectorAll('button, a, input, .feature-pill');
-    hoverEls.forEach(el => {
+    document.querySelectorAll('button, a, input, .feature-pill').forEach(el => {
       el.addEventListener('mouseenter', () => document.body.classList.add('cur-hover'));
       el.addEventListener('mouseleave', () => document.body.classList.remove('cur-hover'));
     });
 
+    document.querySelectorAll('input').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('cur-text'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('cur-text'));
+    });
+
     (function loop(){
-      rx += (mx - rx) * 0.11;
-      ry += (my - ry) * 0.11;
-      dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
-      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+      dot.style.left = mx + 'px';
+      dot.style.top  = my + 'px';
       requestAnimationFrame(loop);
     })();
   })();
 
-  // ── Magnetic CTA button ───────────────────────────────────────────────────
+  // ── Ripple on CTA button ──────────────────────────────────────────────────
   (function(){
     const btn = document.getElementById('get-started-btn');
-    let active = false;
-    btn.addEventListener('mouseenter', () => { active = true; });
-    btn.addEventListener('mouseleave', () => {
-      active = false;
-      btn.style.transition = 'transform .55s cubic-bezier(.16,1,.3,1), box-shadow .3s, filter .3s';
-      btn.style.transform = '';
-      setTimeout(() => btn.style.transition = '', 600);
-    });
-    btn.addEventListener('mousemove', e => {
-      if (!active) return;
-      const r  = btn.getBoundingClientRect();
-      const dx = (e.clientX - (r.left + r.width  / 2)) * 0.32;
-      const dy = (e.clientY - (r.top  + r.height / 2)) * 0.32;
-      btn.style.transition = 'box-shadow .3s, filter .3s';
-      btn.style.transform  = `translate(${dx}px, ${dy}px)`;
+    if (!btn) return;
+    btn.addEventListener('mousedown', e => {
+      const r    = btn.getBoundingClientRect();
+      const size = Math.max(r.width, r.height);
+      const x    = e.clientX - r.left - size / 2;
+      const y    = e.clientY - r.top  - size / 2;
+      const rpl  = document.createElement('span');
+      rpl.className = 'ripple';
+      rpl.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
+      btn.appendChild(rpl);
+      rpl.addEventListener('animationend', () => rpl.remove());
     });
   })();
 
@@ -1030,19 +1057,6 @@
     setTimeout(type, 850);
   })();
 
-  // ── Cursor glow follows mouse ─────────────────────────────────────────────
-  (function(){
-    const glow = document.createElement('div');
-    glow.style.cssText = 'position:fixed;width:600px;height:600px;pointer-events:none;z-index:1;background:radial-gradient(circle,rgba(212,168,67,.05) 0%,transparent 65%);transform:translate(-50%,-50%);top:0;left:0;transition:none';
-    document.body.appendChild(glow);
-    let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
-    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-    (function loop(){
-      gx += (mx - gx) * .06; gy += (my - gy) * .06;
-      glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
-      requestAnimationFrame(loop);
-    })();
-  })();
 
   // ── Slide: landing ↔ auth ─────────────────────────────────────────────────
   const container  = document.getElementById('slide-container');
@@ -1080,11 +1094,14 @@
   const authCard   = document.getElementById('auth-card');
   let activeTab = 'login';
 
+  const tabPill = document.getElementById('tab-pill');
+
   function switchTab(tab){
     activeTab = tab; errorMsg.textContent = '';
     const s = tab === 'signup';
     tabLogin.classList.toggle('active', !s);
     tabSignup.classList.toggle('active', s);
+    if (tabPill) tabPill.classList.toggle('to-signup', s);
     nameRow.style.display    = s ? 'flex'  : 'none';
     confirmFld.style.display = s ? 'flex'  : 'none';
     referralFld.style.display= s ? 'flex'  : 'none';
@@ -1135,21 +1152,17 @@
     }
   });
 
-  // ── 3D card tilt on auth ──────────────────────────────────────────────────
+  // ── Scale effect on auth card hover ──────────────────────────────────────
   (function(){
     const shell = document.getElementById('card-shell');
-    const card  = document.getElementById('auth-card');
     if (!shell) return;
-    shell.addEventListener('mousemove', e => {
-      const r = shell.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width  - .5;
-      const y = (e.clientY - r.top)  / r.height - .5;
-      card.style.transition = 'transform .08s ease';
-      card.style.transform  = `perspective(900px) rotateX(${-y*7}deg) rotateY(${x*7}deg)`;
+    shell.addEventListener('mouseenter', () => {
+      shell.style.transition = 'transform .3s cubic-bezier(.16,1,.3,1)';
+      shell.style.transform  = 'scale(1.025)';
     });
     shell.addEventListener('mouseleave', () => {
-      card.style.transition = 'transform .65s cubic-bezier(.16,1,.3,1)';
-      card.style.transform  = '';
+      shell.style.transition = 'transform .45s cubic-bezier(.16,1,.3,1)';
+      shell.style.transform  = '';
     });
   })();
 
@@ -1163,67 +1176,55 @@
     const ar = about.getBoundingClientRect();
     if (ar.top - cr.top < lc.clientHeight * .86){
       about.classList.add('visible');
-      if (hint) hint.classList.add('hidden');
     }
   }
   lc.addEventListener('scroll', checkReveal, { passive: true });
   checkReveal();
 
-  // ── Scroll draw line ──────────────────────────────────────────────────────
+  // ── Scroll draw wave ──────────────────────────────────────────────────────
   (function(){
-    const track   = document.getElementById('scroll-draw-track');
-    const lineEl  = document.getElementById('scroll-drawn-line');
-    const pencil  = document.getElementById('scroll-pencil-icon');
-    if (!track || !lineEl || !pencil) return;
+    const wrap   = document.getElementById('scroll-wave-wrap');
+    const lineEl = document.getElementById('scroll-drawn-line');
+    if (!wrap || !lineEl) return;
 
-    const TOTAL = 800; // matches SVG viewBox height
-    let lastScroll = 0, scrolling = false, idleTimer;
+    const TOTAL = lineEl.getTotalLength();
+    lineEl.style.strokeDasharray  = TOTAL;
+    lineEl.style.strokeDashoffset = TOTAL;
+
+    const bgExplode = document.getElementById('bg-explode');
+    let exploded = false;
 
     function updateLine(){
-      const scrollTop  = lc.scrollTop;
-      const scrollMax  = lc.scrollHeight - lc.clientHeight;
+      const scrollTop = lc.scrollTop;
+      const scrollMax = lc.scrollHeight - lc.clientHeight;
       if (scrollMax <= 0) return;
 
-      const progress   = Math.min(scrollTop / scrollMax, 1);
-      const drawn      = TOTAL * progress;
+      const progress = Math.min(scrollTop / scrollMax, 1);
+      lineEl.style.strokeDashoffset = TOTAL * (1 - progress);
 
-      // Draw the line
-      lineEl.style.strokeDashoffset = TOTAL - drawn;
-
-      // Move pencil to the tip (as % of viewport height, mapped from progress)
-      const tipVH = progress * 95; // never go fully off-screen
-      pencil.style.top = tipVH + 'vh';
-
-      // Show track once scrolling starts
       if (scrollTop > 8){
-        track.classList.add('visible');
-        track.classList.remove('hidden');
+        wrap.classList.add('visible');
+        wrap.classList.remove('hidden');
       }
 
-      // Pencil jiggle only while actively scrolling
-      const moved = Math.abs(scrollTop - lastScroll) > 1;
-      lastScroll = scrollTop;
-      if (moved){
-        pencil.classList.remove('idle');
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => pencil.classList.add('idle'), 120);
+      if (progress >= 0.98 && !exploded) {
+        exploded = true;
+        bgExplode.classList.add('exploding');
+        document.body.classList.add('bg-yellow');
       }
     }
 
     lc.addEventListener('scroll', updateLine, { passive: true });
 
-    // Hide when auth panel is shown
-    document.getElementById('get-started-btn').addEventListener('click', () => {
-      track.classList.remove('visible');
-      track.classList.add('hidden');
-    });
-    document.getElementById('go-login-btn').addEventListener('click', () => {
-      track.classList.remove('visible');
-      track.classList.add('hidden');
-    });
+    function hideWave(){
+      wrap.classList.remove('visible');
+      wrap.classList.add('hidden');
+    }
+    document.getElementById('get-started-btn').addEventListener('click', hideWave);
+    document.getElementById('go-login-btn').addEventListener('click', hideWave);
     document.getElementById('back-btn').addEventListener('click', () => {
-      if (lc.scrollTop > 8) track.classList.add('visible');
-      track.classList.remove('hidden');
+      if (lc.scrollTop > 8) wrap.classList.add('visible');
+      wrap.classList.remove('hidden');
     });
 
     updateLine();

@@ -653,6 +653,34 @@
     }
     .history-item:hover .drag-handle { opacity: 1; }
     .history-item.dragging { opacity: .4; }
+    .history-item { cursor: default; }
+
+    /* ── Per-item ⋯ menu ── */
+    .item-menu-wrap { position: relative; flex-shrink: 0; align-self: center; }
+    .item-menu-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.1rem; line-height: 1;
+      padding: .1rem .3rem; border-radius: 4px;
+      opacity: 0; transition: opacity .15s, background .15s;
+    }
+    .history-item:hover .item-menu-btn { opacity: 1; }
+    .item-menu-btn:hover { background: var(--item-hover-bg); }
+    .item-menu-dropdown {
+      display: none; position: absolute; right: 0; top: calc(100% + 4px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; min-width: 110px; z-index: 200;
+      box-shadow: 0 4px 18px rgba(0,0,0,.18); overflow: hidden;
+    }
+    .item-menu-dropdown.open { display: block; }
+    .item-menu-option {
+      display: block; width: 100%; padding: .52rem .9rem;
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: .8rem; color: var(--text);
+      text-align: left; text-decoration: none;
+      transition: background .12s;
+    }
+    .item-menu-option:hover { background: var(--item-hover-bg); }
+    .item-menu-option.danger { color: var(--error); }
 
     /* ── Notebooks section ── */
     #notebooks-section {
@@ -2186,6 +2214,27 @@
     body.light .bg-orbs .orb-2 { opacity: .04; }
     body.light .bg-orbs .orb-3 { opacity: .03; }
 
+    /* ── Dark mode variable overrides ── */
+    body:not(.light) {
+      --bg:        #0e0b07;
+      --surface:   #1a1510;
+      --border:    rgba(212,168,67,.13);
+      --accent:    #d4a843;
+      --accent-dim:#b8902a;
+      --text:      #f2ead8;
+      --muted:     rgba(242,234,216,.45);
+      --success:   #5a9e58;
+      --error:     #e05555;
+
+      --grid-line:      rgba(212,168,67,.04);
+      --drop-border:    rgba(212,168,67,.22);
+      --preview-fade:   rgba(14,11,7,.88);
+      --clear-bg:       rgba(20,16,10,.94);
+      --bar-track-bg:   rgba(212,168,67,.1);
+      --item-hover-bg:  rgba(212,168,67,.05);
+      --btn-secondary-bg: rgba(212,168,67,.07);
+    }
+
     /* Ensure main content sits above the orbs */
     header, #upload-bar, main { position: relative; z-index: 1; }
 
@@ -2214,22 +2263,11 @@
       will-change: left,top;
       transition: width .18s, height .18s, background .18s;
     }
-    .nc-ring {
-      display: none;
-      position: fixed; width: 34px; height: 34px;
-      border: 1.5px solid rgba(184,144,42,.42);
-      border-radius: 50%; pointer-events: none; z-index: 9998;
-      top: 0; left: 0; transform: translate(-50%,-50%);
-      will-change: left,top;
-      transition: width .28s cubic-bezier(.16,1,.3,1), height .28s cubic-bezier(.16,1,.3,1), border-color .22s;
-    }
     @media (pointer: fine) and (hover: hover) {
-      .nc-dot, .nc-ring { display: block; }
+      .nc-dot { display: block; }
     }
-    body.ncc-hover .nc-dot  { width: 11px; height: 11px; background: #c9a04a; }
-    body.ncc-hover .nc-ring { width: 52px; height: 52px; border-color: rgba(184,144,42,.7); }
-    body.ncc-drop  .nc-dot  { width: 14px; height: 14px; background: var(--accent); }
-    body.ncc-drop  .nc-ring { width: 60px; height: 60px; border-color: var(--accent); border-width: 2px; }
+    body.ncc-hover .nc-dot { width: 11px; height: 11px; background: #c9a04a; }
+    body.ncc-drop  .nc-dot { width: 14px; height: 14px; background: var(--accent); }
 
     /* ── Drop zone: premium hover state ── */
     #drop-zone {
@@ -2272,8 +2310,7 @@
 <body>
 
   <!-- Custom cursor -->
-  <div class="nc-dot"  id="nc-dot"></div>
-  <div class="nc-ring" id="nc-ring"></div>
+  <div class="nc-dot" id="nc-dot"></div>
   <!-- Mouse glow -->
   <div id="nc-mouse-glow"></div>
 
@@ -2377,7 +2414,16 @@
 
     <div class="sidebar-header">
       <h2>Library</h2>
-      <button id="sidebar-close" aria-label="Close history">✕</button>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <button id="clear-history-btn" title="Clear all history" style="
+          background:none;border:1px solid var(--border);border-radius:6px;
+          color:var(--muted);font-family:inherit;font-size:.7rem;font-weight:600;
+          padding:.2rem .6rem;cursor:pointer;
+          transition:border-color .15s,color .15s,background .15s;
+          white-space:nowrap;
+        ">Clear all</button>
+        <button id="sidebar-close" aria-label="Close history">✕</button>
+      </div>
     </div>
 
     <!-- ── Notebooks section ── -->
@@ -2471,8 +2517,13 @@
   </div>
 
   <header>
+    <p id="live-clock" style="
+      font-size:.72rem; font-weight:500; letter-spacing:.06em;
+      color:var(--muted); margin-bottom:.6rem;
+      font-variant-numeric:tabular-nums;
+    "></p>
     <h1 class="logo">Note<span>-</span>Cloud</h1>
-    <p class="tagline">Turn your handwritten notes into text — instantly.</p>
+    <p id="user-greeting" class="tagline" style="font-size:.95rem;"></p>
   </header>
 
   <!-- Token counter bar -->
@@ -3968,6 +4019,30 @@
     const sidebarClose    = document.getElementById("sidebar-close");
     const historyList     = document.getElementById("history-list");
     const notebooksSection = document.getElementById("notebooks-section");
+    const clearHistoryBtn = document.getElementById("clear-history-btn");
+
+    if (clearHistoryBtn) {
+      clearHistoryBtn.addEventListener("mouseenter", () => {
+        clearHistoryBtn.style.borderColor = "var(--error)";
+        clearHistoryBtn.style.color = "var(--error)";
+      });
+      clearHistoryBtn.addEventListener("mouseleave", () => {
+        clearHistoryBtn.style.borderColor = "var(--border)";
+        clearHistoryBtn.style.color = "var(--muted)";
+      });
+      clearHistoryBtn.addEventListener("click", async () => {
+        if (!confirm("Clear all transcription history? This cannot be undone.")) return;
+        clearHistoryBtn.textContent = "Clearing…";
+        clearHistoryBtn.disabled = true;
+        try {
+          await fetch("/history/clear", { method: "POST", credentials: "same-origin" });
+          historyList.innerHTML = '<p style="color:var(--muted);padding:1rem;font-size:.85rem">No transcriptions yet.</p>';
+        } finally {
+          clearHistoryBtn.textContent = "Clear all";
+          clearHistoryBtn.disabled = false;
+        }
+      });
+    }
 
     function openSidebar() {
       historySidebar.classList.add("open");
@@ -4021,10 +4096,17 @@
               <div class="history-item-preview">${escapeHtml(preview)}</div>
               <div class="history-item-meta">
                 <span class="history-item-date">${dateStr} · ${timeStr}</span>
-                <span>${item.word_count} word${item.word_count !== 1 ? "s" : ""}</span>
+                · <span>${item.word_count} word${item.word_count !== 1 ? "s" : ""}</span>
               </div>
             </div>
-            <span class="drag-handle" title="Drag into a notebook">⠿</span>
+            <div class="item-menu-wrap">
+              <button class="item-menu-btn" title="More options">⋯</button>
+              <div class="item-menu-dropdown">
+                <a class="item-menu-option" href="/transcription/${item.id}" target="_blank"
+                   onclick="this.href='/transcription/${item.id}?theme='+(document.body.classList.contains('light')?'light':'dark')">↗ Open</a>
+                <button class="item-menu-option danger item-delete-btn" data-id="${item.id}">Delete</button>
+              </div>
+            </div>
           `;
 
           // Double-click title to rename
@@ -4064,24 +4146,6 @@
             });
           });
 
-          // Clicking an item pastes its full text into the result area
-          div.addEventListener("click", (e) => {
-            // Don't trigger if user clicked the title input or drag handle
-            if (e.target.tagName === "INPUT" || e.target.classList.contains("drag-handle")) return;
-            resultText.value = item.text;
-            const wc = item.text.trim().split(/\s+/).filter(Boolean).length;
-            if (wordCount) wordCount.textContent = wc + " word" + (wc !== 1 ? "s" : "");
-            resultSection.style.display = "block";
-            cleanupBtn.style.display = "";
-            shareBtn.dataset.transId = item.id;
-            dlTxtBtn.href  = `/transcriptions/${item.id}/download/txt`;
-            dlDocxBtn.href = `/transcriptions/${item.id}/download/docx`;
-            dlTxtBtn.style.display  = "";
-            dlDocxBtn.style.display = "";
-            if (gdocsBtn) gdocsBtn.style.display = "";
-            closeSidebar();
-            resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          });
 
           // ── Drag events ──
           div.addEventListener("dragstart", (e) => {
@@ -4105,6 +4169,40 @@
         historyList.innerHTML = '<p style="color:var(--error,#e05555);padding:1rem;font-size:.85rem">Could not load history.</p>';
       }
     }
+
+    // ── Per-item ⋯ menu: toggle + close on outside click ─────────────────────
+    historyList.addEventListener("click", (e) => {
+      const menuBtn = e.target.closest(".item-menu-btn");
+      if (menuBtn) {
+        e.stopPropagation();
+        const dropdown = menuBtn.nextElementSibling;
+        const isOpen = dropdown.classList.contains("open");
+        // Close all open dropdowns first
+        document.querySelectorAll(".item-menu-dropdown.open").forEach(d => d.classList.remove("open"));
+        if (!isOpen) dropdown.classList.add("open");
+        return;
+      }
+    });
+    document.addEventListener("click", () => {
+      document.querySelectorAll(".item-menu-dropdown.open").forEach(d => d.classList.remove("open"));
+    });
+
+    // ── Delete individual transcription ──────────────────────────────────────
+    historyList.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".item-delete-btn");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const row = btn.closest(".history-item");
+      row.style.transition = "opacity .2s";
+      row.style.opacity = "0.4";
+      const res = await fetch(`/transcriptions/${id}`, { method: "DELETE", credentials: "same-origin" });
+      const data = await res.json();
+      if (data.ok) {
+        row.remove();
+      } else {
+        row.style.opacity = "";
+      }
+    });
 
     // ── History search filter ─────────────────────────────────────────────────
     const historySearch = document.getElementById("history-search");
@@ -4660,17 +4758,61 @@
   </script>
 
   <script>
+  // ── Live clock ────────────────────────────────────────────────────────────
+  (function(){
+    const el = document.getElementById('live-clock');
+    if (!el) return;
+    function tick(){
+      const now = new Date();
+      const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const d = days[now.getDay()];
+      const m = months[now.getMonth()];
+      const date = now.getDate();
+      const yr   = now.getFullYear();
+      const h    = String(now.getHours()).padStart(2,'0');
+      const min  = String(now.getMinutes()).padStart(2,'0');
+      const s    = String(now.getSeconds()).padStart(2,'0');
+      el.textContent = `${d}, ${m} ${date} ${yr}  ·  ${h}:${min}:${s}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // ── Personalized greeting ─────────────────────────────────────────────────
+  (function(){
+    const el        = document.getElementById('user-greeting');
+    const firstName = {{ (user.first_name or '') | tojson }};
+    if (!el) return;
+    const name = firstName ? ', ' + firstName : '';
+    const hour = new Date().getHours();
+    const timeGreet = hour < 12 ? 'Good morning'
+                    : hour < 17 ? 'Good afternoon'
+                    : hour < 21 ? 'Good evening'
+                    :             'Up late';
+    const extras = [
+      `${timeGreet}${name} ✦`,
+      `Welcome back${name} — ready to transcribe?`,
+      `Hey${name}! What are we writing today?`,
+      `${timeGreet}${name}. Let's get to work.`,
+      `Notes don't transcribe themselves${name ? ', ' + firstName : ''} 😄`,
+      `Back again${name}? Nice.`,
+      `${timeGreet}${name}. Your notes are waiting.`,
+      `Hello${name} — let's turn those scribbles into text.`,
+    ];
+    el.textContent = extras[Math.floor(Math.random() * extras.length)];
+  })();
+
   // ── Custom cursor ─────────────────────────────────────────────────────────
   (function(){
     const isFine = window.matchMedia('(pointer:fine) and (hover:hover)').matches;
     if (!isFine) return;
 
     const dot  = document.getElementById('nc-dot');
-    const ring = document.getElementById('nc-ring');
     const glow = document.getElementById('nc-mouse-glow');
-    if (!dot || !ring) return;
+    if (!dot) return;
 
-    let mx = innerWidth/2, my = innerHeight/2, rx = mx, ry = my, gx = mx, gy = my;
+    let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
     document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
     document.addEventListener('mousedown', () => dot.style.transform = 'translate(-50%,-50%) scale(.7)');
     document.addEventListener('mouseup',   () => dot.style.transform = 'translate(-50%,-50%) scale(1)');
@@ -4690,12 +4832,9 @@
     updateHover();
 
     (function loop(){
-      rx += (mx - rx) * 0.11;
-      ry += (my - ry) * 0.11;
       gx += (mx - gx) * 0.055;
       gy += (my - gy) * 0.055;
       dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
-      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
       glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
       requestAnimationFrame(loop);
     })();

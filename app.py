@@ -14,6 +14,7 @@ import os
 import re
 import secrets
 import sqlite3
+import ref
 from datetime import date, datetime
 from functools import wraps
 
@@ -622,6 +623,124 @@ def history():
 
     conn.close()
     return jsonify({"items": items})
+
+
+@app.route("/transcriptions/<int:trans_id>", methods=["DELETE"])
+@login_required
+def delete_transcription(trans_id):
+    """DELETE /transcriptions/<id> — delete a single transcription."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id FROM transcriptions WHERE id = ? AND user_id = ?",
+        (trans_id, session["user_id"])
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Not found."}), 404
+    conn.execute("DELETE FROM notebook_transcriptions WHERE transcription_id = ?", (trans_id,))
+    conn.execute("DELETE FROM transcriptions WHERE id = ?", (trans_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/history/clear", methods=["POST"])
+@login_required
+def clear_history():
+    """DELETE all transcriptions for the logged-in user."""
+    conn = get_db()
+    conn.execute("DELETE FROM notebook_transcriptions WHERE transcription_id IN "
+                 "(SELECT id FROM transcriptions WHERE user_id = ?)", (session["user_id"],))
+    conn.execute("DELETE FROM transcriptions WHERE user_id = ?", (session["user_id"],))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/transcription/<int:trans_id>")
+@login_required
+def transcription_detail(trans_id):
+    """Render the detail page for a single transcription."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id, text, word_count, created_at, title FROM transcriptions WHERE id = ? AND user_id = ?",
+        (trans_id, session["user_id"])
+    ).fetchone()
+    conn.close()
+    if not row:
+        return "Not found", 404
+    return render_template("transcription.html", t=dict(row))
+
+
+@app.route("/transcriptions/<int:trans_id>/rewrite", methods=["POST"])
+@login_required
+def rewrite_transcription(trans_id):
+    """
+    POST /transcriptions/<id>/rewrite  { "text": "...", "style": "longer|shorter|casual|professional|..." }
+    Rewrites the transcription text using Claude and returns the new text.
+    """
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id FROM transcriptions WHERE id = ? AND user_id = ?",
+        (trans_id, session["user_id"])
+    ).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "Not found"}), 404
+
+    data  = request.get_json(silent=True) or {}
+    text  = (data.get("text") or "").strip()
+    style = (data.get("style") or "").strip().lower()
+    if not text or not style:
+        return jsonify({"error": "Missing text or style"}), 400
+
+    prompts = {
+        "longer":       "Expand this text significantly, adding more detail and depth while keeping the same meaning:",
+        "shorter":      "Condense this text to its essential points, keeping it clear and readable:",
+        "casual":       "Rewrite this in a casual, conversational tone — like texting a friend:",
+        "professional": "Rewrite this in a polished, professional tone suitable for a work email or report:",
+        "bullets":      "Convert this into a clean bullet-point list, preserving all key information:",
+        "simplify":     "Rewrite this in simple, plain language that anyone can understand:",
+        "formal":       "Rewrite this in formal academic or business language:",
+        "grammar":      "Fix all grammar, punctuation, and spelling errors in this text without changing the meaning:",
+    }
+    instruction = prompts.get(style, f"Rewrite this text to be more {style}:")
+
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        messages=[{
+            "role": "user",
+            "content": f"{instruction}\n\n{text}"
+        }]
+    )
+    rewritten = message.content[0].text if message.content else text
+    return jsonify({"ok": True, "text": rewritten})
+
+
+@app.route("/transcriptions/<int:trans_id>/save", methods=["POST"])
+@login_required
+def save_transcription(trans_id):
+    """POST /transcriptions/<id>/save  { "text": "..." }  — update stored text."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id FROM transcriptions WHERE id = ? AND user_id = ?",
+        (trans_id, session["user_id"])
+    ).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    word_count = len(text.split()) if text else 0
+    conn.execute(
+        "UPDATE transcriptions SET text = ?, word_count = ? WHERE id = ?",
+        (text, word_count, trans_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "word_count": word_count})
 
 
 def require_paid_tier():
