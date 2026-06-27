@@ -22,15 +22,19 @@
       --grid:    rgba(160,125,60,.055);
     }
     body:not(.light) {
-      --bg:      #0e0b07;
-      --surface: #1a1510;
-      --border:  rgba(212,168,67,.13);
-      --accent:  #d4a843;
-      --text:    #f2ead8;
-      --muted:   rgba(242,234,216,.45);
-      --success: #5a9e58;
-      --error:   #e05555;
-      --grid:    rgba(212,168,67,.04);
+      --bg:        #0e0b07;
+      --surface:   #1a1510;
+      --border:    rgba(212,168,67,.13);
+      --accent:    #d4a843;
+      --text:      #f2ead8;
+      --muted:     rgba(242,234,216,.45);
+      --success:   #5a9e58;
+      --error:     #e05555;
+      --grid:      rgba(212,168,67,.04);
+      --clear-bg:  rgba(20,16,10,.94);
+    }
+    body.light {
+      --clear-bg:  rgba(255,254,249,.88);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -48,7 +52,7 @@
     .topbar {
       position: sticky; top: 0; z-index: 10;
       width: 100%;
-      background: rgba(255,254,249,.88);
+      background: var(--clear-bg);
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
