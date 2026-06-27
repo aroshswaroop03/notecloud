@@ -630,9 +630,12 @@
       background: #fdf3c0;
       clip-path: circle(0% at 50% 50%);
       pointer-events: none;
+      transition: clip-path 0.45s cubic-bezier(.4,0,1,1);
+    }
+    #bg-explode.exploding {
+      clip-path: circle(150% at 50% 50%);
       transition: clip-path 1.6s cubic-bezier(.16,1,.3,1);
     }
-    #bg-explode.exploding { clip-path: circle(150% at 50% 50%); }
 
     /* About section text flips dark once yellow bg arrives */
     body.bg-yellow .about-heading   { color: #2a1c06; }
@@ -880,8 +883,10 @@
     });
 
     (function loop(){
-      dot.style.left = mx + 'px';
-      dot.style.top  = my + 'px';
+      if (!document.hidden) {
+        dot.style.left = mx + 'px';
+        dot.style.top  = my + 'px';
+      }
       requestAnimationFrame(loop);
     })();
   })();
@@ -994,7 +999,8 @@
         ctx.fill();
       });
 
-      requestAnimationFrame(draw);
+      if (!document.hidden) requestAnimationFrame(draw);
+      else setTimeout(draw, 500);
     }
     draw();
   })();
@@ -1038,7 +1044,8 @@
         ctx.fillStyle = `rgba(212,168,67,${a})`;
         ctx.fill();
       });
-      requestAnimationFrame(tick);
+      if (!document.hidden) requestAnimationFrame(tick);
+      else setTimeout(tick, 500);
     }
     tick();
   })();
@@ -1211,6 +1218,10 @@
         exploded = true;
         bgExplode.classList.add('exploding');
         document.body.classList.add('bg-yellow');
+      } else if (progress < 0.92 && exploded) {
+        exploded = false;
+        bgExplode.classList.remove('exploding');
+        document.body.classList.remove('bg-yellow');
       }
     }
 

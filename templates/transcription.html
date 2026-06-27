@@ -21,7 +21,7 @@
       --radius:  14px;
       --grid:    rgba(160,125,60,.055);
     }
-    body:not(.light) {
+    body.dark {
       --bg:        #0e0b07;
       --surface:   #1a1510;
       --border:    rgba(212,168,67,.13);
@@ -529,9 +529,8 @@
   });
   // Apply theme from URL param (?theme=light or ?theme=dark)
   (function(){
-    const theme = new URLSearchParams(location.search).get('theme');
-    if (theme === 'light') document.body.classList.add('light');
-    // dark is the default (body:not(.light))
+    const theme = new URLSearchParams(location.search).get('theme') || 'dark';
+    document.body.classList.add(theme === 'light' ? 'light' : 'dark');
   })();
   </script>
 </body>

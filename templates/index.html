@@ -2215,7 +2215,7 @@
     body.light .bg-orbs .orb-3 { opacity: .03; }
 
     /* ── Dark mode variable overrides ── */
-    body:not(.light) {
+    body.dark {
       --bg:        #0e0b07;
       --surface:   #1a1510;
       --border:    rgba(212,168,67,.13);
@@ -3922,6 +3922,7 @@
 
     function applyTheme(light) {
       document.body.classList.toggle("light", light);
+      document.body.classList.toggle("dark", !light);
       iconMoon.style.display = light ? "none"  : "";
       iconSun.style.display  = light ? ""      : "none";
     }

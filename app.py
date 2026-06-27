@@ -67,6 +67,9 @@ app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
 csrf    = CSRFProtect(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
+# ── Singleton Anthropic client (avoids re-initialising the HTTP client per request) ──
+_anthropic = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
 # Return JSON for CSRF errors (instead of HTML which the frontend can't parse)
 from flask_wtf.csrf import CSRFError
 
@@ -264,6 +267,13 @@ def init_db():
             PRIMARY KEY (notebook_id, transcription_id)
         )
     """)
+    conn.commit()
+
+    # Indexes on hot query paths
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_transcriptions_user ON transcriptions(user_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_transcriptions_user_id_desc ON transcriptions(user_id, id DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_notebooks_user ON notebooks(user_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     conn.commit()
     conn.close()
 
@@ -706,7 +716,7 @@ def rewrite_transcription(trans_id):
     }
     instruction = prompts.get(style, f"Rewrite this text to be more {style}:")
 
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = _anthropic
     message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4096,
@@ -1107,7 +1117,7 @@ def transcribe():
         "no extra commentary. If you cannot read a word clearly, indicate it with [illegible]."
     )
 
-    client = anthropic.Anthropic()
+    client = _anthropic
 
     try:
         message = client.messages.create(
@@ -1199,7 +1209,7 @@ def cleanup_text():
     if not text:
         return jsonify({"error": "No text provided."}), 400
 
-    client = anthropic.Anthropic()
+    client = _anthropic
     try:
         message = client.messages.create(
             model="claude-sonnet-4-5",
