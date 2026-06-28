@@ -14,7 +14,6 @@ import os
 import re
 import secrets
 import sqlite3
-import ref
 from datetime import date, datetime
 from functools import wraps
 
@@ -52,6 +51,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 # Load environment variables from the .env file so ANTHROPIC_API_KEY is available
 load_dotenv()
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 # Create the Flask application. Flask looks for templates in a "templates/" folder
 # and static files (CSS, JS, images) in a "static/" folder by default.
@@ -112,8 +112,8 @@ OWNER_CODE = os.getenv("OWNER_CODE", "")
 # Google OAuth 2.0 credentials — set these in .env
 GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET      = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI       = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:5000/google/callback")
-GOOGLE_LOGIN_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_REDIRECT_URI", "http://localhost:5000/auth/google/callback")
+GOOGLE_REDIRECT_URI       = os.getenv("GOOGLE_REDIRECT_URI", "http://127.0.0.1:5000/google/callback")
+GOOGLE_LOGIN_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_REDIRECT_URI", "http://127.0.0.1:5000/auth/google/callback")
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive.file",
@@ -1681,6 +1681,7 @@ def google_login():
         prompt="select_account",
     )
     session["google_login_state"] = state
+    session["google_login_verifier"] = flow.code_verifier
     return redirect(auth_url)
 
 
@@ -1709,6 +1710,7 @@ def google_login_callback():
         redirect_uri=GOOGLE_LOGIN_REDIRECT_URI,
         state=state,
     )
+    flow.code_verifier = session.pop("google_login_verifier", None)
     flow.fetch_token(authorization_response=request.url)
     creds = flow.credentials
 
@@ -1739,7 +1741,7 @@ def google_login_callback():
         conn.close()
     else:
         # New account via Google — create with random password
-        pw_hash      = generate_password_hash(secrets.token_hex(32))
+        pw_hash      = generate_password_hash(secrets.token_hex(32), method="pbkdf2:sha256")
         created_at   = datetime.utcnow().isoformat()
         ref_code     = secrets.token_urlsafe(6).upper()[:8]
         try:

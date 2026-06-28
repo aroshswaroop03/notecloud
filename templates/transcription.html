@@ -527,6 +527,7 @@
     rewritePreview.classList.remove('show');
     statusText.textContent = 'Discarded.';
   });
+
   // Apply theme from URL param (?theme=light or ?theme=dark)
   (function(){
     const theme = new URLSearchParams(location.search).get('theme') || 'dark';

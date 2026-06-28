@@ -385,6 +385,19 @@
     #transcribe-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
     #transcribe-btn.empty { opacity: .5; }
     #transcribe-btn.empty:hover { transform: none; box-shadow: 0 4px 28px rgba(184,144,42,.4); }
+    /* Empty-click roast: shake + go fully opaque so the burn lands */
+    #transcribe-btn.roasting {
+      opacity: 1 !important;
+      animation: roast-shake .5s cubic-bezier(.36,.07,.19,.97);
+    }
+    @keyframes roast-shake {
+      0%,100% { transform: translateX(0); }
+      15% { transform: translateX(-9px); }
+      30% { transform: translateX(8px); }
+      45% { transform: translateX(-6px); }
+      60% { transform: translateX(5px); }
+      80% { transform: translateX(-3px); }
+    }
     #transcribe-btn:not(:disabled):not(.empty):hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(184,144,42,.58); filter: brightness(1.07); }
 
     /* ── Status ── */
@@ -3455,17 +3468,26 @@
 
     transcribeBtn.addEventListener("click", async () => {
       if (!selectedFiles.length) {
-        // Fade just the label text out, swap, fade back in, then revert after 2s
+        // Roast: shake the button, then fade the label out, swap to a burn,
+        // fade back in, and revert after 2s
+        transcribeBtn.classList.add("roasting");
+        transcribeBtn.style.animation = "none";   // restart the shake on rapid clicks
+        void transcribeBtn.offsetWidth;
+        transcribeBtn.style.animation = "";
         transcribeLabel.style.opacity = "0";
         setTimeout(() => {
-          transcribeLabel.textContent = noFileMsgs[noFileMsgIndex % noFileMsgs.length];
-          noFileMsgIndex++;
+          // Random roast, but never the same one twice in a row
+          let i = Math.floor(Math.random() * noFileMsgs.length);
+          if (noFileMsgs.length > 1 && i === noFileMsgIndex) i = (i + 1) % noFileMsgs.length;
+          noFileMsgIndex = i;
+          transcribeLabel.textContent = noFileMsgs[i];
           transcribeLabel.style.opacity = "";
           setTimeout(() => {
             transcribeLabel.style.opacity = "0";
             setTimeout(() => {
               transcribeLabel.textContent = "Transcribe handwriting";
               transcribeLabel.style.opacity = "";
+              transcribeBtn.classList.remove("roasting");
             }, 200);
           }, 2000);
         }, 200);
@@ -4205,6 +4227,20 @@
             });
           });
 
+
+          // Single-click the row to open the transcription page.
+          // A short delay lets a double-click (rename) cancel it, and we skip
+          // clicks on the ⋯ menu or while a rename input is showing.
+          div.addEventListener("click", (e) => {
+            if (e.target.closest(".item-menu-wrap")) return; // menu handles its own clicks
+            if (div.querySelector("input")) return;          // rename in progress
+            clearTimeout(div._openTimer);
+            div._openTimer = setTimeout(() => {
+              if (div.querySelector("input")) return;        // became a rename (double-click)
+              const theme = document.body.classList.contains("light") ? "light" : "dark";
+              window.location.href = `/transcription/${item.id}?theme=${theme}`;
+            }, 200);
+          });
 
           // ── Drag events ──
           div.addEventListener("dragstart", (e) => {
