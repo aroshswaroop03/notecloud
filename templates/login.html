@@ -612,13 +612,14 @@
 
     /* ── Scroll wave (in-flow, starts at "scroll" text) ── */
     #scroll-wave-wrap {
-      width: 40px;
-      height: 220px;
+      width: 100%;
+      max-width: 440px;
+      height: 264px;
       flex-shrink: 0;
       pointer-events: none;
       opacity: 0;
       transition: opacity .5s;
-      margin-top: -1rem; /* tuck up slightly under the scroll hint */
+      margin-top: .5rem;
     }
     #scroll-wave-wrap.visible { opacity: 1; }
     #scroll-wave-wrap.hidden  { opacity: 0; }
@@ -730,12 +731,14 @@
 
         <!-- Wave: grows from "scroll" text downward as user scrolls -->
         <div id="scroll-wave-wrap">
-          <svg id="scroll-draw-svg" viewBox="0 0 40 800" preserveAspectRatio="none">
-            <path d="M20 0 C34 55,4 90,22 160 C38 220,7 255,14 330 C24 400,36 430,10 500 C2 560,30 610,18 680 C8 730,32 770,20 800"
-              stroke="rgba(212,168,67,.07)" stroke-width="1.5" fill="none"/>
+          <svg id="scroll-draw-svg" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">
+            <!-- ghost -->
+            <path d="M200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230"
+              stroke="rgba(212,168,67,.13)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <!-- animated coil -->
             <path id="scroll-drawn-line"
-              d="M20 0 C34 55,4 90,22 160 C38 220,7 255,14 330 C24 400,36 430,10 500 C2 560,30 610,18 680 C8 730,32 770,20 800"
-              stroke="rgba(212,168,67,.6)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+              d="M200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230"
+              stroke="#d4a843" stroke-width="2.5" fill="none" stroke-linecap="round"/>
           </svg>
         </div>
 
