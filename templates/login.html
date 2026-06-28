@@ -309,21 +309,22 @@
 
     /* Scroll hint */
     .scroll-hint {
-      position: absolute; bottom: 2.25rem;
+      position: absolute; bottom: 2.25rem; left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: .55rem;
-      color: var(--muted); font-size: .6rem; letter-spacing: .17em; text-transform: uppercase;
+      font-size: .6rem; letter-spacing: .17em; text-transform: uppercase;
       opacity: 0; animation: fade .6s 1.2s forwards;
       transition: opacity .4s;
     }
     .scroll-hint.hidden { opacity: 0 !important; pointer-events: none; }
     .scroll-hint span {
-      border: 1px solid var(--gold);
-      border-radius: 6px;
-      padding: .35rem .6rem;
-      transition: color .4s;
+      background: var(--gold);
+      color: #1a1208;
+      font-weight: 700;
+      border-radius: 999px;
+      /* extra left padding offsets the trailing letter-spacing so the word is truly centred */
+      padding: .42rem .95rem .42rem calc(.95rem + .17em);
+      box-shadow: 0 3px 16px rgba(212,168,67,.3);
     }
-    /* keep "scroll" legible the moment the yellow circle reaches it */
-    .scroll-hint.lit { color: #1a1208; }
     .scroll-needle {
       width: 1px; height: 44px;
       background: linear-gradient(to bottom, var(--gold), transparent);
@@ -1149,7 +1150,6 @@
   // ── Scroll reveal (about section) ────────────────────────────────────────
   const lc    = document.getElementById('landing-content');
   const about = document.getElementById('landing-about');
-  const hint  = document.getElementById('scroll-hint');
   function checkReveal(){
     if (!about) return;
     const cr = lc.getBoundingClientRect();
@@ -1233,15 +1233,6 @@
       const t = Math.max(0, Math.min(1, (progress - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
       bgExplode.style.clipPath = `circle(${(t * 150).toFixed(1)}% at 50% 50%)`;
       document.body.classList.toggle('bg-yellow', t > 0.6);
-
-      // Darken "scroll" the instant the yellow circle's edge actually reaches it
-      if (hint) {
-        const w = window.innerWidth, h = window.innerHeight;
-        const radiusPx = (t * 150 / 100) * Math.hypot(w, h) / Math.SQRT2;
-        const r = hint.getBoundingClientRect();
-        const dist = Math.hypot(w / 2 - (r.left + r.width / 2), h / 2 - (r.top + r.height / 2));
-        hint.classList.toggle('lit', radiusPx >= dist);
-      }
     }
 
     lc.addEventListener('scroll', updateLine, { passive: true });
