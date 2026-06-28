@@ -210,7 +210,6 @@
       font-size: .72rem; font-weight: 500; line-height: 1;
       color: var(--muted); letter-spacing: .04em; white-space: nowrap;
     }
-    .ticker-inner:hover { animation-play-state: paused; }
     .tsep { color: var(--gold); opacity: .4; font-size: .5rem; }
     @keyframes ticker-move { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 
@@ -254,11 +253,7 @@
       font-size: 1rem; font-weight: 700; font-family: inherit;
       cursor: pointer;
       overflow: hidden;
-      transition: box-shadow .3s, filter .3s;
-      box-shadow:
-        0 0 0 1px rgba(212,168,67,.3),
-        0 0 40px rgba(212,168,67,.25),
-        0 8px 32px rgba(212,168,67,.18);
+      transition: filter .3s;
     }
     #get-started-btn::before {
       content: '';
@@ -277,7 +272,6 @@
     }
     #get-started-btn:hover {
       filter: brightness(1.06);
-      box-shadow: 0 0 0 1px rgba(212,168,67,.5), 0 0 70px rgba(212,168,67,.4), 0 12px 48px rgba(212,168,67,.28);
     }
     #get-started-btn:active { filter: brightness(.96); }
     .btn-arrow { transition: transform .3s cubic-bezier(.16,1,.3,1); }
@@ -746,8 +740,8 @@
           <div class="about-footer">
             <div class="about-avatar">A</div>
             <div>
-              <div class="about-sig-name">Arosh</div>
-              <div class="about-sig-role">Built with curiosity and a lot of notebooks ✦</div>
+              <div class="about-sig-name">Summer 2026</div>
+              <div class="about-sig-role">Built with curiosity, summer boredom, and a lot of notebooks ✦</div>
             </div>
           </div>
         </div>
@@ -1027,7 +1021,7 @@
   // ── Typewriter tagline ────────────────────────────────────────────────────
   (function(){
     const el   = document.querySelector('.landing-tagline');
-    const text = 'Turn handwritten notes into clean digital text — instantly, accurately, effortlessly.';
+    const text = 'Turn handwritten notes into clean digital text — instantly, accurately, and effortlessly.';
     let i = 0;
     function type(){
       if (i < text.length){

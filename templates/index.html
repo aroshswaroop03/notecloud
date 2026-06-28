@@ -2267,27 +2267,9 @@
     #upload-bar { animation: app-rise .65s .15s cubic-bezier(.16,1,.3,1) both; }
     main      { animation: app-rise .7s  .25s cubic-bezier(.16,1,.3,1) both; }
 
-    /* ── Custom cursor (desktop only) ── */
-    @media (pointer: fine) and (hover: hover) {
-      body { cursor: none; }
-      a, button, input, textarea, label, select,
-      .history-item, .notebook-row, .bento-card,
-      [role="button"], .drop-label, .dl-btn { cursor: none !important; }
-    }
-    .nc-dot {
-      display: none;
-      position: fixed; width: 7px; height: 7px;
-      background: var(--accent); border-radius: 50%;
-      pointer-events: none; z-index: 9999;
-      top: 0; left: 0; transform: translate(-50%,-50%);
-      will-change: left,top;
-      transition: width .18s, height .18s, background .18s;
-    }
-    @media (pointer: fine) and (hover: hover) {
-      .nc-dot { display: block; }
-    }
-    body.ncc-hover .nc-dot { width: 11px; height: 11px; background: #c9a04a; }
-    body.ncc-drop  .nc-dot { width: 14px; height: 14px; background: var(--accent); }
+    /* Interactive elements use the pointer cursor */
+    a, button, label, select, [role="button"],
+    .history-item, .notebook-row, .bento-card, .drop-label, .dl-btn { cursor: pointer; }
 
     /* ── Drop zone: premium hover state ── */
     #drop-zone {
@@ -2330,8 +2312,6 @@
 <body>
 <script>document.body.classList.add(localStorage.getItem("notecloud-theme")==="light"?"light":"dark");</script>
 
-  <!-- Custom cursor -->
-  <div class="nc-dot" id="nc-dot"></div>
   <!-- Mouse glow -->
   <div id="nc-mouse-glow"></div>
 
@@ -4967,38 +4947,20 @@
     el.textContent = extras[Math.floor(Math.random() * extras.length)];
   })();
 
-  // ── Custom cursor ─────────────────────────────────────────────────────────
+  // ── Mouse glow ────────────────────────────────────────────────────────────
   (function(){
     const isFine = window.matchMedia('(pointer:fine) and (hover:hover)').matches;
     if (!isFine) return;
 
-    const dot  = document.getElementById('nc-dot');
     const glow = document.getElementById('nc-mouse-glow');
-    if (!dot) return;
+    if (!glow) return;
 
     let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
     document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-    document.addEventListener('mousedown', () => dot.style.transform = 'translate(-50%,-50%) scale(.7)');
-    document.addEventListener('mouseup',   () => dot.style.transform = 'translate(-50%,-50%) scale(1)');
-
-    const hoverEls = () => document.querySelectorAll('button:not(#transcribe-btn), a, input, select, .history-item, .dropdown-item, .nb-delete, .nb-trans-row');
-    const dropEls  = () => document.querySelectorAll('#drop-zone, .drop-label');
-    const updateHover = () => {
-      hoverEls().forEach(el => {
-        el.addEventListener('mouseenter', () => document.body.classList.add('ncc-hover'));
-        el.addEventListener('mouseleave', () => document.body.classList.remove('ncc-hover'));
-      });
-      dropEls().forEach(el => {
-        el.addEventListener('mouseenter', () => { document.body.classList.add('ncc-drop'); document.body.classList.remove('ncc-hover'); });
-        el.addEventListener('mouseleave', () => document.body.classList.remove('ncc-drop'));
-      });
-    };
-    updateHover();
 
     (function loop(){
       gx += (mx - gx) * 0.055;
       gy += (my - gy) * 0.055;
-      dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
       glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
       requestAnimationFrame(loop);
     })();
