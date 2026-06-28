@@ -536,6 +536,16 @@
     }
     #sidebar-overlay.open { opacity: 1; pointer-events: all; }
 
+    #sidebar-resize-handle {
+      position: absolute; top: 0; right: -4px;
+      width: 8px; height: 100%;
+      cursor: ew-resize; z-index: 10;
+    }
+    #sidebar-resize-handle:hover, body.sidebar-resizing #sidebar-resize-handle {
+      background: linear-gradient(90deg, transparent 2px, rgba(212,168,67,.35) 2px, rgba(212,168,67,.35) 4px, transparent 4px);
+    }
+    body.sidebar-resizing { cursor: ew-resize; user-select: none; }
+
     #history-sidebar {
       position: fixed;
       top: 0; left: 0;
@@ -681,6 +691,16 @@
     }
     .item-menu-option:hover { background: var(--item-hover-bg); }
     .item-menu-option.danger { color: var(--error); }
+    .item-nb-picker { display: none; }
+    .item-nb-picker.open { display: block; border-top: 1px solid var(--border); }
+    .item-nb-choice {
+      display: block; width: 100%; padding: .45rem .9rem .45rem 1.4rem;
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: .78rem; color: var(--muted);
+      text-align: left;
+    }
+    .item-nb-choice:hover { background: var(--item-hover-bg); color: var(--text); }
+    .item-nb-choice.added { color: var(--success); }
 
     /* ── Notebooks section ── */
     #notebooks-section {
@@ -2308,6 +2328,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
+<script>document.body.classList.add(localStorage.getItem("notecloud-theme")==="light"?"light":"dark");</script>
 
   <!-- Custom cursor -->
   <div class="nc-dot" id="nc-dot"></div>
@@ -2411,6 +2432,7 @@
 
   <!-- History sidebar panel -->
   <div id="history-sidebar" aria-label="Transcription history">
+    <div id="sidebar-resize-handle"></div>
 
     <div class="sidebar-header">
       <h2>Library</h2>
@@ -3003,6 +3025,13 @@
         <span class="result-label">Transcription</span>
         <span id="word-count"></span>
       </div>
+      <div id="name-prompt" style="display:none;padding:.55rem .9rem;background:rgba(212,168,67,.06);border-bottom:1px solid var(--border);display:none;align-items:center;gap:.5rem;flex-wrap:wrap;">
+        <span style="font-size:.78rem;color:var(--muted);flex-shrink:0">Name this?</span>
+        <input id="name-prompt-input" type="text" placeholder="e.g. Biology notes, Oct 3" maxlength="60"
+          style="flex:1;min-width:120px;padding:.3rem .55rem;font-size:.78rem;font-family:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;outline:none" />
+        <button id="name-prompt-save" style="padding:.3rem .7rem;font-size:.78rem;font-family:inherit;background:var(--accent);color:#0e0e10;border:none;border-radius:6px;cursor:pointer;font-weight:600">Save</button>
+        <button id="name-prompt-skip" style="padding:.3rem .55rem;font-size:.78rem;font-family:inherit;background:none;color:var(--muted);border:none;cursor:pointer">Skip</button>
+      </div>
       <textarea id="result-text" spellcheck="true" aria-label="Transcribed text"></textarea>
       <div class="result-footer">
         <button id="copy-btn">
@@ -3507,6 +3536,27 @@
           dlTxtBtn.style.display  = "";
           dlDocxBtn.style.display = "";
           if (gdocsBtn) gdocsBtn.style.display = "";
+          // Show name prompt
+          const namePrompt = document.getElementById("name-prompt");
+          const nameInput  = document.getElementById("name-prompt-input");
+          namePrompt.style.display = "flex";
+          nameInput.value = "";
+          nameInput.focus();
+          const hidePrompt = () => { namePrompt.style.display = "none"; };
+          const saveName = async () => {
+            const title = nameInput.value.trim();
+            if (!title) { hidePrompt(); return; }
+            hidePrompt();
+            await fetch(`/transcriptions/${tid}/rename`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              body: JSON.stringify({ title }),
+            });
+          };
+          document.getElementById("name-prompt-save").onclick = saveName;
+          document.getElementById("name-prompt-skip").onclick = hidePrompt;
+          nameInput.onkeydown = (ev) => { if (ev.key === "Enter") saveName(); if (ev.key === "Escape") hidePrompt(); };
         }
 
       } catch (err) {
@@ -4048,6 +4098,8 @@
     function openSidebar() {
       historySidebar.classList.add("open");
       sidebarOverlay.classList.add("open");
+      notebooksSection.classList.add("open");
+      notebooksToggle.setAttribute("aria-expanded", "true");
       loadHistory();
       loadNotebooks();
     }
@@ -4060,6 +4112,29 @@
     hamburgerBtn.addEventListener("click", openSidebar);
     sidebarClose.addEventListener("click", closeSidebar);
     sidebarOverlay.addEventListener("click", closeSidebar);
+
+    // ── Sidebar resize ────────────────────────────────────────────────────────
+    const resizeHandle = document.getElementById("sidebar-resize-handle");
+    const SIDEBAR_MIN = 220, SIDEBAR_MAX = 560;
+    const savedWidth = parseInt(localStorage.getItem("sidebarWidth"));
+    if (savedWidth) historySidebar.style.width = savedWidth + "px";
+
+    resizeHandle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      document.body.classList.add("sidebar-resizing");
+      const onMove = (ev) => {
+        const w = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, ev.clientX));
+        historySidebar.style.width = w + "px";
+      };
+      const onUp = (ev) => {
+        document.body.classList.remove("sidebar-resizing");
+        localStorage.setItem("sidebarWidth", Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, ev.clientX)));
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
 
     // Tracks which transcription is currently being dragged
     let draggedTransId = null;
@@ -4105,6 +4180,9 @@
               <div class="item-menu-dropdown">
                 <a class="item-menu-option" href="/transcription/${item.id}" target="_blank"
                    onclick="this.href='/transcription/${item.id}?theme='+(document.body.classList.contains('light')?'light':'dark')">↗ Open</a>
+                <button class="item-menu-option item-rename-btn" data-id="${item.id}">✎ Rename</button>
+                <button class="item-menu-option item-add-nb-btn" data-id="${item.id}">＋ Add to notebook</button>
+                <div class="item-nb-picker"></div>
                 <button class="item-menu-option danger item-delete-btn" data-id="${item.id}">Delete</button>
               </div>
             </div>
@@ -4152,11 +4230,6 @@
           div.addEventListener("dragstart", (e) => {
             draggedTransId = item.id;
             div.classList.add("dragging");
-            // Open the notebooks section so user sees drop targets
-            if (!notebooksSection.classList.contains("open")) {
-              notebooksSection.classList.add("open");
-              document.getElementById("notebooks-toggle").setAttribute("aria-expanded", "true");
-            }
             e.dataTransfer.effectAllowed = "copy";
           });
           div.addEventListener("dragend", () => {
@@ -4186,6 +4259,62 @@
     });
     document.addEventListener("click", () => {
       document.querySelectorAll(".item-menu-dropdown.open").forEach(d => d.classList.remove("open"));
+    });
+
+    // ── Rename from ⋯ menu ───────────────────────────────────────────────────
+    historyList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".item-rename-btn");
+      if (!btn) return;
+      e.stopPropagation();
+      document.querySelectorAll(".item-menu-dropdown.open").forEach(d => d.classList.remove("open"));
+      const row = btn.closest(".history-item");
+      const titleEl = row.querySelector(".history-item-title");
+      titleEl.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+
+    // ── Add to notebook picker ───────────────────────────────────────────────
+    historyList.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".item-add-nb-btn");
+      if (!btn) return;
+      e.stopPropagation();
+      const picker = btn.nextElementSibling;
+      if (picker.classList.contains("open")) { picker.classList.remove("open"); return; }
+      picker.classList.add("open");
+      if (picker.dataset.loaded) return;
+      picker.dataset.loaded = "1";
+      picker.innerHTML = '<button class="item-nb-choice" disabled style="opacity:.5">Loading…</button>';
+      const res = await fetch("/notebooks", { credentials: "same-origin" });
+      const notebooks = await res.json();
+      picker.innerHTML = "";
+      if (!notebooks.length) {
+        picker.innerHTML = '<button class="item-nb-choice" disabled style="opacity:.5">No notebooks yet</button>';
+        return;
+      }
+      notebooks.forEach(nb => {
+        const b = document.createElement("button");
+        b.className = "item-nb-choice";
+        b.textContent = nb.name;
+        b.style.setProperty("--nb-dot", nb.color);
+        b.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${nb.color};margin-right:.45rem;vertical-align:middle"></span>${escapeHtml(nb.name)}`;
+        b.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          b.disabled = true;
+          const transId = btn.dataset.id;
+          const r = await fetch(`/notebooks/${nb.id}/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ transcription_id: parseInt(transId) }),
+          });
+          const d = await r.json();
+          if (d.ok || d.error === "Already in notebook.") {
+            b.classList.add("added");
+            b.innerHTML = `✓ ${escapeHtml(nb.name)}`;
+          }
+          b.disabled = false;
+        });
+        picker.appendChild(b);
+      });
     });
 
     // ── Delete individual transcription ──────────────────────────────────────
@@ -4247,6 +4376,8 @@
 
     // Show the new-notebook form
     newNotebookBtn.addEventListener("click", () => {
+      notebooksSection.classList.add("open");
+      notebooksToggle.setAttribute("aria-expanded", "true");
       newNotebookForm.classList.add("open");
       notebookNameInput.value = "";
       notebookNameInput.focus();
@@ -4755,6 +4886,38 @@
         openSettings("shortcuts");
       }
     });
+
+    // ── Sidebar resize ────────────────────────────────────────────────────────
+    (function() {
+      const sidebar = document.getElementById("history-sidebar");
+      const handle  = document.getElementById("sidebar-resize-handle");
+      if (!sidebar || !handle) return;
+
+      const MIN_W = 220, MAX_W = Math.min(560, window.innerWidth * 0.7);
+      const saved = parseInt(localStorage.getItem("notecloud-sidebar-w"));
+      if (saved && saved >= MIN_W && saved <= MAX_W) sidebar.style.width = saved + "px";
+
+      handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        document.body.classList.add("sidebar-resizing");
+        const startX = e.clientX;
+        const startW = sidebar.offsetWidth;
+
+        handle.addEventListener("pointermove", onMove);
+        handle.addEventListener("pointerup", onUp, { once: true });
+
+        function onMove(ev) {
+          const w = Math.min(MAX_W, Math.max(MIN_W, startW + ev.clientX - startX));
+          sidebar.style.width = w + "px";
+        }
+        function onUp() {
+          document.body.classList.remove("sidebar-resizing");
+          handle.removeEventListener("pointermove", onMove);
+          localStorage.setItem("notecloud-sidebar-w", sidebar.offsetWidth);
+        }
+      });
+    })();
 
   </script>
 
