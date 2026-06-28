@@ -39,31 +39,6 @@
       height: 100%;
     }
 
-    /* ── Cursor (desktop only) ── */
-    @media (pointer: fine) and (hover: hover) {
-      body { cursor: none; }
-      a, button, input, label, [role="button"], .feature-pill { cursor: none; }
-    }
-
-    .cursor-dot {
-      display: none;
-      position: fixed;
-      width: 6px; height: 6px;
-      background: var(--gold);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9999;
-      top: 0; left: 0;
-      transform: translate(-50%,-50%);
-      will-change: left, top;
-      transition: width .2s, height .2s, opacity .2s;
-    }
-    @media (pointer: fine) and (hover: hover) {
-      .cursor-dot { display: block; }
-    }
-    body.cur-hover .cursor-dot { width: 10px; height: 10px; background: var(--gold2); }
-    body.cur-click .cursor-dot { width: 3px; height: 3px; opacity: .5; }
-    body.cur-text  .cursor-dot { opacity: 0; }
 
     /* ── Noise ── */
     .noise {
@@ -277,7 +252,7 @@
       color: #0a0805;
       border: none; border-radius: var(--radius-sm);
       font-size: 1rem; font-weight: 700; font-family: inherit;
-      cursor: none;
+      cursor: pointer;
       overflow: hidden;
       transition: box-shadow .3s, filter .3s;
       box-shadow:
@@ -325,7 +300,7 @@
     .cta-signin { font-size: .84rem; color: var(--muted); }
     .cta-signin button {
       background: none; border: none; color: var(--text2);
-      font-family: inherit; font-size: inherit; cursor: none;
+      font-family: inherit; font-size: inherit; cursor: pointer;
       text-decoration: underline; text-underline-offset: 3px;
       text-decoration-color: rgba(212,168,67,.25);
       transition: color .18s, text-decoration-color .18s;
@@ -432,7 +407,7 @@
     .auth-back {
       display: inline-flex; align-items: center; gap: .45rem;
       background: none; border: none; color: var(--muted);
-      font-family: inherit; font-size: .84rem; cursor: none;
+      font-family: inherit; font-size: .84rem; cursor: pointer;
       padding: 0; margin-bottom: 2.25rem;
       transition: color .18s, gap .22s;
     }
@@ -517,7 +492,7 @@
       flex: 1; padding: .62rem .5rem;
       background: transparent; border: none;
       color: var(--muted); font-family: inherit;
-      font-size: .84rem; font-weight: 500; cursor: none;
+      font-size: .84rem; font-weight: 500; cursor: pointer;
       border-radius: 99px;
       position: relative; z-index: 1;
       transition: color .22s, font-weight .22s, transform .3s cubic-bezier(.34,1.4,.64,1);
@@ -535,7 +510,7 @@
       width: 100%; padding: .88rem 1rem;
       display: flex; align-items: center; justify-content: center; gap: .65rem;
       border-radius: var(--radius-sm); font-family: inherit;
-      font-size: .875rem; font-weight: 500; cursor: none;
+      font-size: .875rem; font-weight: 500; cursor: pointer;
       transition: opacity .18s, transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s;
       border: 1px solid;
     }
@@ -596,7 +571,7 @@
       color: #0a0805;
       border: none; border-radius: var(--radius-sm);
       font-size: .95rem; font-weight: 700; font-family: inherit;
-      cursor: none;
+      cursor: pointer;
       transition: transform .22s, box-shadow .28s, filter .22s;
       box-shadow: 0 4px 24px rgba(212,168,67,.3);
       position: relative; overflow: hidden; margin-top: .1rem;
@@ -679,10 +654,6 @@
   <div class="bg-grid"></div>
   <div class="noise"></div>
   <div id="bg-explode"></div>
-
-
-  <!-- Custom cursor -->
-  <div class="cursor-dot" id="cursor-dot"></div>
 
   <!-- App -->
   <div id="slide-container">
@@ -874,38 +845,6 @@
     };
   })();
 
-  // ── Custom cursor ─────────────────────────────────────────────────────────
-  (function(){
-    const isFine = window.matchMedia('(pointer:fine) and (hover:hover)').matches;
-    if (!isFine) return;
-
-    const dot = document.getElementById('cursor-dot');
-    if (!dot) return;
-    let mx = innerWidth/2, my = innerHeight/2;
-
-    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-    document.addEventListener('mousedown', () => document.body.classList.add('cur-click'));
-    document.addEventListener('mouseup',   () => document.body.classList.remove('cur-click'));
-
-    document.querySelectorAll('button, a, input, .feature-pill').forEach(el => {
-      el.addEventListener('mouseenter', () => document.body.classList.add('cur-hover'));
-      el.addEventListener('mouseleave', () => document.body.classList.remove('cur-hover'));
-    });
-
-    document.querySelectorAll('input').forEach(el => {
-      el.addEventListener('mouseenter', () => document.body.classList.add('cur-text'));
-      el.addEventListener('mouseleave', () => document.body.classList.remove('cur-text'));
-    });
-
-    (function loop(){
-      if (!document.hidden) {
-        dot.style.left = mx + 'px';
-        dot.style.top  = my + 'px';
-      }
-      requestAnimationFrame(loop);
-    })();
-  })();
-
   // ── Ripple on CTA button ──────────────────────────────────────────────────
   (function(){
     const btn = document.getElementById('get-started-btn');
@@ -934,10 +873,16 @@
     const R = Math.min(innerWidth, innerHeight) * .38;
     let angle = 0, mTiltX = 0, mTiltY = 0, cTiltX = 0, cTiltY = 0;
 
+    // Cursor acts as a repelling magnet on the dots (screen-space)
+    let mouseX = -9999, mouseY = -9999;
+    const REPEL_R = 130, REPEL_MAX = 46;
+
     document.addEventListener('mousemove', e => {
       mTiltX = (e.clientX / W - .5) * .12;
       mTiltY = (e.clientY / H - .5) * .06;
+      mouseX = e.clientX; mouseY = e.clientY;
     });
+    document.addEventListener('mouseleave', () => { mouseX = mouseY = -9999; });
 
     // Build dots
     const dots = [];
@@ -1000,15 +945,28 @@
       proj.forEach(p => {
         const depth = (p.z + 1) / 2;
         if (depth < 0.008) return;
+
+        // Repel away from the cursor — closer dots get pushed harder
+        let px = p.px, py = p.py;
+        const dx = px - mouseX, dy = py - mouseY;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < REPEL_R*REPEL_R) {
+          const dist = Math.sqrt(d2) || 1;
+          const force = 1 - dist / REPEL_R;       // 1 at cursor → 0 at edge
+          const push = force * force * REPEL_MAX; // ease for a soft falloff
+          px += (dx / dist) * push;
+          py += (dy / dist) * push;
+        }
+
         const size = p.r * (.35 + depth * 1.35);
         let alpha;
         if (p.type === 0) {
           alpha = depth * .5;
-          ctx.beginPath(); ctx.arc(p.px, p.py, size, 0, Math.PI*2);
+          ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI*2);
           ctx.fillStyle = `rgba(212,168,67,${alpha})`;
         } else {
           alpha = depth * .85;
-          ctx.beginPath(); ctx.arc(p.px, p.py, size, 0, Math.PI*2);
+          ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI*2);
           ctx.fillStyle = `rgba(220,160,50,${alpha})`;
         }
         ctx.fill();
