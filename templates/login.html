@@ -341,6 +341,14 @@
       transition: opacity .4s;
     }
     .scroll-hint.hidden { opacity: 0 !important; pointer-events: none; }
+    .scroll-hint span {
+      border: 1px solid var(--gold);
+      border-radius: 6px;
+      padding: .35rem .6rem;
+      transition: color .4s;
+    }
+    /* keep "scroll" legible the moment the yellow circle reaches it */
+    .scroll-hint.lit { color: #1a1208; }
     .scroll-needle {
       width: 1px; height: 44px;
       background: linear-gradient(to bottom, var(--gold), transparent);
@@ -740,11 +748,11 @@
         <div id="scroll-wave-wrap">
           <svg id="scroll-draw-svg" viewBox="0 -20 400 400" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">
             <!-- ghost -->
-            <path d="M200,-40 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,358"
+            <path d="M200,-59 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,360"
               stroke="rgba(212,168,67,.13)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
             <!-- animated coil -->
             <path id="scroll-drawn-line"
-              d="M200,-40 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,358"
+              d="M200,-59 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,360"
               stroke="#d4a843" stroke-width="2.5" fill="none" stroke-linecap="round"/>
           </svg>
         </div>
@@ -1267,6 +1275,15 @@
       const t = Math.max(0, Math.min(1, (progress - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
       bgExplode.style.clipPath = `circle(${(t * 150).toFixed(1)}% at 50% 50%)`;
       document.body.classList.toggle('bg-yellow', t > 0.6);
+
+      // Darken "scroll" the instant the yellow circle's edge actually reaches it
+      if (hint) {
+        const w = window.innerWidth, h = window.innerHeight;
+        const radiusPx = (t * 150 / 100) * Math.hypot(w, h) / Math.SQRT2;
+        const r = hint.getBoundingClientRect();
+        const dist = Math.hypot(w / 2 - (r.left + r.width / 2), h / 2 - (r.top + r.height / 2));
+        hint.classList.toggle('lit', radiusPx >= dist);
+      }
     }
 
     lc.addEventListener('scroll', updateLine, { passive: true });
