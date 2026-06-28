@@ -353,7 +353,7 @@
 
     /* ── About section ── */
     .landing-about {
-      width: 100%; max-width: 620px; margin-top: 1.5rem;
+      width: 100%; max-width: 620px; margin-top: 0;
       opacity: 0; transform: translateY(44px);
       transition: opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1);
       position: relative; z-index: 2;
@@ -363,6 +363,13 @@
       box-shadow: 0 8px 48px rgba(0,0,0,.09);
     }
     .landing-about.visible { opacity: 1; transform: translateY(0); }
+    /* SVG frame that the liquid stroke continues into, surrounding the card */
+    #card-frame-svg {
+      position: absolute;
+      left: -20px; top: -20px;
+      pointer-events: none;
+      overflow: visible;
+    }
 
     .about-tag {
       display: inline-flex; align-items: center; gap: .5rem;
@@ -733,17 +740,23 @@
         <div id="scroll-wave-wrap">
           <svg id="scroll-draw-svg" viewBox="0 -20 400 400" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">
             <!-- ghost -->
-            <path d="M200,-40 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,400"
+            <path d="M200,-40 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,358"
               stroke="rgba(212,168,67,.13)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
             <!-- animated coil -->
             <path id="scroll-drawn-line"
-              d="M200,-40 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,400"
+              d="M200,-40 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,358"
               stroke="#d4a843" stroke-width="2.5" fill="none" stroke-linecap="round"/>
           </svg>
         </div>
 
         <!-- About section -->
         <div class="landing-about" id="landing-about">
+          <!-- Liquid frame: stroke continues from the coil and traces around this card (d set in JS) -->
+          <svg id="card-frame-svg" preserveAspectRatio="none" aria-hidden="true">
+            <path id="card-frame-ghost" fill="none" stroke="rgba(212,168,67,.13)" stroke-width="2.5" stroke-linejoin="round"/>
+            <path id="card-frame-left"  fill="none" stroke="#d4a843" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+            <path id="card-frame-right" fill="none" stroke="#d4a843" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
           <div class="about-tag">The story</div>
           <h2 class="about-heading">Why I built this</h2>
           <div class="about-quote">
@@ -1192,9 +1205,41 @@
     lineEl.style.strokeDasharray  = TOTAL;
     lineEl.style.strokeDashoffset = TOTAL;
 
+    // ── Card frame: the liquid continues from the coil and traces around the card ──
+    const frameSvg   = document.getElementById('card-frame-svg');
+    const frameGhost = document.getElementById('card-frame-ghost');
+    const frameLeft  = document.getElementById('card-frame-left');
+    const frameRight = document.getElementById('card-frame-right');
+    let FRAME_LEN = 0; // length of one half (left/right are symmetric)
+    const OUTSET = 20, RADIUS = 32;
+
+    function buildFrame(){
+      if (!about || !frameSvg) return;
+      const W = about.offsetWidth  + OUTSET * 2;   // frame box spans 20px outside the card
+      const H = about.offsetHeight + OUTSET * 2;
+      const r = Math.min(RADIUS, W / 2, H / 2);
+      const cx = W / 2;
+      frameSvg.setAttribute('width',  W);
+      frameSvg.setAttribute('height', H);
+      frameSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      // full rounded-rect (faint ghost)
+      frameGhost.setAttribute('d',
+        `M${r},0 H${W-r} A${r},${r} 0 0 1 ${W},${r} V${H-r} A${r},${r} 0 0 1 ${W-r},${H}`
+        + ` H${r} A${r},${r} 0 0 1 0,${H-r} V${r} A${r},${r} 0 0 1 ${r},0 Z`);
+      // two halves, each starting at top-centre and flowing down a side to bottom-centre
+      frameRight.setAttribute('d',
+        `M${cx},0 H${W-r} A${r},${r} 0 0 1 ${W},${r} V${H-r} A${r},${r} 0 0 1 ${W-r},${H} H${cx}`);
+      frameLeft.setAttribute('d',
+        `M${cx},0 H${r} A${r},${r} 0 0 0 0,${r} V${H-r} A${r},${r} 0 0 0 ${r},${H} H${cx}`);
+      FRAME_LEN = frameRight.getTotalLength();
+      [frameLeft, frameRight].forEach(p => { p.style.strokeDasharray = FRAME_LEN; });
+      updateLine(); // re-apply current fill to the freshly-sized paths
+    }
+
     const bgExplode = document.getElementById('bg-explode');
     const EXPLODE_START = 0.55; // wave 10% drawn
     const EXPLODE_END   = 1.1; // about section fully in view
+    const FRAME_START   = 0.82; // scroll progress at which the liquid reaches the card frame
 
     function updateLine(){
       const scrollTop = lc.scrollTop;
@@ -1202,7 +1247,16 @@
       if (scrollMax <= 0) return;
 
       const progress = Math.min(scrollTop / scrollMax, 1);
-      lineEl.style.strokeDashoffset = TOTAL * (1 - progress);
+
+      // One continuous liquid: coil fills first, then it pours around the card frame.
+      const coilP  = Math.min(progress / FRAME_START, 1);
+      lineEl.style.strokeDashoffset = TOTAL * (1 - coilP);
+      if (FRAME_LEN) {
+        const frameP = Math.max(0, Math.min(1, (progress - FRAME_START) / (1 - FRAME_START)));
+        const off = FRAME_LEN * (1 - frameP);
+        frameLeft.style.strokeDashoffset  = off;
+        frameRight.style.strokeDashoffset = off;
+      }
 
       if (scrollTop > 8){
         wrap.classList.add('visible');
@@ -1216,6 +1270,8 @@
     }
 
     lc.addEventListener('scroll', updateLine, { passive: true });
+    buildFrame();
+    window.addEventListener('resize', buildFrame, { passive: true });
 
     function hideWave(){
       wrap.classList.remove('visible');
