@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Handwriting Transcriber</title>
-  <link rel="icon" href="/static/nc-logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
@@ -2099,18 +2099,6 @@
     #delete-confirm-form { display: none; margin-top: .75rem; }
     #delete-confirm-form.open { display: block; }
 
-    /* Accent colour swatches */
-    .accent-swatch {
-      width: 24px; height: 24px;
-      border-radius: 50%;
-      border: 2.5px solid transparent;
-      cursor: pointer;
-      padding: 0;
-      transition: transform .15s, border-color .15s;
-      outline: none;
-    }
-    .accent-swatch:hover { transform: scale(1.15); }
-    .accent-swatch.selected { border-color: var(--text); transform: scale(1.2); }
 
     /* Font size buttons */
     .font-size-btn {
@@ -2218,13 +2206,6 @@
          the GPU rasterization cost of the old 100px. */
       filter: blur(50px);
     }
-    .bg-orbs .orb-1 {
-      width: 700px; height: 700px;
-      background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
-      top: -300px; left: -200px;
-      opacity: .12;
-      animation: gorb1 26s ease-in-out infinite;
-    }
     .bg-orbs .orb-2 {
       width: 580px; height: 580px;
       background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
@@ -2252,7 +2233,6 @@
       0%,100% { transform: translate(-50%,-50%) scale(1); }
       50%     { transform: translate(-50%,-50%) scale(1.4); }
     }
-    body.light .bg-orbs .orb-1 { opacity: .05; }
     body.light .bg-orbs .orb-2 { opacity: .04; }
     body.light .bg-orbs .orb-3 { opacity: .03; }
 
@@ -2328,27 +2308,14 @@
       left: 140%; transition: left .52s ease;
     }
 
-    /* Cursor-glow that follows mouse in main app */
-    #nc-mouse-glow {
-      position: fixed; pointer-events: none; z-index: 0;
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(184,144,42,.05) 0%, transparent 65%);
-      transform: translate(-50%,-50%);
-      top: 0; left: 0;
-      transition: none;
-    }
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
 <script>document.body.classList.add(localStorage.getItem("notecloud-theme")==="light"?"light":"dark");</script>
 
-  <!-- Mouse glow -->
-  <div id="nc-mouse-glow"></div>
-
   <!-- Background ambience -->
   <div class="bg-orbs">
-    <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
   </div>
@@ -2550,6 +2517,7 @@
   </div>
 
   <header>
+    <img src="/static/logo-icon.png" alt="Note-Cloud" style="display:block;width:44px;height:auto;margin:0 auto .9rem;filter:drop-shadow(0 4px 14px rgba(184,144,42,.22))" />
     <p id="live-clock" style="
       font-size:.72rem; font-weight:500; letter-spacing:.06em;
       color:var(--muted); margin-bottom:.6rem;
@@ -2698,22 +2666,39 @@
 
   <!-- ── Google Docs connect modal ── -->
   <div class="modal-overlay" id="gdocs-connect-modal">
-    <div class="modal" style="max-width:400px">
-      <div class="modal-header">
-        <h3 style="display:flex;align-items:center;gap:.5rem">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Connect Google Docs
-        </h3>
-        <button id="gdocs-connect-close" aria-label="Close">✕</button>
-      </div>
-      <div style="padding:1.25rem 1.5rem 1.5rem">
-        <p style="color:var(--muted);font-size:.875rem;line-height:1.6;margin-bottom:1.25rem">
-          Connect your Google account to export transcriptions directly into a new Google Doc. You'll only need to do this once — Google will ask you to approve access.
+    <div class="modal" style="max-width:400px;padding:0;overflow:hidden">
+      <button id="gdocs-connect-close" aria-label="Close" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;z-index:2">✕</button>
+      <div style="padding:2.25rem 1.75rem 1.75rem;text-align:center">
+        <!-- Icon badge -->
+        <div style="width:56px;height:56px;margin:0 auto 1.1rem;border-radius:16px;background:linear-gradient(135deg,rgba(66,133,244,.16),rgba(52,168,83,.16));border:1px solid rgba(66,133,244,.25);display:flex;align-items:center;justify-content:center">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="#4285F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke="#4285F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="8" y1="13" x2="16" y2="13" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="17" x2="13" y2="17" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+
+        <h3 style="font-size:1.25rem;margin:0 0 .4rem">Connect Google Docs</h3>
+        <p style="color:var(--muted);font-size:.85rem;line-height:1.55;margin:0 auto 1.4rem;max-width:300px">
+          Send your transcriptions straight into your Google Docs. One quick sign-in and you're set.
         </p>
-        <button class="modal-btn primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.6rem" id="gdocs-oauth-btn">
+
+        <!-- Benefit rows -->
+        <div style="text-align:left;display:flex;flex-direction:column;gap:.7rem;margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;gap:.65rem;font-size:.82rem;color:var(--text)">
+            <span style="color:var(--accent);flex-shrink:0">✓</span> Export transcriptions to a Doc in one click
+          </div>
+          <div style="display:flex;align-items:center;gap:.65rem;font-size:.82rem;color:var(--text)">
+            <span style="color:var(--accent);flex-shrink:0">✓</span> We only touch the docs you choose
+          </div>
+          <div style="display:flex;align-items:center;gap:.65rem;font-size:.82rem;color:var(--text)">
+            <span style="color:var(--accent);flex-shrink:0">✓</span> Disconnect anytime in settings
+          </div>
+        </div>
+
+        <button class="modal-btn primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.65rem;padding:.7rem" id="gdocs-oauth-btn">
           <svg width="16" height="16" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-          Connect Google account
+          Continue with Google
         </button>
+        <p style="color:var(--muted);font-size:.72rem;margin:.9rem 0 0;line-height:1.5">
+          By connecting, you agree to our <a href="/privacy" target="_blank" style="color:var(--accent);text-decoration:none">Privacy Policy</a>.
+        </p>
         <p id="gdocs-connect-error" style="color:var(--error,#e05555);font-size:.8rem;margin-top:.75rem;display:none"></p>
       </div>
     </div>
@@ -2827,21 +2812,6 @@
             <input type="checkbox" id="settings-theme-toggle" />
             <span class="toggle-track"></span>
           </label>
-        </div>
-
-        <div class="appearance-row" style="border-bottom:none;padding-bottom:0">
-          <div>
-            <div class="appearance-row-label">Accent colour</div>
-            <div class="appearance-row-sub">Choose your highlight colour</div>
-          </div>
-        </div>
-        <div id="accent-swatches" style="display:flex;gap:.5rem;padding:.6rem 0 .75rem;flex-wrap:wrap">
-          <button class="accent-swatch selected" data-accent="#b8902a" style="background:#b8902a" title="Gold (default)"></button>
-          <button class="accent-swatch" data-accent="#7eb8f7" style="background:#7eb8f7" title="Blue"></button>
-          <button class="accent-swatch" data-accent="#7dc98a" style="background:#7dc98a" title="Green"></button>
-          <button class="accent-swatch" data-accent="#c97eb8" style="background:#c97eb8" title="Pink"></button>
-          <button class="accent-swatch" data-accent="#b87ec9" style="background:#b87ec9" title="Purple"></button>
-          <button class="accent-swatch" data-accent="#e8855a" style="background:#e8855a" title="Coral"></button>
         </div>
 
         <hr class="settings-divider" style="margin-top:.25rem" />
@@ -4812,30 +4782,6 @@
       settingsThemeToggle.checked = document.body.classList.contains("light");
     });
 
-    // ── Appearance: accent colour ─────────────────────────────────────────────
-    const savedAccent = localStorage.getItem("notecloud-accent");
-    function applyAccent(color) {
-      document.body.style.setProperty("--accent", color);
-      document.body.style.setProperty("--accent-dim", color + "99");
-    }
-    if (savedAccent) {
-      applyAccent(savedAccent);
-    }
-    document.querySelectorAll(".accent-swatch").forEach(sw => {
-      if (savedAccent && sw.dataset.accent === savedAccent) {
-        document.querySelectorAll(".accent-swatch").forEach(s => s.classList.remove("selected"));
-        sw.classList.add("selected");
-      }
-      sw.addEventListener("click", () => {
-        document.querySelectorAll(".accent-swatch").forEach(s => s.classList.remove("selected"));
-        sw.classList.add("selected");
-        const color = sw.dataset.accent;
-        applyAccent(color);
-        localStorage.setItem("notecloud-accent", color);
-      });
-    });
-
-
     // ── Appearance: compact history ───────────────────────────────────────────
     const compactToggle = document.getElementById("settings-compact-toggle");
     compactToggle.checked = localStorage.getItem("notecloud-compact") === "1";
@@ -5004,30 +4950,6 @@
       `Hello${name} — let's turn those scribbles into text.`,
     ];
     el.textContent = extras[Math.floor(Math.random() * extras.length)];
-  })();
-
-  // ── Mouse glow ────────────────────────────────────────────────────────────
-  (function(){
-    const isFine = window.matchMedia('(pointer:fine) and (hover:hover)').matches;
-    if (!isFine) return;
-
-    const glow = document.getElementById('nc-mouse-glow');
-    if (!glow) return;
-
-    let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
-    let running = false;
-    function loop(){
-      gx += (mx - gx) * 0.055;
-      gy += (my - gy) * 0.055;
-      glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
-      // Stop the loop once the glow has settled — restart it on the next move.
-      if (Math.abs(mx - gx) < 0.5 && Math.abs(my - gy) < 0.5) { running = false; return; }
-      requestAnimationFrame(loop);
-    }
-    document.addEventListener('mousemove', e => {
-      mx = e.clientX; my = e.clientY;
-      if (!running) { running = true; requestAnimationFrame(loop); }
-    }, { passive: true });
   })();
 
   // ── Magnetic transcribe button ────────────────────────────────────────────

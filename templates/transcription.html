@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{{ t.title or 'Transcription' }} — Note-Cloud</title>
-  <link rel="icon" href="/static/nc-logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet"/>
@@ -21,6 +21,7 @@
       --error:   #a84040;
       --radius:  14px;
       --grid:    rgba(160,125,60,.055);
+      --grid-bright: rgba(160,125,60,.32);
     }
     body.dark {
       --bg:        #0e0b07;
@@ -32,6 +33,7 @@
       --success:   #5a9e58;
       --error:     #e05555;
       --grid:      rgba(212,168,67,.04);
+      --grid-bright: rgba(212,168,67,.34);
       --clear-bg:  rgba(20,16,10,.94);
     }
     body.light {
@@ -48,6 +50,21 @@
         linear-gradient(90deg, var(--grid) 1px, transparent 1px);
       background-size: 40px 40px;
     }
+
+    /* Brighter copy of the grid, revealed only in a circle around the cursor */
+    #grid-glow {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background-image:
+        linear-gradient(var(--grid-bright) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-bright) 1px, transparent 1px);
+      background-size: 40px 40px;
+      -webkit-mask: radial-gradient(200px circle at var(--mx, -500px) var(--my, -500px),
+                    #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
+              mask: radial-gradient(200px circle at var(--mx, -500px) var(--my, -500px),
+                    #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
+      opacity: 0; transition: opacity .35s ease;
+    }
+    #grid-glow.active { opacity: 1; }
 
     /* ── Top bar ── */
     .topbar {
@@ -287,6 +304,9 @@
 </head>
 <body>
 
+  <!-- Cursor-follow grid glow -->
+  <div id="grid-glow"></div>
+
   <!-- Top bar -->
   <div class="topbar">
     <a class="topbar-back" href="javascript:window.close()" onclick="if(window.history.length>1){window.close()}else{window.location='/'}">
@@ -373,6 +393,26 @@
   </div>
 
   <script>
+  // ── Cursor-follow grid glow ───────────────────────────────────────────────
+  (function(){
+    if (!window.matchMedia('(pointer:fine)').matches) return; // skip on touch
+    const glow = document.getElementById('grid-glow');
+    if (!glow) return;
+    let mx = 0, my = 0, queued = false;
+    window.addEventListener('mousemove', (e) => {
+      mx = e.clientX; my = e.clientY;
+      if (!glow.classList.contains('active')) glow.classList.add('active');
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        glow.style.setProperty('--mx', mx + 'px');
+        glow.style.setProperty('--my', my + 'px');
+      });
+    }, { passive: true });
+    document.addEventListener('mouseleave', () => glow.classList.remove('active'));
+  })();
+
   // ── CSRF ──────────────────────────────────────────────────────────────────
   (function(){
     const tok = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
