@@ -1,0 +1,270 @@
+# Note-Cloud — Deployment Guide
+## AWS Elastic Beanstalk + Route 53 + HTTPS
+
+### What you'll end up with
+```
+notecloud.com  (Route 53)
+      │
+      ▼
+ CloudFront / ALB  ← ACM SSL cert (free, auto-renews)
+      │  HTTPS
+      ▼
+Elastic Beanstalk (Python, gunicorn)
+      │
+      ▼
+SQLite at /var/app/scrib_d.db  (survives redeploys)
+```
+
+---
+
+## Prerequisites
+
+Install these on your Mac once:
+
+```bash
+# AWS CLI
+brew install awscli
+
+# EB CLI
+pip install awsebcli --upgrade
+
+# Verify
+aws --version
+eb --version
+```
+
+Then configure your AWS credentials:
+
+```bash
+aws configure
+# AWS Access Key ID:     <your key>
+# AWS Secret Access Key: <your secret>
+# Default region:        us-east-1   (or wherever you want to host)
+# Default output format: json
+```
+
+> Get your access key from AWS Console → IAM → Users → your user → Security credentials → Create access key.
+
+---
+
+## Step 1 — Request an SSL Certificate (ACM)
+
+Do this **first** because DNS validation can take a few minutes.
+
+1. Go to **AWS Certificate Manager** → make sure you're in **us-east-1** (required for EB/ALB)
+2. Click **Request a certificate** → **Request a public certificate**
+3. Add these domain names:
+   - `notecloud.com`
+   - `www.notecloud.com`
+4. Validation method: **DNS validation**
+5. Click **Request**
+6. Open the certificate → click **Create records in Route 53** (one-click since your domain is already there)
+7. Wait ~2 minutes until status shows **Issued** — keep this tab open, you'll need the ARN later
+
+---
+
+## Step 2 — Prepare the deployment package
+
+From your `scribd/` folder, create the zip. Run this in Terminal:
+
+```bash
+cd ~/Desktop/scribd
+
+zip -r notecloud.zip \
+  app.py \
+  Procfile \
+  requirements.txt \
+  templates/ \
+  static/
+```
+
+**Do NOT include:** `.env`, `venv/`, `scrib_d.db`, `*.zip`, `__pycache__/`
+
+---
+
+## Step 3 — Create the Elastic Beanstalk application
+
+### In the AWS Console
+
+1. Go to **Elastic Beanstalk** → **Create application**
+2. **Application name**: `note-cloud`
+3. Click **Create**
+
+### Create the environment
+
+1. Inside your new application → **Create environment**
+2. Settings:
+   - **Environment tier**: Web server environment
+   - **Environment name**: `note-cloud-prod`
+   - **Platform**: Python
+   - **Platform branch**: Python 3.11 (or latest available)
+   - **Application code**: Upload your zip → choose `notecloud.zip`
+3. Click **Configure more options** (important — don't skip)
+
+### Under "Capacity"
+- Change preset to **Load balanced**
+- Min instances: `1`, Max instances: `1` (scale up later if needed)
+- Instance type: `t3.micro` (free-tier eligible)
+
+### Under "Load balancer"
+- Type: **Application Load Balancer**
+- Add a listener:
+  - Port: `443`, Protocol: `HTTPS`
+  - SSL certificate: choose `notecloud.com` (the cert you just created)
+- Keep the default port 80 HTTP listener (you'll redirect it to HTTPS shortly)
+
+4. Click **Create environment** and wait ~5 minutes for the green health check
+
+---
+
+## Step 4 — Set environment variables
+
+In your EB environment → **Configuration** → **Updates, monitoring, and logging** → **Edit** under "Environment properties":
+
+| Key | Value |
+|-----|-------|
+| `ANTHROPIC_API_KEY` | your Anthropic API key |
+| `SECRET_KEY` | a long random string (run `python3 -c "import secrets; print(secrets.token_hex(32))"` to generate one) |
+| `OWNER_CODE` | your owner unlock code |
+| `DB_PATH` | `/var/app/scrib_d.db` |
+| `FLASK_ENV` | `production` |
+
+Click **Apply** and wait for the environment to update.
+
+> `FLASK_ENV=production` enables secure session cookies (HTTPS-only). Do not skip this.
+
+---
+
+## Step 5 — Redirect HTTP → HTTPS
+
+Create a file `.ebextensions/https-redirect.config` inside your project (not the zip, in the folder):
+
+```bash
+mkdir -p ~/Desktop/scribd/.ebextensions
+```
+
+Create `~/Desktop/scribd/.ebextensions/https-redirect.config` with this content:
+
+```yaml
+option_settings:
+  aws:elasticbeanstalk:environment:proxy:
+    ProxyServer: nginx
+
+files:
+  "/etc/nginx/conf.d/https_redirect.conf":
+    mode: "000644"
+    owner: root
+    group: root
+    content: |
+      server {
+        listen 80;
+        return 301 https://$host$request_uri;
+      }
+```
+
+Then rebuild your zip (add `.ebextensions/` to it) and redeploy by uploading via EB Console → **Upload and deploy**.
+
+---
+
+## Step 6 — Point notecloud.com to Elastic Beanstalk
+
+Since you bought the domain via Route 53, a hosted zone already exists.
+
+1. Go to **Route 53** → **Hosted zones** → click `notecloud.com`
+2. You'll see NS and SOA records already there — leave those alone
+
+### Root domain (notecloud.com)
+
+1. Click **Create record**
+2. Record name: *(leave blank)*
+3. Record type: **A**
+4. Toggle **Alias** ON
+5. Route traffic to: **Alias to Elastic Beanstalk environment**
+6. Region: your region (e.g. `us-east-1`)
+7. Environment: select your `note-cloud-prod` environment
+8. Click **Create records**
+
+### www subdomain (www.notecloud.com)
+
+1. Click **Create record**
+2. Record name: `www`
+3. Record type: **CNAME**
+4. Value: your EB environment URL (e.g. `note-cloud-prod.us-east-1.elasticbeanstalk.com`)
+5. TTL: `300`
+6. Click **Create records**
+
+> DNS on Route 53 propagates within 1–2 minutes (it's faster than most registrars).
+
+---
+
+## Step 7 — Verify
+
+```bash
+# Check DNS resolved
+dig notecloud.com +short
+dig www.notecloud.com +short
+
+# Check HTTPS works (should return 200)
+curl -I https://notecloud.com
+```
+
+- Visit `https://notecloud.com` in your browser — you should see the login page
+- Visit `http://notecloud.com` — should redirect to HTTPS automatically
+- Check EB Console: environment health should be **Ok (green)**
+
+---
+
+## Step 8 — Important caveat: avatars
+
+Profile photo uploads go to `static/avatars/` on the instance disk. These **will be lost** if AWS ever replaces the instance (e.g. during instance maintenance or scaling).
+
+For now this is acceptable for a launch. When you're ready to fix it:
+- Create an S3 bucket
+- Change `upload_avatar()` in `app.py` to upload to S3 instead of local disk
+- Serve avatar URLs directly from S3
+
+---
+
+## Ongoing: how to redeploy
+
+After making code changes:
+
+```bash
+cd ~/Desktop/scribd
+
+zip -r notecloud.zip \
+  app.py \
+  Procfile \
+  requirements.txt \
+  templates/ \
+  static/ \
+  .ebextensions/
+
+# Then in EB Console: Upload and deploy → choose notecloud.zip
+```
+
+Or using the EB CLI (faster):
+
+```bash
+cd ~/Desktop/scribd
+
+# First time only — run once
+eb init note-cloud --region us-east-1 --platform python-3.11
+
+# Every deploy after that
+eb deploy note-cloud-prod
+```
+
+---
+
+## Cost estimate
+
+| Resource | Monthly cost |
+|----------|-------------|
+| t3.micro EC2 instance | ~$8–10 (or free if within free tier year) |
+| Application Load Balancer | ~$16–18 |
+| Route 53 hosted zone | $0.50 |
+| ACM certificate | Free |
+| **Total** | **~$25–29/mo** |
+
+The ALB is the main cost. Once you have real users you can look at migrating to RDS (for a proper database) at which point you'd already be generating revenue to cover it.

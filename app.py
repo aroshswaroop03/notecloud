@@ -396,6 +396,18 @@ def landing():
         return redirect(url_for("index"))
     return render_template("login.html")
 
+
+@app.route("/privacy")
+def privacy():
+    """Public privacy policy — required for Google OAuth verification."""
+    return render_template("privacy.html")
+
+
+@app.route("/terms")
+def terms():
+    """Public terms of service — linked from the OAuth consent screen."""
+    return render_template("terms.html")
+
 # Keep /login as an alias so old links still work
 
 
@@ -597,6 +609,7 @@ def index():
 
 @app.route("/redeem", methods=["POST"])
 @login_required
+@limiter.limit("5 per minute; 20 per hour")
 def redeem_code():
     """
     POST /redeem  { "code": "..." }
@@ -1315,7 +1328,8 @@ def cleanup_text():
             }],
         )
     except anthropic.APIError as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("cleanup APIError: %s", e)
+        return jsonify({"error": "Cleanup failed — please try again."}), 500
 
     return jsonify({"text": message.content[0].text})
 
@@ -1742,7 +1756,8 @@ def export_to_gdocs(trans_id):
 
         return jsonify({"ok": True, "url": f"https://docs.google.com/document/d/{doc_id}/edit"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("gdocs export error: %s", e)
+        return jsonify({"error": "Google Docs export failed — please try again."}), 500
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
