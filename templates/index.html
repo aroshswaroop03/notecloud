@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Handwriting Transcriber</title>
+  <link rel="icon" href="/static/nc-logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
@@ -170,7 +171,7 @@
       cursor: pointer;
       transition: background .15s, transform .15s;
     }
-    .drop-label:hover { background: #c9a04a; transform: translateY(-1px); }
+    .drop-label:hover { background: var(--accent); transform: translateY(-1px); }
     .drop-buttons { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
     .drop-label-camera {
       background: transparent;
@@ -239,7 +240,7 @@
     #transcribe-btn {
       width: 100%;
       padding: .9rem;
-      background: linear-gradient(135deg, #b8902a 0%, #c9a04a 50%, #d4a843 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
       color: #fff;
       border: none;
       border-radius: var(--radius);
@@ -545,7 +546,7 @@
       z-index: 150;
       opacity: 0;
       pointer-events: none;
-      transition: opacity .25s;
+      transition: opacity .14s ease-out;
     }
     #sidebar-overlay.open { opacity: 1; pointer-events: all; }
 
@@ -571,7 +572,7 @@
       display: flex;
       flex-direction: column;
       transform: translateX(-100%);
-      transition: transform .3s cubic-bezier(.2,.8,.4,1);
+      transition: transform .2s cubic-bezier(.2,.8,.4,1);
     }
     #history-sidebar.open { transform: translateX(0); }
 
@@ -1062,9 +1063,9 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,.65);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       z-index: 200;
       display: flex;
       align-items: center;
@@ -1072,7 +1073,7 @@
       padding: 1.25rem;
       opacity: 0;
       pointer-events: none;
-      transition: opacity .25s;
+      transition: opacity .13s ease-out;
     }
     .modal-overlay.open { opacity: 1; pointer-events: all; }
     .modal {
@@ -1082,8 +1083,8 @@
       padding: 2rem;
       width: 100%;
       max-width: 400px;
-      transform: translateY(16px) scale(.96);
-      transition: transform .3s cubic-bezier(.16,1,.3,1);
+      transform: translateY(10px) scale(.98);
+      transition: transform .15s cubic-bezier(.16,1,.3,1);
       box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 80px rgba(184,144,42,.1);
     }
     .modal-overlay.open .modal { transform: translateY(0) scale(1); }
@@ -1206,7 +1207,7 @@
       opacity: 0;
       transform: translateY(-6px) scale(.97);
       pointer-events: none;
-      transition: opacity .2s, transform .2s cubic-bezier(.2,.8,.4,1);
+      transition: opacity .12s ease-out, transform .12s cubic-bezier(.2,.8,.4,1);
     }
     #profile-dropdown.open {
       opacity: 1;
@@ -1646,6 +1647,11 @@
       transition: opacity .3s;
     }
     #onboarding-overlay.open { opacity: 1; pointer-events: all; }
+    /* The onboarding overlay stays in the DOM hidden at opacity:0 (not
+       display:none), so its 6+ infinite animations would otherwise run forever
+       in the background on every page load. Pause them unless it's actually
+       open. */
+    #onboarding-overlay:not(.open) * { animation-play-state: paused !important; }
 
     #onboarding-card {
       background: var(--surface);
@@ -1874,7 +1880,7 @@
       cursor: pointer;
       transition: background .15s, transform .15s;
     }
-    #ob-next:hover { background: #c9a04a; transform: translateY(-1px); }
+    #ob-next:hover { background: var(--accent); transform: translateY(-1px); }
 
     /* ── Theme toggle button ── */
     #theme-toggle {
@@ -2207,25 +2213,28 @@
     .bg-orbs .orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(100px);
+      /* The orbs are already radial-gradients that fade to transparent, so a
+         huge blur on top is redundant. 50px keeps the soft glow at a quarter of
+         the GPU rasterization cost of the old 100px. */
+      filter: blur(50px);
     }
     .bg-orbs .orb-1 {
       width: 700px; height: 700px;
-      background: radial-gradient(circle, #b8902a 0%, transparent 68%);
+      background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
       top: -300px; left: -200px;
       opacity: .12;
       animation: gorb1 26s ease-in-out infinite;
     }
     .bg-orbs .orb-2 {
       width: 580px; height: 580px;
-      background: radial-gradient(circle, #d4a843 0%, transparent 68%);
+      background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
       bottom: -200px; right: -150px;
       opacity: .09;
       animation: gorb2 32s ease-in-out infinite;
     }
     .bg-orbs .orb-3 {
       width: 420px; height: 420px;
-      background: radial-gradient(circle, #c9a04a 0%, transparent 68%);
+      background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
       top: 50%; left: 50%;
       transform: translate(-50%,-50%);
       opacity: .05;
@@ -2246,6 +2255,15 @@
     body.light .bg-orbs .orb-1 { opacity: .05; }
     body.light .bg-orbs .orb-2 { opacity: .04; }
     body.light .bg-orbs .orb-3 { opacity: .03; }
+
+    /* While any blurred overlay is open, freeze the animated background. A
+       backdrop-filter blur over a STATIC background is rasterized once and
+       cached by the GPU; over a moving background it must re-blur every frame —
+       which is what made modals/sidebars feel laggy to open. Pausing the orbs
+       lets the blur cache so overlays appear instantly. */
+    body:has(.modal-overlay.open) .bg-orbs .orb,
+    body:has(#sidebar-overlay.open) .bg-orbs .orb,
+    body:has(#onboarding-overlay.open) .bg-orbs .orb { animation-play-state: paused; }
 
     /* ── Dark mode variable overrides ── */
     body.dark {
@@ -2828,14 +2846,6 @@
 
         <hr class="settings-divider" style="margin-top:.25rem" />
 
-        <div class="settings-section-title">Text size</div>
-        <div style="display:flex;gap:.5rem;margin-bottom:.25rem">
-          <button class="font-size-btn" data-size="small"  style="flex:1">Small</button>
-          <button class="font-size-btn active" data-size="medium" style="flex:1">Medium</button>
-          <button class="font-size-btn" data-size="large"  style="flex:1">Large</button>
-        </div>
-        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.25rem">Affects the transcription output text size.</div>
-
         <hr class="settings-divider" />
 
         <div class="settings-section-title">Behaviour</div>
@@ -3154,20 +3164,20 @@
           </thead>
           <tbody>
             <tr>
+              <td>Pages per upload</td>
+              <td>1 page</td>
+              <td>Up to 5 pages</td>
+              <td class="col-pro">Unlimited</td>
+            </tr>
+            <tr>
               <td>Daily transcription limit</td>
               <td>~2 pages</td>
               <td>~20 pages</td>
               <td class="col-pro">Unlimited</td>
             </tr>
             <tr>
-              <td>AI text cleanup</td>
-              <td><span class="check">✓</span></td>
-              <td><span class="check">✓</span></td>
-              <td class="col-pro"><span class="check">✓</span></td>
-            </tr>
-            <tr>
-              <td>Multi-page upload</td>
-              <td><span class="check">✓</span></td>
+              <td>AI Rewrite &amp; cleanup</td>
+              <td><span class="cross">—</span></td>
               <td><span class="check">✓</span></td>
               <td class="col-pro"><span class="check">✓</span></td>
             </tr>
@@ -3181,6 +3191,24 @@
               <td>Share via link</td>
               <td><span class="check">✓</span></td>
               <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Google Docs sync</td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Google Sheets export</td>
+              <td><span class="cross">—</span></td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Google Calendar</td>
+              <td><span class="cross">—</span></td>
+              <td><span class="cross">—</span></td>
               <td class="col-pro"><span class="check">✓</span></td>
             </tr>
             <tr>
@@ -4151,6 +4179,7 @@
           return;
         }
         historyList.innerHTML = "";
+        const historyFrag = document.createDocumentFragment();
         data.items.forEach(item => {
           const div = document.createElement("div");
           div.className = "history-item";
@@ -4253,8 +4282,9 @@
             draggedTransId = null;
           });
 
-          historyList.appendChild(div);
+          historyFrag.appendChild(div);
         });
+        historyList.appendChild(historyFrag); // single DOM insertion → one reflow
       } catch (e) {
         historyList.innerHTML = '<p style="color:var(--error,#e05555);padding:1rem;font-size:.85rem">Could not load history.</p>';
       }
@@ -4391,7 +4421,7 @@
     });
 
     // Show the new-notebook form
-    newNotebookBtn.addEventListener("click", () => {
+    if (newNotebookBtn) newNotebookBtn.addEventListener("click", () => {
       notebooksSection.classList.add("open");
       notebooksToggle.setAttribute("aria-expanded", "true");
       newNotebookForm.classList.add("open");
@@ -4399,12 +4429,12 @@
       notebookNameInput.focus();
     });
 
-    cancelNotebookBtn.addEventListener("click", () => {
+    if (cancelNotebookBtn) cancelNotebookBtn.addEventListener("click", () => {
       newNotebookForm.classList.remove("open");
     });
 
-    createNotebookBtn.addEventListener("click", createNotebook);
-    notebookNameInput.addEventListener("keydown", (e) => {
+    if (createNotebookBtn) createNotebookBtn.addEventListener("click", createNotebook);
+    if (notebookNameInput) notebookNameInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") createNotebook();
     });
 
@@ -4780,9 +4810,12 @@
 
     // ── Appearance: accent colour ─────────────────────────────────────────────
     const savedAccent = localStorage.getItem("notecloud-accent");
+    function applyAccent(color) {
+      document.body.style.setProperty("--accent", color);
+      document.body.style.setProperty("--accent-dim", color + "99");
+    }
     if (savedAccent) {
-      document.documentElement.style.setProperty("--accent", savedAccent);
-      document.documentElement.style.setProperty("--accent-dim", savedAccent + "99");
+      applyAccent(savedAccent);
     }
     document.querySelectorAll(".accent-swatch").forEach(sw => {
       if (savedAccent && sw.dataset.accent === savedAccent) {
@@ -4793,25 +4826,11 @@
         document.querySelectorAll(".accent-swatch").forEach(s => s.classList.remove("selected"));
         sw.classList.add("selected");
         const color = sw.dataset.accent;
-        document.documentElement.style.setProperty("--accent", color);
-        document.documentElement.style.setProperty("--accent-dim", color + "99");
+        applyAccent(color);
         localStorage.setItem("notecloud-accent", color);
       });
     });
 
-    // ── Appearance: font size ─────────────────────────────────────────────────
-    const fontSizes = { small: ".875rem", medium: ".975rem", large: "1.1rem" };
-    const savedFontSize = localStorage.getItem("notecloud-fontsize") || "medium";
-    function applyFontSize(size) {
-      const el = document.getElementById("result-text");
-      if (el) el.style.fontSize = fontSizes[size] || fontSizes.medium;
-      document.querySelectorAll(".font-size-btn").forEach(b => b.classList.toggle("active", b.dataset.size === size));
-      localStorage.setItem("notecloud-fontsize", size);
-    }
-    applyFontSize(savedFontSize);
-    document.querySelectorAll(".font-size-btn").forEach(btn => {
-      btn.addEventListener("click", () => applyFontSize(btn.dataset.size));
-    });
 
     // ── Appearance: compact history ───────────────────────────────────────────
     const compactToggle = document.getElementById("settings-compact-toggle");
@@ -4992,22 +5011,33 @@
     if (!glow) return;
 
     let mx = innerWidth/2, my = innerHeight/2, gx = mx, gy = my;
-    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-
-    (function loop(){
+    let running = false;
+    function loop(){
       gx += (mx - gx) * 0.055;
       gy += (my - gy) * 0.055;
       glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
+      // Stop the loop once the glow has settled — restart it on the next move.
+      if (Math.abs(mx - gx) < 0.5 && Math.abs(my - gy) < 0.5) { running = false; return; }
       requestAnimationFrame(loop);
-    })();
+    }
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      if (!running) { running = true; requestAnimationFrame(loop); }
+    }, { passive: true });
   })();
 
   // ── Magnetic transcribe button ────────────────────────────────────────────
   (function(){
     const btn  = document.getElementById('transcribe-btn');
     if (!btn) return;
-    let active = false;
-    btn.addEventListener('mouseenter', () => { active = true; });
+    let active = false, cx = 0, cy = 0;
+    btn.addEventListener('mouseenter', () => {
+      active = true;
+      // Cache the button's centre once on enter — reading it on every mousemove
+      // (then writing transform) forces a synchronous layout each move.
+      const r = btn.getBoundingClientRect();
+      cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+    });
     btn.addEventListener('mouseleave', () => {
       active = false;
       btn.style.transition = 'transform .55s cubic-bezier(.16,1,.3,1), box-shadow .28s, opacity .2s, filter .2s';
@@ -5016,9 +5046,8 @@
     });
     btn.addEventListener('mousemove', e => {
       if (!active || btn.disabled || btn.classList.contains('empty')) return;
-      const r  = btn.getBoundingClientRect();
-      const dx = (e.clientX - (r.left + r.width  / 2)) * 0.26;
-      const dy = (e.clientY - (r.top  + r.height / 2)) * 0.26;
+      const dx = (e.clientX - cx) * 0.26;
+      const dy = (e.clientY - cy) * 0.26;
       btn.style.transition = 'box-shadow .28s, opacity .2s, filter .2s';
       btn.style.transform  = `translate(${dx}px, ${dy}px)`;
     });

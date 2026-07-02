@@ -9,6 +9,7 @@ database built right into Python — no separate server needed) and Flask sessio
 """
 
 import base64
+import gzip
 import io
 import os
 import re
@@ -85,6 +86,42 @@ def handle_500(e):
 def handle_429(e):
     return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
 
+
+# ── Response post-processing: gzip + caching ──────────────────────────────────
+# Compressible text types worth gzipping. The big win is the ~200KB index.html,
+# which shrinks to roughly 30KB on the wire.
+_COMPRESSIBLE = ("text/html", "text/css", "application/javascript",
+                 "application/json", "image/svg+xml", "text/plain")
+
+@app.after_request
+def _optimize_response(resp):
+    # Long-lived caching for static assets (avatars, logos) so the browser
+    # doesn't re-fetch them on every page load. Avatar uploads already append a
+    # ?t=<timestamp> cache-buster, so a long max-age is safe.
+    if request.path.startswith("/static/") and resp.status_code == 200:
+        resp.headers["Cache-Control"] = "public, max-age=2592000"  # 30 days
+
+    # gzip text responses when the client supports it and the body is big enough
+    # to be worth it (tiny bodies cost more in CPU than they save on the wire).
+    try:
+        accepts = request.headers.get("Accept-Encoding", "")
+        ctype = (resp.content_type or "").split(";")[0].strip()
+        if ("gzip" in accepts
+                and resp.direct_passthrough is False
+                and ctype in _COMPRESSIBLE
+                and "Content-Encoding" not in resp.headers):
+            data = resp.get_data()
+            if len(data) >= 1024:
+                compressed = gzip.compress(data, compresslevel=6)
+                resp.set_data(compressed)
+                resp.headers["Content-Encoding"] = "gzip"
+                resp.headers["Vary"] = "Accept-Encoding"
+                resp.headers["Content-Length"] = str(len(compressed))
+    except Exception:
+        # Never let compression break a response — fall back to uncompressed.
+        pass
+    return resp
+
 # ── Database path ──────────────────────────────────────────────────────────────
 # __file__ is the path to this script. os.path.dirname gets the folder it lives
 # in. We store the database in the same folder as app.py.
@@ -152,6 +189,15 @@ def get_db():
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # Per-connection performance pragmas:
+    #   synchronous=NORMAL — safe with WAL, far fewer fsyncs than FULL
+    #   temp_store=MEMORY  — keep temp B-trees in RAM
+    #   cache_size=-8000   — ~8MB page cache (negative = KB)
+    #   busy_timeout       — wait up to 3s for a lock instead of erroring out
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA temp_store = MEMORY")
+    conn.execute("PRAGMA cache_size = -8000")
+    conn.execute("PRAGMA busy_timeout = 3000")
     return conn
 
 
@@ -173,6 +219,9 @@ def init_db():
                         used to know when to reset uploads_today back to 0
     """
     conn = get_db()
+    # WAL mode is a persistent setting on the DB file — readers no longer block
+    # the writer (and vice-versa), which matters under concurrent requests.
+    conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,

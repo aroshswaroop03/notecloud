@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Handwriting Transcriber</title>
+  <link rel="icon" href="/static/nc-logo.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
@@ -53,7 +54,10 @@
     .amb-blob {
       position: absolute;
       border-radius: 50%;
-      filter: blur(80px);
+      /* These blobs are 70vmax and animate forever behind the globe; an 80px
+         blur on them is enormous to rasterize. 48px looks the same at this size
+         and opacity for a fraction of the GPU cost. */
+      filter: blur(48px);
       animation: amb-float linear infinite;
     }
     .amb-blob-1 {
@@ -391,6 +395,59 @@
     }
     .about-sig-name { font-size: .88rem; font-weight: 600; color: #1a1208; }
     .about-sig-role { font-size: .74rem; color: #7a6a45; margin-top: .18rem; font-style: italic; }
+
+    /* ── Landing pricing table ── */
+    .landing-pricing {
+      width: 100%; max-width: 680px; margin-top: 3.5rem;
+      opacity: 0; transform: translateY(44px);
+      transition: opacity 1s cubic-bezier(.16,1,.3,1) .15s, transform 1s cubic-bezier(.16,1,.3,1) .15s;
+    }
+    .landing-pricing.visible { opacity: 1; transform: translateY(0); }
+    .landing-pricing-label {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-size: .63rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: #b8902a; margin-bottom: 1.1rem;
+    }
+    .landing-pricing-label::before { content:''; width:22px; height:1px; background:#b8902a; display:inline-block; opacity:.55; }
+    .landing-pricing h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 700;
+      line-height: 1.1; letter-spacing: -1.5px;
+      color: var(--text); margin-bottom: 2rem;
+    }
+    .lp-table-wrap {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(212,168,67,.18);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .lp-table { width: 100%; border-collapse: collapse; }
+    .lp-table th, .lp-table td {
+      padding: .75rem 1rem; font-size: .85rem;
+      border-bottom: 1px solid rgba(212,168,67,.1);
+      text-align: center; color: var(--text);
+    }
+    .lp-table th:first-child, .lp-table td:first-child { text-align: left; color: var(--muted); padding-left: 1.4rem; }
+    .lp-table thead th { font-weight: 700; font-size: .88rem; padding-top: 1.2rem; padding-bottom: 1.2rem; }
+    .lp-table thead th:first-child { color: transparent; }
+    .lp-table tbody tr:last-child td { border-bottom: none; }
+    .lp-table .col-pro { color: #d4a843; font-weight: 600; }
+    .lp-table .lp-check { color: #4caf7d; }
+    .lp-table .lp-cross { color: rgba(255,255,255,.22); }
+    .lp-plan-price { font-size: .72rem; font-weight: 400; color: var(--muted); margin-top: .18rem; }
+    .lp-cta-row td { padding-top: 1rem; padding-bottom: 1.3rem; }
+    .lp-btn {
+      display: inline-block; padding: .48rem 1.1rem;
+      border-radius: 99px; border: 1px solid rgba(212,168,67,.4);
+      background: none; color: var(--text); font-size: .78rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background .18s, border-color .18s;
+    }
+    .lp-btn:hover { background: rgba(212,168,67,.1); border-color: var(--gold); }
+    .lp-btn.featured {
+      background: var(--gold); color: #1a1208; border-color: var(--gold);
+    }
+    .lp-btn.featured:hover { background: #e8bc52; }
 
     /* ── Auth panel ── */
     #auth-panel {
@@ -745,6 +802,73 @@
             </div>
           </div>
         </div>
+        <!-- Pricing table -->
+        <div class="landing-pricing" id="landing-pricing">
+          <div class="landing-pricing-label">Pricing</div>
+          <h2>Simple plans. No surprises.</h2>
+          <div class="lp-table-wrap">
+            <table class="lp-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Free</th>
+                  <th>Student<div class="lp-plan-price">$3.99/mo</div></th>
+                  <th class="col-pro">Pro<div class="lp-plan-price">$8.99/mo</div></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pages per upload</td>
+                  <td>1 page</td>
+                  <td>Up to 5 pages</td>
+                  <td class="col-pro">Unlimited</td>
+                </tr>
+                <tr>
+                  <td>Daily transcriptions</td>
+                  <td>~2 pages</td>
+                  <td>~20 pages</td>
+                  <td class="col-pro">Unlimited</td>
+                </tr>
+                <tr>
+                  <td>AI Rewrite &amp; cleanup</td>
+                  <td><span class="lp-cross">—</span></td>
+                  <td><span class="lp-check">✓</span></td>
+                  <td class="col-pro"><span class="lp-check">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Download (.txt &amp; .docx)</td>
+                  <td><span class="lp-check">✓</span></td>
+                  <td><span class="lp-check">✓</span></td>
+                  <td class="col-pro"><span class="lp-check">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Google Docs sync</td>
+                  <td><span class="lp-check">✓</span></td>
+                  <td><span class="lp-check">✓</span></td>
+                  <td class="col-pro"><span class="lp-check">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Google Sheets export</td>
+                  <td><span class="lp-cross">—</span></td>
+                  <td><span class="lp-check">✓</span></td>
+                  <td class="col-pro"><span class="lp-check">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Google Calendar</td>
+                  <td><span class="lp-cross">—</span></td>
+                  <td><span class="lp-cross">—</span></td>
+                  <td class="col-pro"><span class="lp-check">✓</span></td>
+                </tr>
+                <tr class="lp-cta-row">
+                  <td></td>
+                  <td><button class="lp-btn" id="lp-start-btn">Get started</button></td>
+                  <td><button class="lp-btn" id="lp-student-btn">Get Student</button></td>
+                  <td><button class="lp-btn featured" id="lp-pro-btn">Get Pro</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -908,69 +1032,80 @@
       dots.push({ x: Math.cos(t)*r, y: u, z: Math.sin(t)*r, r: 1.7, type: 1 });
     }
 
-    function draw(){
+    // Pre-allocated projection buffer — reused every frame (no per-frame GC churn)
+    const proj = dots.map(() => ({ px: 0, py: 0, z: 0, r: 0, type: 0 }));
+    const REPEL_R2 = REPEL_R * REPEL_R;
+    const cx = () => W / 2, cy = () => H / 2;
+    let lastT = 0;
+    const FRAME_MS = 1000 / 30; // decorative bg → 30fps is plenty, halves CPU
+
+    function draw(now){
+      if (!document.hidden) requestAnimationFrame(draw);
+      else { setTimeout(() => draw(performance.now()), 500); return; }
+      // Throttle to ~30fps
+      if (now - lastT < FRAME_MS) return;
+      lastT = now;
+
       ctx.clearRect(0, 0, W, H);
-      angle += 0.0022;
-      cTiltX += (mTiltX - cTiltX) * .04;
-      cTiltY += (mTiltY - cTiltY) * .04;
+      angle += 0.0022 * (FRAME_MS / 16.67); // keep speed consistent at 30fps
+      cTiltX += (mTiltX - cTiltX) * .08;
+      cTiltY += (mTiltY - cTiltY) * .08;
+
+      const hw = W / 2, hh = H / 2;
 
       // Globe atmosphere glow
-      const grd = ctx.createRadialGradient(W/2, H/2, R*.4, W/2, H/2, R*1.25);
+      const grd = ctx.createRadialGradient(hw, hh, R*.4, hw, hh, R*1.25);
       grd.addColorStop(0, 'rgba(212,168,67,.025)');
       grd.addColorStop(.7, 'rgba(212,168,67,.012)');
       grd.addColorStop(1, 'transparent');
-      ctx.beginPath(); ctx.arc(W/2, H/2, R*1.25, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(hw, hh, R*1.25, 0, Math.PI*2);
       ctx.fillStyle = grd; ctx.fill();
 
-      // Project dots
-      const proj = dots.map(d => {
-        // Auto-rotation (Y axis)
-        let x = d.x * Math.cos(angle) - d.z * Math.sin(angle);
-        let z = d.x * Math.sin(angle) + d.z * Math.cos(angle);
-        let y = d.y;
-        // Mouse tilt (X axis)
-        let y2 =  y * Math.cos(cTiltY) - z * Math.sin(cTiltY);
-        let z2 =  y * Math.sin(cTiltY) + z * Math.cos(cTiltY);
-        // Mouse tilt (Y axis tiny correction)
-        let x2 =  x * Math.cos(cTiltX) + z2 * Math.sin(cTiltX);
-        let z3 = -x * Math.sin(cTiltX) + z2 * Math.cos(cTiltX);
-        return { px: W/2 + x2*R, py: H/2 - y2*R, z: z3, r: d.r, type: d.type };
-      }).sort((a,b) => a.z - b.z);
+      // Hoist all trig out of the per-dot loop — these are constant for the frame
+      const cosA = Math.cos(angle),  sinA = Math.sin(angle);
+      const cosY = Math.cos(cTiltY), sinY = Math.sin(cTiltY);
+      const cosX = Math.cos(cTiltX), sinX = Math.sin(cTiltX);
 
-      proj.forEach(p => {
+      // Project dots into the reused buffer
+      for (let i = 0; i < dots.length; i++){
+        const d = dots[i], p = proj[i];
+        const x  = d.x * cosA - d.z * sinA;
+        const z  = d.x * sinA + d.z * cosA;
+        const y  = d.y;
+        const z2 =  y * sinY + z * cosY;
+        p.px = hw + (x * cosX + z2 * sinX) * R;
+        p.py = hh - (y * cosY - z * sinY) * R;
+        p.z  = -x * sinX + z2 * cosX;
+        p.r  = d.r; p.type = d.type;
+      }
+      proj.sort((a, b) => a.z - b.z);
+
+      // Batch fills by type to cut fillStyle churn
+      for (let i = 0; i < proj.length; i++){
+        const p = proj[i];
         const depth = (p.z + 1) / 2;
-        if (depth < 0.008) return;
+        if (depth < 0.008) continue;
 
-        // Repel away from the cursor — closer dots get pushed harder
         let px = p.px, py = p.py;
         const dx = px - mouseX, dy = py - mouseY;
         const d2 = dx*dx + dy*dy;
-        if (d2 < REPEL_R*REPEL_R) {
+        if (d2 < REPEL_R2) {
           const dist = Math.sqrt(d2) || 1;
-          const force = 1 - dist / REPEL_R;       // 1 at cursor → 0 at edge
-          const push = force * force * REPEL_MAX; // ease for a soft falloff
+          const force = 1 - dist / REPEL_R;
+          const push = force * force * REPEL_MAX;
           px += (dx / dist) * push;
           py += (dy / dist) * push;
         }
 
         const size = p.r * (.35 + depth * 1.35);
-        let alpha;
-        if (p.type === 0) {
-          alpha = depth * .5;
-          ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(212,168,67,${alpha})`;
-        } else {
-          alpha = depth * .85;
-          ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI*2);
-          ctx.fillStyle = `rgba(220,160,50,${alpha})`;
-        }
+        ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI*2);
+        ctx.fillStyle = p.type === 0
+          ? `rgba(212,168,67,${depth * .5})`
+          : `rgba(220,160,50,${depth * .85})`;
         ctx.fill();
-      });
-
-      if (!document.hidden) requestAnimationFrame(draw);
-      else setTimeout(draw, 500);
+      }
     }
-    draw();
+    requestAnimationFrame(draw);
   })();
 
   // ── Floating gold particles ───────────────────────────────────────────────
@@ -996,26 +1131,32 @@
       };
     }
 
-    function tick(){
+    let lastT = 0;
+    const FRAME_MS = 1000 / 30;
+    function tick(now){
+      if (!document.hidden) requestAnimationFrame(tick);
+      else { setTimeout(() => tick(performance.now()), 500); return; }
+      if (now - lastT < FRAME_MS) return;
+      lastT = now;
+
       ctx.clearRect(0, 0, W, H);
-      particles.forEach((p, i) => {
+      for (let i = 0; i < particles.length; i++){
+        const p = particles[i];
         p.x  += p.vx;
         p.y  += p.vy;
         p.life += .0018;
         if (p.y < -12 || p.life > p.maxLife){
           particles[i] = makeParticle(false);
-          return;
+          continue;
         }
         const t = p.life / p.maxLife;
         const a = p.alpha * Math.sin(t * Math.PI) * .8;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
         ctx.fillStyle = `rgba(212,168,67,${a})`;
         ctx.fill();
-      });
-      if (!document.hidden) requestAnimationFrame(tick);
-      else setTimeout(tick, 500);
+      }
     }
-    tick();
+    requestAnimationFrame(tick);
   })();
 
   // ── Typewriter tagline ────────────────────────────────────────────────────
@@ -1141,19 +1282,25 @@
     });
   })();
 
-  // ── Scroll reveal (about section) ────────────────────────────────────────
-  const lc    = document.getElementById('landing-content');
-  const about = document.getElementById('landing-about');
-  function checkReveal(){
-    if (!about) return;
-    const cr = lc.getBoundingClientRect();
-    const ar = about.getBoundingClientRect();
-    if (ar.top - cr.top < lc.clientHeight * .86){
-      about.classList.add('visible');
-    }
-  }
-  lc.addEventListener('scroll', checkReveal, { passive: true });
-  checkReveal();
+  // ── Scroll reveal (about + pricing sections) ─────────────────────────────
+  // IntersectionObserver instead of a per-scroll getBoundingClientRect loop —
+  // the browser computes visibility off the main thread and only calls back
+  // when it actually changes.
+  const lc      = document.getElementById('landing-content');
+  const about   = document.getElementById('landing-about');
+  const pricing = document.getElementById('landing-pricing');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); }
+    });
+  }, { root: lc, rootMargin: '0px 0px -8% 0px' });
+  [about, pricing].forEach(el => { if (el) revealObserver.observe(el); });
+
+  // Pricing table buttons — all open auth panel
+  ['lp-start-btn','lp-student-btn','lp-pro-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', () => document.getElementById('get-started-btn').click());
+  });
 
   // ── Scroll draw wave ──────────────────────────────────────────────────────
   (function(){
@@ -1229,7 +1376,15 @@
       document.body.classList.toggle('bg-yellow', t > 0.6);
     }
 
-    lc.addEventListener('scroll', updateLine, { passive: true });
+    // rAF-throttle the scroll handler so we do at most one update per frame
+    // (scroll events fire far faster than the screen refreshes).
+    let scrollQueued = false;
+    function onScroll(){
+      if (scrollQueued) return;
+      scrollQueued = true;
+      requestAnimationFrame(() => { scrollQueued = false; updateLine(); });
+    }
+    lc.addEventListener('scroll', onScroll, { passive: true });
     buildFrame();
     window.addEventListener('resize', buildFrame, { passive: true });
 
