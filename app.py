@@ -95,6 +95,14 @@ _COMPRESSIBLE = ("text/html", "text/css", "application/javascript",
 
 @app.after_request
 def _optimize_response(resp):
+    # Baseline security headers (defense-in-depth):
+    #   nosniff        — stop the browser MIME-sniffing a response into script
+    #   X-Frame-Options— block the site being iframed elsewhere (clickjacking)
+    #   Referrer-Policy— don't leak full URLs to third parties
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+
     # Long-lived caching for static assets (avatars, logos) so the browser
     # doesn't re-fetch them on every page load. Avatar uploads already append a
     # ?t=<timestamp> cache-buster, so a long max-age is safe.
@@ -137,6 +145,14 @@ TIER_LIMITS = {
     "free":    500,
     "student": 5000,
     "pro":     None,   # None = unlimited
+}
+
+# How many pages (images) a single upload may contain, per tier.
+# None = unlimited. Admins and the "dev" tier are treated as unlimited.
+TIER_PAGE_LIMITS = {
+    "free":    1,
+    "student": 5,
+    "pro":     None,
 }
 
 # How many bonus tokens a referrer earns per person they bring in (daily)
@@ -738,6 +754,9 @@ def rewrite_transcription(trans_id):
     POST /transcriptions/<id>/rewrite  { "text": "...", "style": "longer|shorter|casual|professional|..." }
     Rewrites the transcription text using Claude and returns the new text.
     """
+    err = require_paid_tier("AI Rewrite is available on Student and Pro plans.")
+    if err: return err
+
     conn = get_db()
     row = conn.execute(
         "SELECT id FROM transcriptions WHERE id = ? AND user_id = ?",
@@ -802,20 +821,25 @@ def save_transcription(trans_id):
     return jsonify({"ok": True, "word_count": word_count})
 
 
-def require_paid_tier():
-    """Return a JSON error response if the user is on the free tier, else None."""
+def require_paid_tier(message="This feature is available on Student and Pro plans."):
+    """Return a JSON error response if the user is on the free tier, else None.
+
+    This is the ONLY thing that actually enforces a paid feature — hiding a
+    button in the template is cosmetic and can be bypassed (disable JS, edit the
+    DOM, or just POST to the endpoint directly). Every paid route must call this.
+    """
     conn = get_db()
     user = conn.execute("SELECT tier, is_admin FROM users WHERE id = ?", (session["user_id"],)).fetchone()
     conn.close()
     if user and (user["is_admin"] or user["tier"] not in ("free", None)):
         return None
-    return jsonify({"error": "upgrade_required", "message": "Notebooks are available on Student and Pro plans."}), 403
+    return jsonify({"error": "upgrade_required", "message": message}), 403
 
 
 @app.route("/notebooks", methods=["GET"])
 @login_required
 def list_notebooks():
-    err = require_paid_tier()
+    err = require_paid_tier("Notebooks are available on Student and Pro plans.")
     if err: return err
     conn = get_db()
     rows = conn.execute(
@@ -835,7 +859,7 @@ def list_notebooks():
 @app.route("/notebooks", methods=["POST"])
 @login_required
 def create_notebook():
-    err = require_paid_tier()
+    err = require_paid_tier("Notebooks are available on Student and Pro plans.")
     if err: return err
     data = request.get_json(silent=True) or {}
     name  = data.get("name", "").strip()
@@ -1133,6 +1157,20 @@ def transcribe():
             return jsonify({"error": "No image field in the request."}), 400
         files = [single]
 
+    # ── Enforce pages-per-upload by tier (server-side) ──────────────────────
+    # The frontend also limits this, but that's cosmetic — a user could POST
+    # more images directly, so the real gate lives here.
+    tier = (user["tier"] if user else None) or "free"
+    page_cap = None if (user and user["is_admin"]) else TIER_PAGE_LIMITS.get(tier)
+    if page_cap is not None and len(files) > page_cap:
+        return jsonify({
+            "error": "page_limit",
+            "message": (
+                f"Your plan allows {page_cap} page{'s' if page_cap != 1 else ''} per upload. "
+                "Upgrade to Student or Pro to transcribe more pages at once."
+            )
+        }), 403
+
     for f in files:
         if not allowed_file(f.filename):
             return jsonify({"error": f"Unsupported file type: {f.filename}. Use PNG, JPG, WEBP, or GIF."}), 415
@@ -1253,6 +1291,9 @@ def cleanup_text():
     Sends the transcribed text back to Claude to fix grammar, spelling,
     punctuation and formatting while keeping the meaning identical.
     """
+    err = require_paid_tier("AI cleanup is available on Student and Pro plans.")
+    if err: return err
+
     data = request.get_json(silent=True) or {}
     text = data.get("text", "").strip()
     if not text:
@@ -1814,4 +1855,8 @@ def google_login_callback():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Debug mode exposes the Werkzeug interactive debugger, which allows
+    # arbitrary code execution — it must NEVER be on in production. Default to
+    # on for local dev, but force it off when FLASK_ENV=production.
+    debug = os.getenv("FLASK_ENV") != "production"
+    app.run(debug=debug, port=5000)

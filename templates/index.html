@@ -3540,7 +3540,7 @@
         try { data = await response.json(); }
         catch { throw new Error("Unexpected server response. Please try again."); }
 
-        if (data.error === "limit_reached") {
+        if (data.error === "limit_reached" || data.error === "page_limit" || data.error === "upgrade_required") {
           statusEl.style.color = "var(--error)";
           statusEl.textContent = data.message;
           if (upgradeModal) upgradeModal.classList.add("open");
@@ -3669,7 +3669,11 @@
           setTimeout(() => { cleanupBtn.innerHTML = origHTML; cleanupBtn.disabled = false; }, 2000);
           return;
         }
-        if (data.error) { statusEl.style.color = "var(--error)"; statusEl.textContent = data.error; }
+        if (data.error) {
+          statusEl.style.color = "var(--error)";
+          statusEl.textContent = data.message || data.error;
+          if (data.error === "upgrade_required" && upgradeModal) upgradeModal.classList.add("open");
+        }
       } catch (err) {
         statusEl.style.color = "var(--error)";
         statusEl.textContent = "Cleanup failed: " + err.message;
