@@ -357,6 +357,15 @@ Note: a landing pricing table was added then removed in this window because it b
 
 <details><summary><strong>3:44PM IST</strong> &nbsp;·&nbsp; <code>fa8018c</code> &nbsp; DEPLOY.md: switch domain from notecloud.com → note-cloud.com</summary>
 
+## 7/4 (continued)
+
+<details><summary><strong>4:02PM IST</strong> &nbsp;·&nbsp; <code>8b0b626</code> &nbsp; Remove AI cleanup button; add globe/particle bg to transcription page</summary>
+
+- **index.html:** stripped `#cleanup-btn` CSS, HTML, JS click handler, and the two `display` toggles; removed ⌘K shortcut row; updated "Edit & export" copy; replaced "Use AI cleanup" tip cell with a "Multi-page notes" tip
+- **transcription.html:** added the same rotating globe canvas, floating gold particle canvas, animated ambient blobs, and noise texture as the landing page — opacity dialled back slightly so they sit behind the note content; CSS z-index stack keeps bg at 0/1 and content (grid-glow, topbar, page-wrap) at 2
+
+</details>
+
 - Actual registered domain has a hyphen (`note-cloud.com`), not `notecloud.com`
 - Replaced all 13 occurrences in `DEPLOY.md` (ACM cert names, Route 53 records, verification `dig`/`curl` commands, and the ASCII diagram at the top)
 - Templates keep the `notecloud-*` `localStorage` keys and `notecloud26@gmail.com` support email — those aren't the public domain, changing them would either break existing sessions or affect the user's chosen contact address
