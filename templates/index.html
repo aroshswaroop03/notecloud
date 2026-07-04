@@ -2314,22 +2314,35 @@
       max-width: 100%; line-height: 0;
       touch-action: none; user-select: none; margin: 0 auto;
     }
-    #crop-img { display: block; max-width: 100%; max-height: 62vh; -webkit-user-drag: none; }
+    #crop-img { display: block; max-width: 100%; max-height: 62vh; -webkit-user-drag: none; pointer-events: none; }
     #crop-box {
       position: absolute; box-sizing: border-box;
       border: 2px solid var(--accent);
       box-shadow: 0 0 0 9999px rgba(0,0,0,.55);
-      cursor: move;
+      cursor: move; touch-action: none;
     }
     .crop-h {
-      position: absolute; width: 16px; height: 16px;
+      position: absolute; width: 18px; height: 18px;
       background: var(--accent); border: 2px solid #fff; border-radius: 50%;
       box-shadow: 0 1px 4px rgba(0,0,0,.4);
+      touch-action: none;
     }
-    .crop-h[data-h="nw"] { left: -8px; top: -8px; cursor: nwse-resize; }
-    .crop-h[data-h="ne"] { right: -8px; top: -8px; cursor: nesw-resize; }
-    .crop-h[data-h="sw"] { left: -8px; bottom: -8px; cursor: nesw-resize; }
-    .crop-h[data-h="se"] { right: -8px; bottom: -8px; cursor: nwse-resize; }
+    /* enlarge touch hit-area to ~44px without changing visual size */
+    .crop-h::before {
+      content: ""; position: absolute; inset: -14px;
+    }
+    .crop-h[data-h="nw"] { left: -9px; top: -9px; cursor: nwse-resize; }
+    .crop-h[data-h="ne"] { right: -9px; top: -9px; cursor: nesw-resize; }
+    .crop-h[data-h="sw"] { left: -9px; bottom: -9px; cursor: nesw-resize; }
+    .crop-h[data-h="se"] { right: -9px; bottom: -9px; cursor: nwse-resize; }
+    @media (max-width: 480px) {
+      #crop-img { max-height: 54vh; }
+      .crop-h { width: 22px; height: 22px; }
+      .crop-h[data-h="nw"] { left: -11px; top: -11px; }
+      .crop-h[data-h="ne"] { right: -11px; top: -11px; }
+      .crop-h[data-h="sw"] { left: -11px; bottom: -11px; }
+      .crop-h[data-h="se"] { right: -11px; bottom: -11px; }
+    }
 
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -3438,15 +3451,18 @@
           cy = Math.max(0, Math.min(cy, dh - ch));
         };
 
-        img.onload = () => {
+        const initBox = () => {
           dw = img.clientWidth; dh = img.clientHeight;
           cw = dw * 0.86; ch = dh * 0.86; cx = (dw-cw)/2; cy = (dh-ch)/2;
           clamp(); setBox();
-          modal.classList.add("open");
         };
+        img.onload = () => { initBox(); modal.classList.add("open"); };
         img.src = url;
+        const onResize = () => { if (!dw) return; const rx = img.clientWidth/dw, ry = img.clientHeight/dh; dw = img.clientWidth; dh = img.clientHeight; cx*=rx; cy*=ry; cw*=rx; ch*=ry; clamp(); setBox(); };
+        window.addEventListener("resize", onResize);
+        window.addEventListener("orientationchange", onResize);
 
-        let mode = null, sx0, sy0, s0;
+        let mode = null, sx0, sy0, s0, capEl = null, capId = null;
         const move = (e) => {
           const dx = e.clientX - sx0, dy = e.clientY - sy0;
           if (mode === "move") { cx = s0.cx + dx; cy = s0.cy + dy; }
@@ -3458,14 +3474,25 @@
           }
           clamp(); setBox();
         };
-        const up = () => { mode = null; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-        const down = (e, m) => {
-          e.preventDefault(); mode = m; sx0 = e.clientX; sy0 = e.clientY; s0 = { cx, cy, cw, ch };
-          window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+        const up = () => {
+          mode = null;
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+          window.removeEventListener("pointercancel", up);
+          if (capEl && capId != null) { try { capEl.releasePointerCapture(capId); } catch (_) {} }
+          capEl = null; capId = null;
         };
-        box.onpointerdown = (e) => { if (e.target === box) down(e, "move"); };
+        const down = (e, m, el) => {
+          e.preventDefault(); mode = m; sx0 = e.clientX; sy0 = e.clientY; s0 = { cx, cy, cw, ch };
+          capEl = el; capId = e.pointerId;
+          try { el.setPointerCapture(e.pointerId); } catch (_) {}
+          window.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", up);
+          window.addEventListener("pointercancel", up);
+        };
+        box.onpointerdown = (e) => { if (e.target === box) down(e, "move", box); };
         box.querySelectorAll(".crop-h").forEach(h => {
-          h.onpointerdown = (e) => { e.stopPropagation(); down(e, h.dataset.h); };
+          h.onpointerdown = (e) => { e.stopPropagation(); down(e, h.dataset.h, h); };
         });
 
         const applyBtn = document.getElementById("crop-apply");
@@ -3475,6 +3502,8 @@
           modal.classList.remove("open");
           URL.revokeObjectURL(url);
           up();
+          window.removeEventListener("resize", onResize);
+          window.removeEventListener("orientationchange", onResize);
           applyBtn.onclick = skipBtn.onclick = closeBtn.onclick = box.onpointerdown = null;
           resolve(result);
         };
