@@ -1244,9 +1244,8 @@
     // over ~0.4s. Even a fast flick from top to bottom still plays out the
     // wave/coil/frame fill instead of snapping.
     let targetP = 0, currentP = 0, rafPending = false;
-    // Higher = snappier (0.14 ≈ ~0.4s catch-up at 60fps). Reduce if you want
-    // the animation to play out even slower on a fast scroll.
-    const EASE = 0.14;
+    // Higher = snappier. 0.09 ≈ ~0.7s catch-up at 60fps.
+    const EASE = 0.09;
 
     function paint(){
       // One continuous liquid: coil fills first, then it pours around the card frame.
@@ -1286,6 +1285,49 @@
 
     function onScroll(){ updateLine(); }
     lc.addEventListener('scroll', onScroll, { passive: true });
+
+    // ── Forza-jump-cam scroll slow-mo ─────────────────────────────────────
+    // While scroll progress is inside [SLOW_IN, SLOW_OUT], dampen incoming
+    // wheel/touch deltas so the wave/coil/frame animation has time to breathe,
+    // then release back to native scroll. A short ramp on each edge keeps the
+    // transition smooth instead of feeling like the page snagged on something.
+    const SLOW_IN = 0.42, SLOW_OUT = 0.90;
+    const RAMP    = 0.06;               // ease-in/out width around the zone edges
+    const SLOW_FACTOR = 0.30;           // 1 = normal, 0.3 = ~3× slower inside the zone
+    function slowMul(){
+      const sMax = lc.scrollHeight - lc.clientHeight;
+      if (sMax <= 0) return 1;
+      const p = lc.scrollTop / sMax;
+      if (p <= SLOW_IN - RAMP || p >= SLOW_OUT + RAMP) return 1;
+      // smooth ease into/out of the zone
+      let e = 1;
+      if (p < SLOW_IN)      e = (p - (SLOW_IN - RAMP)) / RAMP;              // ramp in
+      else if (p > SLOW_OUT) e = 1 - (p - SLOW_OUT) / RAMP;                 // ramp out
+      const k = Math.max(0, Math.min(1, e));
+      return 1 - (1 - SLOW_FACTOR) * k;   // lerp 1 → SLOW_FACTOR
+    }
+
+    lc.addEventListener('wheel', (e) => {
+      const m = slowMul();
+      if (m >= 0.999) return;             // outside zone: let native scroll do its thing
+      e.preventDefault();
+      lc.scrollTop += e.deltaY * m;
+    }, { passive: false });
+
+    let touchY = null;
+    lc.addEventListener('touchstart', (e) => {
+      touchY = e.touches[0].clientY;
+    }, { passive: true });
+    lc.addEventListener('touchmove', (e) => {
+      const m = slowMul();
+      if (touchY == null) { touchY = e.touches[0].clientY; return; }
+      const y = e.touches[0].clientY;
+      if (m >= 0.999) { touchY = y; return; }
+      e.preventDefault();
+      lc.scrollTop += (touchY - y) * m;
+      touchY = y;
+    }, { passive: false });
+    lc.addEventListener('touchend', () => { touchY = null; }, { passive: true });
     buildFrame();
     window.addEventListener('resize', buildFrame, { passive: true });
 
