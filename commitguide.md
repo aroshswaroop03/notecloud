@@ -278,3 +278,13 @@ Note: a landing pricing table was added then removed in this window because it b
 - Add `static/avatars/avatar_1.jpg`
 
 </details>
+
+<details><summary><strong>1:14PM IST</strong> &nbsp;·&nbsp; <code>b5ae984</code> &nbsp; Make crop modal touch-friendly on mobile</summary>
+
+- Handle hit-area expanded to ~44px via a `::before` pseudo (visual size unchanged); larger visual handles on ≤480px viewports and smaller `max-height` so the modal fits phone screens
+- `touch-action: none` on the crop box and handles so dragging doesn't scroll the page
+- `pointer-events: none` on the crop image so drags always land on the box/handles instead of the image
+- `setPointerCapture` on drag start (with `releasePointerCapture` + `pointercancel` cleanup) so the drag survives the finger leaving the element
+- Rescale crop box on `resize` / `orientationchange` so it stays inside the image after the layout changes
+
+</details>
