@@ -288,3 +288,12 @@ Note: a landing pricing table was added then removed in this window because it b
 - Rescale crop box on `resize` / `orientationchange` so it stays inside the image after the layout changes
 
 </details>
+
+<details><summary><strong>1:34PM IST</strong> &nbsp;·&nbsp; <code>10a640f</code> &nbsp; Ease landing scroll animation so fast flicks still play out</summary>
+
+- The wave/coil/bg-explode were tied 1:1 to `scrollTop`, so flicking from top to bottom skipped straight to the final state
+- Scroll now writes a `targetP`; a `requestAnimationFrame` loop lerps `currentP` toward it (~0.4s catch-up via `EASE = 0.14`) and paints from `currentP`
+- Wrap-visibility gating and the initial paint still fire from `updateLine`, so the wave still hides on button clicks and shows on any real scroll
+- Result: a fast flick lands at the bottom and then the yellow washes in visibly instead of snapping — tweak `EASE` lower for a longer play-out
+
+</details>
