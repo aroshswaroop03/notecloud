@@ -1232,7 +1232,7 @@
         `M${cx},0 H${r} A${r},${r} 0 0 0 0,${r} V${H-r} A${r},${r} 0 0 0 ${r},${H} H${cx}`);
       FRAME_LEN = frameRight.getTotalLength();
       [frameLeft, frameRight].forEach(p => { p.style.strokeDasharray = FRAME_LEN; });
-      updateLine(); // re-apply current fill to the freshly-sized paths
+      paint(scrollProgress()); // re-apply current fill to the freshly-sized paths
     }
 
     const bgExplode = document.getElementById('bg-explode');
@@ -1240,94 +1240,107 @@
     const EXPLODE_END   = 1.0;  // fully yellow exactly at the bottom (the about card)
     const FRAME_START   = 0.82; // scroll progress at which the liquid reaches the card frame
 
-    // Eased progress: the *animation* lags behind the scroll and catches up
-    // over ~0.4s. Even a fast flick from top to bottom still plays out the
-    // wave/coil/frame fill instead of snapping.
-    let targetP = 0, currentP = 0, rafPending = false;
-    // Higher = snappier. 0.09 ≈ ~0.7s catch-up at 60fps.
-    const EASE = 0.09;
-
-    function paint(){
+    function paint(p){
       // One continuous liquid: coil fills first, then it pours around the card frame.
-      const coilP  = Math.min(currentP / FRAME_START, 1);
+      const coilP  = Math.min(p / FRAME_START, 1);
       lineEl.style.strokeDashoffset = TOTAL * (1 - coilP);
       if (FRAME_LEN) {
-        const frameP = Math.max(0, Math.min(1, (currentP - FRAME_START) / (1 - FRAME_START)));
+        const frameP = Math.max(0, Math.min(1, (p - FRAME_START) / (1 - FRAME_START)));
         const off = FRAME_LEN * (1 - frameP);
         frameLeft.style.strokeDashoffset  = off;
         frameRight.style.strokeDashoffset = off;
       }
-      const t = Math.max(0, Math.min(1, (currentP - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
+      const t = Math.max(0, Math.min(1, (p - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
       bgExplode.style.clipPath = `circle(${(t * 150).toFixed(1)}% at 50% 50%)`;
       document.body.classList.toggle('bg-yellow', t > 0.6);
     }
-
-    function tick(){
-      const diff = targetP - currentP;
-      if (Math.abs(diff) < 0.0005) { currentP = targetP; paint(); rafPending = false; return; }
-      currentP += diff * EASE;
-      paint();
-      requestAnimationFrame(tick);
+    function scrollProgress(){
+      const sMax = lc.scrollHeight - lc.clientHeight;
+      return sMax > 0 ? Math.min(lc.scrollTop / sMax, 1) : 0;
     }
-    function kick(){ if (!rafPending) { rafPending = true; requestAnimationFrame(tick); } }
 
-    function updateLine(){
-      const scrollTop = lc.scrollTop;
-      const scrollMax = lc.scrollHeight - lc.clientHeight;
-      if (scrollMax <= 0) return;
-      targetP = Math.min(scrollTop / scrollMax, 1);
-      if (scrollTop > 8){
+    // ── Forza jump-cam scroll takeover ────────────────────────────────────
+    // When the user's scroll enters the wave zone going *fast*, we hijack the
+    // scroll: momentum is killed, `scrollTop` is driven along a rails-guided
+    // easeInOutCubic curve from SLOW_IN → SLOW_OUT over CUTSCENE_MS, and wheel
+    // /touch input is swallowed for the duration. A slow scroll is left alone.
+    const SLOW_IN = 0.40, SLOW_OUT = 0.92;
+    const CUTSCENE_MS = 1500;
+    // Velocity in px/ms above which we consider the user to be "flicking".
+    // ~1.2px/ms ≈ 1200px/s — a lazy scroll is well under this.
+    const FLICK_VELOCITY = 0.9;
+
+    let cutsceneActive = false;
+    let cutsceneArmed  = true;
+    // Track velocity from the scroll event itself so we can decide whether to hijack
+    let lastT = performance.now(), lastY = lc.scrollTop, smoothV = 0;
+    function easeInOutCubic(x){ return x < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2, 3)/2; }
+
+    function startCutscene(){
+      const sMax = lc.scrollHeight - lc.clientHeight;
+      if (sMax <= 0) return;
+      cutsceneActive = true;
+      cutsceneArmed  = false;
+      // Kill any in-flight momentum by briefly locking the scroller
+      const prevOverflow = lc.style.overflowY;
+      lc.style.overflowY = 'hidden';
+      const startY = lc.scrollTop;
+      const endY   = sMax * SLOW_OUT;
+      const startT = performance.now();
+      function step(now){
+        const t = Math.min(1, (now - startT) / CUTSCENE_MS);
+        const e = easeInOutCubic(t);
+        // scrollTop is still settable while overflow:hidden
+        lc.scrollTop = startY + (endY - startY) * e;
+        paint(scrollProgress());
+        if (t < 1) requestAnimationFrame(step);
+        else {
+          lc.style.overflowY = prevOverflow || '';
+          cutsceneActive = false;
+          lastY = lc.scrollTop;   // reset velocity baseline so we don't re-fire immediately
+          smoothV = 0;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    function onScroll(){
+      if (cutsceneActive) return;                       // cutscene paints itself
+      const now = performance.now();
+      const dt  = Math.max(1, Math.min(now - lastT, 80)); // cap so a long idle doesn't tank velocity
+      const dy  = lc.scrollTop - lastY;
+      const v   = dy / dt;                              // px per ms
+      smoothV   = smoothV * 0.5 + v * 0.5;
+      lastT = now; lastY = lc.scrollTop;
+
+      const p = scrollProgress();
+      if (p < SLOW_IN - 0.03) cutsceneArmed = true;      // re-arm above the zone
+
+      if (lc.scrollTop > 8){
         wrap.classList.add('visible');
         wrap.classList.remove('hidden');
       }
-      kick();
-    }
 
-    function onScroll(){ updateLine(); }
+      if (cutsceneArmed
+          && Math.max(v, smoothV) > FLICK_VELOCITY
+          && p >= SLOW_IN
+          && p < SLOW_OUT) {
+        startCutscene();
+        return;
+      }
+      paint(p);
+    }
     lc.addEventListener('scroll', onScroll, { passive: true });
 
-    // ── Forza-jump-cam scroll slow-mo ─────────────────────────────────────
-    // While scroll progress is inside [SLOW_IN, SLOW_OUT], dampen incoming
-    // wheel/touch deltas so the wave/coil/frame animation has time to breathe,
-    // then release back to native scroll. A short ramp on each edge keeps the
-    // transition smooth instead of feeling like the page snagged on something.
-    const SLOW_IN = 0.42, SLOW_OUT = 0.90;
-    const RAMP    = 0.06;               // ease-in/out width around the zone edges
-    const SLOW_FACTOR = 0.30;           // 1 = normal, 0.3 = ~3× slower inside the zone
-    function slowMul(){
-      const sMax = lc.scrollHeight - lc.clientHeight;
-      if (sMax <= 0) return 1;
-      const p = lc.scrollTop / sMax;
-      if (p <= SLOW_IN - RAMP || p >= SLOW_OUT + RAMP) return 1;
-      // smooth ease into/out of the zone
-      let e = 1;
-      if (p < SLOW_IN)      e = (p - (SLOW_IN - RAMP)) / RAMP;              // ramp in
-      else if (p > SLOW_OUT) e = 1 - (p - SLOW_OUT) / RAMP;                 // ramp out
-      const k = Math.max(0, Math.min(1, e));
-      return 1 - (1 - SLOW_FACTOR) * k;   // lerp 1 → SLOW_FACTOR
-    }
-
+    // Swallow wheel/touch input while the cutscene is playing so the user
+    // can't fight the rails. Outside the cutscene, native scroll runs normally.
     lc.addEventListener('wheel', (e) => {
-      const m = slowMul();
-      if (m >= 0.999) return;             // outside zone: let native scroll do its thing
-      e.preventDefault();
-      lc.scrollTop += e.deltaY * m;
+      if (cutsceneActive) e.preventDefault();
+    }, { passive: false });
+    lc.addEventListener('touchmove', (e) => {
+      if (cutsceneActive) e.preventDefault();
     }, { passive: false });
 
-    let touchY = null;
-    lc.addEventListener('touchstart', (e) => {
-      touchY = e.touches[0].clientY;
-    }, { passive: true });
-    lc.addEventListener('touchmove', (e) => {
-      const m = slowMul();
-      if (touchY == null) { touchY = e.touches[0].clientY; return; }
-      const y = e.touches[0].clientY;
-      if (m >= 0.999) { touchY = y; return; }
-      e.preventDefault();
-      lc.scrollTop += (touchY - y) * m;
-      touchY = y;
-    }, { passive: false });
-    lc.addEventListener('touchend', () => { touchY = null; }, { passive: true });
     buildFrame();
     window.addEventListener('resize', buildFrame, { passive: true });
 
@@ -1342,7 +1355,7 @@
       wrap.classList.remove('hidden');
     });
 
-    updateLine();
+    paint(scrollProgress());
   })();
 
   // ── Google OAuth error param ──────────────────────────────────────────────
