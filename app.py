@@ -40,6 +40,7 @@ from docx.shared import Pt
 from dotenv import load_dotenv
 from flask import (
     Flask,
+    Response,
     jsonify,
     redirect,
     render_template,
@@ -407,6 +408,35 @@ def privacy():
 def terms():
     """Public terms of service — linked from the OAuth consent screen."""
     return render_template("terms.html")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /history\n"
+        "Disallow: /notebooks\n"
+        "Disallow: /transcription/\n"
+        "Disallow: /transcriptions/\n"
+        f"Sitemap: {request.url_root.rstrip('/')}/sitemap.xml\n"
+    )
+    return Response(body, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    base = request.url_root.rstrip("/")
+    urls = ["/", "/login", "/privacy", "/terms"]
+    items = "".join(
+        f"<url><loc>{base}{u}</loc><changefreq>weekly</changefreq></url>" for u in urls
+    )
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{items}</urlset>"
+    )
+    return Response(body, mimetype="application/xml")
 
 # Keep /login as an alias so old links still work
 
