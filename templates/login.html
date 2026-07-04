@@ -1240,42 +1240,51 @@
     const EXPLODE_END   = 1.0;  // fully yellow exactly at the bottom (the about card)
     const FRAME_START   = 0.82; // scroll progress at which the liquid reaches the card frame
 
-    function updateLine(){
-      const scrollTop = lc.scrollTop;
-      const scrollMax = lc.scrollHeight - lc.clientHeight;
-      if (scrollMax <= 0) return;
+    // Eased progress: the *animation* lags behind the scroll and catches up
+    // over ~0.4s. Even a fast flick from top to bottom still plays out the
+    // wave/coil/frame fill instead of snapping.
+    let targetP = 0, currentP = 0, rafPending = false;
+    // Higher = snappier (0.14 ≈ ~0.4s catch-up at 60fps). Reduce if you want
+    // the animation to play out even slower on a fast scroll.
+    const EASE = 0.14;
 
-      const progress = Math.min(scrollTop / scrollMax, 1);
-
+    function paint(){
       // One continuous liquid: coil fills first, then it pours around the card frame.
-      const coilP  = Math.min(progress / FRAME_START, 1);
+      const coilP  = Math.min(currentP / FRAME_START, 1);
       lineEl.style.strokeDashoffset = TOTAL * (1 - coilP);
       if (FRAME_LEN) {
-        const frameP = Math.max(0, Math.min(1, (progress - FRAME_START) / (1 - FRAME_START)));
+        const frameP = Math.max(0, Math.min(1, (currentP - FRAME_START) / (1 - FRAME_START)));
         const off = FRAME_LEN * (1 - frameP);
         frameLeft.style.strokeDashoffset  = off;
         frameRight.style.strokeDashoffset = off;
       }
-
-      if (scrollTop > 8){
-        wrap.classList.add('visible');
-        wrap.classList.remove('hidden');
-      }
-
-      // Scroll-driven explosion: grows from 0% to 150% as you scroll
-      const t = Math.max(0, Math.min(1, (progress - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
+      const t = Math.max(0, Math.min(1, (currentP - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
       bgExplode.style.clipPath = `circle(${(t * 150).toFixed(1)}% at 50% 50%)`;
       document.body.classList.toggle('bg-yellow', t > 0.6);
     }
 
-    // rAF-throttle the scroll handler so we do at most one update per frame
-    // (scroll events fire far faster than the screen refreshes).
-    let scrollQueued = false;
-    function onScroll(){
-      if (scrollQueued) return;
-      scrollQueued = true;
-      requestAnimationFrame(() => { scrollQueued = false; updateLine(); });
+    function tick(){
+      const diff = targetP - currentP;
+      if (Math.abs(diff) < 0.0005) { currentP = targetP; paint(); rafPending = false; return; }
+      currentP += diff * EASE;
+      paint();
+      requestAnimationFrame(tick);
     }
+    function kick(){ if (!rafPending) { rafPending = true; requestAnimationFrame(tick); } }
+
+    function updateLine(){
+      const scrollTop = lc.scrollTop;
+      const scrollMax = lc.scrollHeight - lc.clientHeight;
+      if (scrollMax <= 0) return;
+      targetP = Math.min(scrollTop / scrollMax, 1);
+      if (scrollTop > 8){
+        wrap.classList.add('visible');
+        wrap.classList.remove('hidden');
+      }
+      kick();
+    }
+
+    function onScroll(){ updateLine(); }
     lc.addEventListener('scroll', onScroll, { passive: true });
     buildFrame();
     window.addEventListener('resize', buildFrame, { passive: true });
