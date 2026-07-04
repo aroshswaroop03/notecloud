@@ -344,3 +344,13 @@ Note: a landing pricing table was added then removed in this window because it b
 - Guard `if (cutsceneActive) return;` at the top of `startCutscene` prevents double-fires from the lc/window listener pair
 
 </details>
+
+<details><summary><strong>3:34PM IST</strong> &nbsp;·&nbsp; <code>99c405d</code> &nbsp; Add /robots.txt and /sitemap.xml for search-engine indexing</summary>
+
+- New `/robots.txt` allows the public landing/privacy/terms pages and disallows the authenticated routes (`/history`, `/notebooks`, `/transcription/`, `/transcriptions/`); points crawlers at the sitemap
+- New `/sitemap.xml` lists the public URLs (`/`, `/login`, `/privacy`, `/terms`) using `request.url_root` so it self-hosts on localhost, staging, and prod without config
+- Added `Response` to the `flask` import line
+- Rebuilt `notecloud.zip` so the EB deploy artifact contains the new routes
+- Both are prerequisites for Google Search Console verification (Phase B item)
+
+</details>
