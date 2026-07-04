@@ -379,3 +379,11 @@ Note: a landing pricing table was added then removed in this window because it b
 - Templates keep the `notecloud-*` `localStorage` keys and `notecloud26@gmail.com` support email — those aren't the public domain, changing them would either break existing sessions or affect the user's chosen contact address
 
 </details>
+
+<details><summary><strong>9:47PM IST</strong> &nbsp;·&nbsp; <code>5984615</code> &nbsp; Gate AI Rewrite to Pro; open Google Docs to all tiers</summary>
+
+- **transcription.html:** AI Rewrite card now wrapped in `{% if is_pro %}` — non-pro users see a locked placeholder card with an "Upgrade to Pro" link
+- **app.py:** removed `require_pro_tier()` from `export_to_gdocs` — Google Docs export is available on all tiers per pricing table (was incorrectly gated to Pro only)
+- Server-side Pro gate on `/rewrite` endpoint stays in place
+
+</details>
