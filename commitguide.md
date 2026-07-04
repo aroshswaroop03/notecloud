@@ -361,6 +361,14 @@ Note: a landing pricing table was added then removed in this window because it b
 
 <details><summary><strong>4:02PM IST</strong> &nbsp;·&nbsp; <code>8b0b626</code> &nbsp; Remove AI cleanup button; add globe/particle bg to transcription page</summary>
 
+<details><summary><strong>4:18PM IST</strong> &nbsp;·&nbsp; <code>8d052bc</code> &nbsp; Add spotlight grid-glow to main app page</summary>
+
+- Added `--grid-bright` CSS var (light: `rgba(160,125,60,.32)`, dark: `rgba(212,168,67,.28)`) to both theme blocks
+- `#grid-glow` fixed overlay with a CSS mask radial-gradient that follows `--mx`/`--my` — fades in on first mousemove, out on mouseleave, skipped on touch devices
+- JS IIFE matches the existing implementation in transcription.html: rAF-throttled, `pointer:fine` media query guard
+
+</details>
+
 - **index.html:** stripped `#cleanup-btn` CSS, HTML, JS click handler, and the two `display` toggles; removed ⌘K shortcut row; updated "Edit & export" copy; replaced "Use AI cleanup" tip cell with a "Multi-page notes" tip
 - **transcription.html:** added the same rotating globe canvas, floating gold particle canvas, animated ambient blobs, and noise texture as the landing page — opacity dialled back slightly so they sit behind the note content; CSS z-index stack keeps bg at 0/1 and content (grid-glow, topbar, page-wrap) at 2
 
