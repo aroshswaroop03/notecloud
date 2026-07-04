@@ -3,7 +3,7 @@
 
 ### What you'll end up with
 ```
-notecloud.com  (Route 53)
+note-cloud.com  (Route 53)
       │
       ▼
  CloudFront / ALB  ← ACM SSL cert (free, auto-renews)
@@ -54,8 +54,8 @@ Do this **first** because DNS validation can take a few minutes.
 1. Go to **AWS Certificate Manager** → make sure you're in **us-east-1** (required for EB/ALB)
 2. Click **Request a certificate** → **Request a public certificate**
 3. Add these domain names:
-   - `notecloud.com`
-   - `www.notecloud.com`
+   - `note-cloud.com`
+   - `www.note-cloud.com`
 4. Validation method: **DNS validation**
 5. Click **Request**
 6. Open the certificate → click **Create records in Route 53** (one-click since your domain is already there)
@@ -110,7 +110,7 @@ zip -r notecloud.zip \
 - Type: **Application Load Balancer**
 - Add a listener:
   - Port: `443`, Protocol: `HTTPS`
-  - SSL certificate: choose `notecloud.com` (the cert you just created)
+  - SSL certificate: choose `note-cloud.com` (the cert you just created)
 - Keep the default port 80 HTTP listener (you'll redirect it to HTTPS shortly)
 
 4. Click **Create environment** and wait ~5 minutes for the green health check
@@ -166,14 +166,14 @@ Then rebuild your zip (add `.ebextensions/` to it) and redeploy by uploading via
 
 ---
 
-## Step 6 — Point notecloud.com to Elastic Beanstalk
+## Step 6 — Point note-cloud.com to Elastic Beanstalk
 
 Since you bought the domain via Route 53, a hosted zone already exists.
 
-1. Go to **Route 53** → **Hosted zones** → click `notecloud.com`
+1. Go to **Route 53** → **Hosted zones** → click `note-cloud.com`
 2. You'll see NS and SOA records already there — leave those alone
 
-### Root domain (notecloud.com)
+### Root domain (note-cloud.com)
 
 1. Click **Create record**
 2. Record name: *(leave blank)*
@@ -184,7 +184,7 @@ Since you bought the domain via Route 53, a hosted zone already exists.
 7. Environment: select your `note-cloud-prod` environment
 8. Click **Create records**
 
-### www subdomain (www.notecloud.com)
+### www subdomain (www.note-cloud.com)
 
 1. Click **Create record**
 2. Record name: `www`
@@ -201,15 +201,15 @@ Since you bought the domain via Route 53, a hosted zone already exists.
 
 ```bash
 # Check DNS resolved
-dig notecloud.com +short
-dig www.notecloud.com +short
+dig note-cloud.com +short
+dig www.note-cloud.com +short
 
 # Check HTTPS works (should return 200)
-curl -I https://notecloud.com
+curl -I https://note-cloud.com
 ```
 
-- Visit `https://notecloud.com` in your browser — you should see the login page
-- Visit `http://notecloud.com` — should redirect to HTTPS automatically
+- Visit `https://note-cloud.com` in your browser — you should see the login page
+- Visit `http://note-cloud.com` — should redirect to HTTPS automatically
 - Check EB Console: environment health should be **Ok (green)**
 
 ---
