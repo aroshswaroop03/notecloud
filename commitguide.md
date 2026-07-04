@@ -321,3 +321,15 @@ Note: a landing pricing table was added then removed in this window because it b
 - Knobs: `SLOW_IN` / `SLOW_OUT` (zone), `CUTSCENE_MS` (length), `FLICK_VELOCITY` (how easily a scroll counts as a flick — lower = trigger more often)
 
 </details>
+
+<details><summary><strong>2:38PM IST</strong> &nbsp;·&nbsp; <code>715b9dd</code> &nbsp; Cutscene: hit-a-point trigger + slow pan all the way to the bottom</summary>
+
+- Previous velocity-gated version still felt jittery and hard flicks still blew past the yellow explosion
+- Trigger is now a plain scroll position, `TRIGGER = 0.32` — any downward scroll crossing it engages the cutscene (no velocity heuristic)
+- Cutscene runs from `lc.scrollTop` → the very bottom (`sMax`) over `CUTSCENE_MS = 3200` with `easeOutCubic`, so the yellow explosion fully plays out
+- Input lock is now broader: `wheel`, `touchmove`, and keyboard scroll keys (space, PgUp/Dn, arrows, home/end) are all `preventDefault + stopPropagation`'d while `cutsceneActive`; listeners installed on both `lc` and `window`
+- Re-arm requires scrolling back above `REARM_BELOW = 0.24` so it doesn't refire immediately
+- **Smoothness fix (biggest win):** `will-change: clip-path; transform: translateZ(0)` on `#bg-explode` — promotes the growing yellow circle into its own compositing layer, so the animation no longer forces the whole viewport to repaint each frame
+- Knobs: `TRIGGER`, `REARM_BELOW`, `CUTSCENE_MS`, and the ease function inside `startCutscene`
+
+</details>
