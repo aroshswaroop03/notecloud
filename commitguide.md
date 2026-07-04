@@ -307,3 +307,17 @@ Note: a landing pricing table was added then removed in this window because it b
 - Tune knobs at the top of the block: `SLOW_IN` / `SLOW_OUT` (zone), `RAMP` (edge width), `SLOW_FACTOR` (how much slower — lower = slower)
 
 </details>
+
+<details><summary><strong>2:12PM IST</strong> &nbsp;·&nbsp; <code>4a587fb</code> &nbsp; Landing scroll: proper Forza-cutscene takeover (replaces dampening)</summary>
+
+- The previous dampening approach fought native scroll physics — worked in theory, felt sticky in practice, and still let a hard flick blow past the yellow explosion
+- New model: **cinematic takeover**. Track per-event scroll velocity (px/ms) with a 50/50 EMA and a `dt` cap of 80ms so a long idle doesn't zero out the reading
+- Cutscene trigger: user is armed + `Math.max(v, smoothV) > FLICK_VELOCITY (0.9)` + `SLOW_IN (0.40) ≤ progress < SLOW_OUT (0.92)`
+- Cutscene: set `overflow-y: hidden` on `#landing-content` to cancel iOS/Android momentum, then drive `scrollTop` from entry point → `SLOW_OUT * sMax` with `easeInOutCubic` over `CUTSCENE_MS (1500)`ms
+- Input lock: `wheel` and `touchmove` are `preventDefault`'d only while `cutsceneActive` — outside the cutscene, native scroll is untouched (slow readers feel nothing)
+- Re-arm: when scroll progress goes back below `SLOW_IN - 0.03`
+- Deleted the old `EASE` lerp loop and the `slowMul()` dampener — the cutscene guarantees the trajectory, so paint runs directly from `scrollProgress()`
+- Also patched two callers that referenced the removed `updateLine()` (the `buildFrame` recalc and the initial paint) to call `paint(scrollProgress())`
+- Knobs: `SLOW_IN` / `SLOW_OUT` (zone), `CUTSCENE_MS` (length), `FLICK_VELOCITY` (how easily a scroll counts as a flick — lower = trigger more often)
+
+</details>
