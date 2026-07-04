@@ -266,3 +266,15 @@ Note: a landing pricing table was added then removed in this window because it b
 - Force-added the logo/favicon PNGs past the *.png gitignore rule (that rule exists for test uploads, but these assets are referenced by the templates and must ship)
 
 </details>
+
+## 7/4 — Banglore, India
+
+<details><summary><strong>1:06PM IST</strong> &nbsp;·&nbsp; <code>7c0a450</code> &nbsp; Crop-before-transcribe modal + landing footer polish</summary>
+
+- New crop modal in index.html: draggable box with four corner handles over a single uploaded image; "Use full photo" skips, ✕ cancels
+- Single-file uploads (drag-drop, camera, gallery) now route through `openCropper` before hitting `handleFiles`; multi-file selections bypass the cropper
+- Reset `fileInput.value` after change so the same photo can be re-picked
+- login.html: tighter landing footer (inline © next to links, smaller top padding), bg explode scroll window shifted to 0.5→1.0 so the yellow lands exactly at the about card
+- Add `static/avatars/avatar_1.jpg`
+
+</details>
