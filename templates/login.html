@@ -635,6 +635,10 @@
       background: #fdf3c0;
       clip-path: circle(0% at 50% 50%);
       pointer-events: none;
+      /* promote to its own compositing layer so the growing clip-path
+         doesn't cause the browser to repaint the whole viewport each frame */
+      will-change: clip-path;
+      transform: translateZ(0);
     }
     /* About section text flips dark once yellow bg arrives */
 
@@ -1260,86 +1264,80 @@
     }
 
     // ── Forza jump-cam scroll takeover ────────────────────────────────────
-    // When the user's scroll enters the wave zone going *fast*, we hijack the
-    // scroll: momentum is killed, `scrollTop` is driven along a rails-guided
-    // easeInOutCubic curve from SLOW_IN → SLOW_OUT over CUTSCENE_MS, and wheel
-    // /touch input is swallowed for the duration. A slow scroll is left alone.
-    const SLOW_IN = 0.40, SLOW_OUT = 0.92;
-    const CUTSCENE_MS = 1500;
-    // Velocity in px/ms above which we consider the user to be "flicking".
-    // ~1.2px/ms ≈ 1200px/s — a lazy scroll is well under this.
-    const FLICK_VELOCITY = 0.9;
+    // Cross a trigger point going down → the page ignores wheel/touch input
+    // and slowly drives you to the bottom on a smooth ease-out curve, so the
+    // yellow explosion always plays out cinematically regardless of how hard
+    // the user flicked. Re-arms when they scroll back above the trigger.
+    const TRIGGER     = 0.32;   // scroll progress at which the cutscene kicks in
+    const REARM_BELOW = 0.24;   // must go back above this to re-trigger
+    const CUTSCENE_MS = 3200;   // total takeover duration — feels like a slow cinematic pan
 
     let cutsceneActive = false;
     let cutsceneArmed  = true;
-    // Track velocity from the scroll event itself so we can decide whether to hijack
-    let lastT = performance.now(), lastY = lc.scrollTop, smoothV = 0;
-    function easeInOutCubic(x){ return x < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2, 3)/2; }
+    function easeOutCubic(x){ return 1 - Math.pow(1 - x, 3); }
+
+    // Block wheel/touch/keyboard scroll input while the cutscene runs.
+    // We install these once and gate on `cutsceneActive` so they're cheap
+    // when nothing is happening.
+    const swallow = (e) => { if (cutsceneActive) { e.preventDefault(); e.stopPropagation(); } };
+    lc.addEventListener('wheel',      swallow, { passive: false });
+    lc.addEventListener('touchmove',  swallow, { passive: false });
+    window.addEventListener('wheel',  swallow, { passive: false });
+    window.addEventListener('keydown', (e) => {
+      if (!cutsceneActive) return;
+      // page-up/down, arrows, space, home/end all try to scroll — block them
+      if ([32,33,34,35,36,37,38,39,40].includes(e.keyCode)) { e.preventDefault(); e.stopPropagation(); }
+    }, { passive: false });
 
     function startCutscene(){
       const sMax = lc.scrollHeight - lc.clientHeight;
       if (sMax <= 0) return;
+      const startY = lc.scrollTop;
+      const endY   = sMax;                         // all the way to the bottom
+      if (endY - startY < 2) return;
       cutsceneActive = true;
       cutsceneArmed  = false;
-      // Kill any in-flight momentum by briefly locking the scroller
+      // Kill any in-flight momentum so our RAF loop owns scroll exclusively.
+      // Scrollbars are already hidden by CSS so this causes no layout shift.
       const prevOverflow = lc.style.overflowY;
       lc.style.overflowY = 'hidden';
-      const startY = lc.scrollTop;
-      const endY   = sMax * SLOW_OUT;
       const startT = performance.now();
       function step(now){
         const t = Math.min(1, (now - startT) / CUTSCENE_MS);
-        const e = easeInOutCubic(t);
-        // scrollTop is still settable while overflow:hidden
+        const e = easeOutCubic(t);                  // fast in, slowly settles at the bottom
         lc.scrollTop = startY + (endY - startY) * e;
         paint(scrollProgress());
         if (t < 1) requestAnimationFrame(step);
         else {
           lc.style.overflowY = prevOverflow || '';
           cutsceneActive = false;
-          lastY = lc.scrollTop;   // reset velocity baseline so we don't re-fire immediately
-          smoothV = 0;
         }
       }
       requestAnimationFrame(step);
     }
 
+    let prevScrollTop = lc.scrollTop;
     function onScroll(){
-      if (cutsceneActive) return;                       // cutscene paints itself
-      const now = performance.now();
-      const dt  = Math.max(1, Math.min(now - lastT, 80)); // cap so a long idle doesn't tank velocity
-      const dy  = lc.scrollTop - lastY;
-      const v   = dy / dt;                              // px per ms
-      smoothV   = smoothV * 0.5 + v * 0.5;
-      lastT = now; lastY = lc.scrollTop;
+      if (cutsceneActive) return;                    // cutscene paints itself
+      const st = lc.scrollTop;
+      const goingDown = st > prevScrollTop;
+      prevScrollTop = st;
 
       const p = scrollProgress();
-      if (p < SLOW_IN - 0.03) cutsceneArmed = true;      // re-arm above the zone
+      if (p < REARM_BELOW) cutsceneArmed = true;     // re-arm well above the trigger
 
-      if (lc.scrollTop > 8){
+      if (st > 8){
         wrap.classList.add('visible');
         wrap.classList.remove('hidden');
       }
 
-      if (cutsceneArmed
-          && Math.max(v, smoothV) > FLICK_VELOCITY
-          && p >= SLOW_IN
-          && p < SLOW_OUT) {
+      if (cutsceneArmed && goingDown && p >= TRIGGER) {
         startCutscene();
         return;
       }
       paint(p);
     }
     lc.addEventListener('scroll', onScroll, { passive: true });
-
-    // Swallow wheel/touch input while the cutscene is playing so the user
-    // can't fight the rails. Outside the cutscene, native scroll runs normally.
-    lc.addEventListener('wheel', (e) => {
-      if (cutsceneActive) e.preventDefault();
-    }, { passive: false });
-    lc.addEventListener('touchmove', (e) => {
-      if (cutsceneActive) e.preventDefault();
-    }, { passive: false });
 
     buildFrame();
     window.addEventListener('resize', buildFrame, { passive: true });
