@@ -333,3 +333,14 @@ Note: a landing pricing table was added then removed in this window because it b
 - Knobs: `TRIGGER`, `REARM_BELOW`, `CUTSCENE_MS`, and the ease function inside `startCutscene`
 
 </details>
+
+<details><summary><strong>3:04PM IST</strong> &nbsp;·&nbsp; <code>451c6ec</code> &nbsp; Cutscene: catch really-fast flicks before they overshoot the trigger</summary>
+
+- Prior version reacted from the `scroll` event, which fires *after* the browser has already scrolled. On a hard trackpad flick / hard fling, momentum could blow past the trigger and land near/at the bottom before our check ran, leaving the cutscene with no distance to play
+- **Wheel preempt:** in the `wheel` handler, we now compute `scrollTop + deltaY` and if it would cross `TRIGGER * sMax`, we `preventDefault + stopPropagation` and call `startCutscene()` *before* the browser scrolls. Attached to both `lc` and `window` to catch propagation from either side
+- **Touchmove preempt:** same logic during finger drag using the delta between successive touch Y-coordinates (post-release momentum still relies on the scroll handler — there's no touchmove during momentum)
+- **Snap-back in `startCutscene`:** if we still land past the trigger by more than 4% (touch momentum case), we set `lc.scrollTop = triggerY` so the full 3.2s ease-out has the whole page to work with — otherwise we start from the current position for a natural continuation
+- Split the prior single `swallow` handler into a proper `onWheel` that both swallows (during cutscene) and preempts (before it); kept a separate `keydown` swallower for scroll keys and a touchstart/touchend pair to track the finger anchor
+- Guard `if (cutsceneActive) return;` at the top of `startCutscene` prevents double-fires from the lc/window listener pair
+
+</details>
