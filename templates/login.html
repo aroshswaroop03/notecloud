@@ -1276,27 +1276,23 @@
     let cutsceneArmed  = true;
     function easeOutCubic(x){ return 1 - Math.pow(1 - x, 3); }
 
-    // Block wheel/touch/keyboard scroll input while the cutscene runs.
-    // We install these once and gate on `cutsceneActive` so they're cheap
-    // when nothing is happening.
-    const swallow = (e) => { if (cutsceneActive) { e.preventDefault(); e.stopPropagation(); } };
-    lc.addEventListener('wheel',      swallow, { passive: false });
-    lc.addEventListener('touchmove',  swallow, { passive: false });
-    window.addEventListener('wheel',  swallow, { passive: false });
-    window.addEventListener('keydown', (e) => {
-      if (!cutsceneActive) return;
-      // page-up/down, arrows, space, home/end all try to scroll — block them
-      if ([32,33,34,35,36,37,38,39,40].includes(e.keyCode)) { e.preventDefault(); e.stopPropagation(); }
-    }, { passive: false });
-
     function startCutscene(){
+      if (cutsceneActive) return;
       const sMax = lc.scrollHeight - lc.clientHeight;
       if (sMax <= 0) return;
-      const startY = lc.scrollTop;
-      const endY   = sMax;                         // all the way to the bottom
+      const triggerY = sMax * TRIGGER;
+      // If a fast flick / momentum already blew us well past the trigger, snap
+      // back to the trigger so the cutscene has room to play out. Otherwise
+      // start from wherever we currently are (natural continuation).
+      let startY = lc.scrollTop;
+      if (startY > triggerY + sMax * 0.04) {
+        startY = triggerY;
+      }
+      const endY = sMax;
       if (endY - startY < 2) return;
       cutsceneActive = true;
       cutsceneArmed  = false;
+      lc.scrollTop = startY;
       // Kill any in-flight momentum so our RAF loop owns scroll exclusively.
       // Scrollbars are already hidden by CSS so this causes no layout shift.
       const prevOverflow = lc.style.overflowY;
@@ -1316,6 +1312,54 @@
       requestAnimationFrame(step);
     }
 
+    // Given the current scroll position and an incoming downward delta, decide
+    // whether to fire the cutscene now (used in wheel/touchmove handlers so we
+    // can preempt a hard flick BEFORE the browser scrolls past the trigger).
+    function shouldFireOn(deltaY){
+      if (cutsceneActive || !cutsceneArmed || deltaY <= 0) return false;
+      const sMax = lc.scrollHeight - lc.clientHeight;
+      if (sMax <= 0) return false;
+      const triggerY = sMax * TRIGGER;
+      return (lc.scrollTop + deltaY) >= triggerY;
+    }
+
+    // ── Wheel: preempt fast flicks and swallow input during cutscene ──
+    function onWheel(e){
+      if (cutsceneActive) { e.preventDefault(); e.stopPropagation(); return; }
+      if (shouldFireOn(e.deltaY)) {
+        e.preventDefault();
+        e.stopPropagation();
+        startCutscene();
+      }
+    }
+    lc.addEventListener('wheel',     onWheel, { passive: false });
+    window.addEventListener('wheel', onWheel, { passive: false });
+
+    // ── Touch: preempt during drag; momentum after release goes through onScroll ──
+    let touchLastY = null;
+    lc.addEventListener('touchstart', (e) => {
+      touchLastY = e.touches[0].clientY;
+    }, { passive: true });
+    lc.addEventListener('touchmove', (e) => {
+      if (cutsceneActive) { e.preventDefault(); e.stopPropagation(); return; }
+      const y = e.touches[0].clientY;
+      const dy = (touchLastY == null ? 0 : (touchLastY - y));  // + = scrolling down
+      touchLastY = y;
+      if (shouldFireOn(dy)) {
+        e.preventDefault();
+        e.stopPropagation();
+        startCutscene();
+      }
+    }, { passive: false });
+    lc.addEventListener('touchend', () => { touchLastY = null; }, { passive: true });
+
+    // ── Keyboard scroll keys: swallow during cutscene ──
+    window.addEventListener('keydown', (e) => {
+      if (!cutsceneActive) return;
+      // page-up/down, arrows, space, home/end all try to scroll — block them
+      if ([32,33,34,35,36,37,38,39,40].includes(e.keyCode)) { e.preventDefault(); e.stopPropagation(); }
+    }, { passive: false });
+
     let prevScrollTop = lc.scrollTop;
     function onScroll(){
       if (cutsceneActive) return;                    // cutscene paints itself
@@ -1331,6 +1375,9 @@
         wrap.classList.remove('hidden');
       }
 
+      // Fallback path — mostly for touch momentum after release, since wheel /
+      // touchmove is already caught above. If a hard fling blew straight past
+      // the trigger, startCutscene() will snap-back to the trigger.
       if (cutsceneArmed && goingDown && p >= TRIGGER) {
         startCutscene();
         return;
