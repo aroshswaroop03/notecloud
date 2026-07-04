@@ -403,6 +403,7 @@
     </div>
 
     <!-- AI Rewrite -->
+    {% if is_pro %}
     <div class="rewrite-card">
       <div class="rewrite-header">
         <span class="rewrite-header-label">✦ AI Rewrite</span>
@@ -432,6 +433,15 @@
         </div>
       </div>
     </div>
+    {% else %}
+    <div class="rewrite-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:600;font-size:.95rem;margin-bottom:.25rem">✦ AI Rewrite</div>
+        <div style="font-size:.82rem;color:var(--muted)">Rewrite your notes in any style — Pro plan only.</div>
+      </div>
+      <a href="/" style="display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;background:var(--accent);color:#fff;border-radius:8px;font-size:.82rem;font-weight:600;text-decoration:none;white-space:nowrap">Upgrade to Pro</a>
+    </div>
+    {% endif %}
 
   </div>
 

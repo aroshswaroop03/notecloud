@@ -784,10 +784,12 @@ def transcription_detail(trans_id):
         "SELECT id, text, word_count, created_at, title FROM transcriptions WHERE id = ? AND user_id = ?",
         (trans_id, session["user_id"])
     ).fetchone()
+    user = conn.execute("SELECT tier, is_admin FROM users WHERE id = ?", (session["user_id"],)).fetchone()
     conn.close()
     if not row:
         return "Not found", 404
-    return render_template("transcription.html", t=dict(row))
+    is_pro = bool(user and (user["is_admin"] or user["tier"] in ("pro", "dev")))
+    return render_template("transcription.html", t=dict(row), is_pro=is_pro)
 
 
 @app.route("/transcriptions/<int:trans_id>/rewrite", methods=["POST"])
@@ -797,7 +799,7 @@ def rewrite_transcription(trans_id):
     POST /transcriptions/<id>/rewrite  { "text": "...", "style": "longer|shorter|casual|professional|..." }
     Rewrites the transcription text using Claude and returns the new text.
     """
-    err = require_paid_tier("AI Rewrite is available on Student and Pro plans.")
+    err = require_pro_tier("AI Rewrite is available on the Pro plan.")
     if err: return err
 
     conn = get_db()
@@ -862,6 +864,16 @@ def save_transcription(trans_id):
     conn.commit()
     conn.close()
     return jsonify({"ok": True, "word_count": word_count})
+
+
+def require_pro_tier(message="This feature is available on the Pro plan."):
+    """Return a JSON error response unless the user is on the pro (or admin/dev) tier."""
+    conn = get_db()
+    user = conn.execute("SELECT tier, is_admin FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    conn.close()
+    if user and (user["is_admin"] or user["tier"] in ("pro", "dev")):
+        return None
+    return jsonify({"error": "upgrade_required", "message": message}), 403
 
 
 def require_paid_tier(message="This feature is available on Student and Pro plans."):
