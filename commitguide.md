@@ -297,3 +297,13 @@ Note: a landing pricing table was added then removed in this window because it b
 - Result: a fast flick lands at the bottom and then the yellow washes in visibly instead of snapping — tweak `EASE` lower for a longer play-out
 
 </details>
+
+<details><summary><strong>1:42PM IST</strong> &nbsp;·&nbsp; <code>edbf23f</code> &nbsp; Landing scroll slow-mo zone (Forza jump-cam feel) + slower ease</summary>
+
+- Animation `EASE` lowered 0.14 → 0.09 (~0.7s catch-up), so the wave/coil fill plays out visibly longer even without slow-mo
+- New slow-mo zone in `[0.42, 0.90]` of scroll progress: while inside, wheel and touch deltas are dampened to ~30% (`SLOW_FACTOR = 0.30`), then released back to native scroll on either side
+- A 0.06-wide ramp on each edge smoothly lerps the dampening in and out so it doesn't feel like the page snagged — outside the ramp we return `1` and native scroll runs unchanged
+- Wheel path: `passive: false` + `preventDefault()` + manual `scrollTop += deltaY * mul`; touch path: `touchstart` seeds `touchY`, `touchmove` (non-passive) advances `scrollTop` by dampened delta, `touchend` resets
+- Tune knobs at the top of the block: `SLOW_IN` / `SLOW_OUT` (zone), `RAMP` (edge width), `SLOW_FACTOR` (how much slower — lower = slower)
+
+</details>
