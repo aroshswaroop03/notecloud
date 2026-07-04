@@ -2308,6 +2308,29 @@
       left: 140%; transition: left .52s ease;
     }
 
+    /* ── Crop modal ── */
+    #crop-stage {
+      position: relative; display: inline-block;
+      max-width: 100%; line-height: 0;
+      touch-action: none; user-select: none; margin: 0 auto;
+    }
+    #crop-img { display: block; max-width: 100%; max-height: 62vh; -webkit-user-drag: none; }
+    #crop-box {
+      position: absolute; box-sizing: border-box;
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 0 9999px rgba(0,0,0,.55);
+      cursor: move;
+    }
+    .crop-h {
+      position: absolute; width: 16px; height: 16px;
+      background: var(--accent); border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,.4);
+    }
+    .crop-h[data-h="nw"] { left: -8px; top: -8px; cursor: nwse-resize; }
+    .crop-h[data-h="ne"] { right: -8px; top: -8px; cursor: nesw-resize; }
+    .crop-h[data-h="sw"] { left: -8px; bottom: -8px; cursor: nesw-resize; }
+    .crop-h[data-h="se"] { right: -8px; bottom: -8px; cursor: nwse-resize; }
+
   </style>
   <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
@@ -2661,6 +2684,30 @@
         <p class="modal-error" id="cancel-error" style="margin-top:.5rem"></p>
         <p class="modal-success" id="cancel-success" style="display:none;margin-top:.5rem"></p>
       {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Crop modal (before transcription) ── -->
+  <div class="modal-overlay" id="crop-modal">
+    <div class="modal" style="max-width:min(94vw,640px);padding:1.25rem;text-align:center">
+      <div class="modal-header" style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between">
+        <h3 style="margin:0">Crop your photo</h3>
+        <button id="crop-close" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <div id="crop-stage">
+        <img id="crop-img" alt="" />
+        <div id="crop-box">
+          <span class="crop-h" data-h="nw"></span>
+          <span class="crop-h" data-h="ne"></span>
+          <span class="crop-h" data-h="sw"></span>
+          <span class="crop-h" data-h="se"></span>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:.78rem;margin:.85rem 0 0">Drag the corners to frame just your notes.</p>
+      <div style="display:flex;gap:.6rem;justify-content:center;margin-top:1rem">
+        <button id="crop-skip" class="modal-btn" style="flex:0 0 auto;padding:.55rem 1.1rem">Use full photo</button>
+        <button id="crop-apply" class="modal-btn primary" style="flex:0 0 auto;padding:.55rem 1.3rem">Crop &amp; continue</button>
+      </div>
     </div>
   </div>
 
@@ -3372,6 +3419,81 @@
 
     function clearStatus() { statusEl.innerHTML = ""; }
 
+    // ── Crop-before-transcribe ────────────────────────────────────────────────
+    // Opens the crop modal for a single image and resolves with a cropped File,
+    // the original File ("use full photo"), or null (cancelled).
+    function openCropper(file) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById("crop-modal");
+        const img   = document.getElementById("crop-img");
+        const box   = document.getElementById("crop-box");
+        const url   = URL.createObjectURL(file);
+        let dw, dh, cx, cy, cw, ch;
+
+        const setBox = () => { box.style.left = cx+"px"; box.style.top = cy+"px"; box.style.width = cw+"px"; box.style.height = ch+"px"; };
+        const clamp = () => {
+          cw = Math.max(28, Math.min(cw, dw));
+          ch = Math.max(28, Math.min(ch, dh));
+          cx = Math.max(0, Math.min(cx, dw - cw));
+          cy = Math.max(0, Math.min(cy, dh - ch));
+        };
+
+        img.onload = () => {
+          dw = img.clientWidth; dh = img.clientHeight;
+          cw = dw * 0.86; ch = dh * 0.86; cx = (dw-cw)/2; cy = (dh-ch)/2;
+          clamp(); setBox();
+          modal.classList.add("open");
+        };
+        img.src = url;
+
+        let mode = null, sx0, sy0, s0;
+        const move = (e) => {
+          const dx = e.clientX - sx0, dy = e.clientY - sy0;
+          if (mode === "move") { cx = s0.cx + dx; cy = s0.cy + dy; }
+          else {
+            if (mode.includes("e")) cw = s0.cw + dx;
+            if (mode.includes("s")) ch = s0.ch + dy;
+            if (mode.includes("w")) { cw = s0.cw - dx; cx = s0.cx + dx; }
+            if (mode.includes("n")) { ch = s0.ch - dy; cy = s0.cy + dy; }
+          }
+          clamp(); setBox();
+        };
+        const up = () => { mode = null; window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+        const down = (e, m) => {
+          e.preventDefault(); mode = m; sx0 = e.clientX; sy0 = e.clientY; s0 = { cx, cy, cw, ch };
+          window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+        };
+        box.onpointerdown = (e) => { if (e.target === box) down(e, "move"); };
+        box.querySelectorAll(".crop-h").forEach(h => {
+          h.onpointerdown = (e) => { e.stopPropagation(); down(e, h.dataset.h); };
+        });
+
+        const applyBtn = document.getElementById("crop-apply");
+        const skipBtn  = document.getElementById("crop-skip");
+        const closeBtn = document.getElementById("crop-close");
+        const cleanup = (result) => {
+          modal.classList.remove("open");
+          URL.revokeObjectURL(url);
+          up();
+          applyBtn.onclick = skipBtn.onclick = closeBtn.onclick = box.onpointerdown = null;
+          resolve(result);
+        };
+        applyBtn.onclick = () => {
+          const rx = img.naturalWidth / dw, ry = img.naturalHeight / dh;
+          const canvas = document.createElement("canvas");
+          canvas.width  = Math.round(cw * rx);
+          canvas.height = Math.round(ch * ry);
+          canvas.getContext("2d").drawImage(img, cx*rx, cy*ry, cw*rx, ch*ry, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            const base = (file.name || "photo").replace(/\.[^.]+$/, "");
+            cleanup(new File([blob], base + "-cropped.png", { type: "image/png" }));
+          }, "image/png", 0.95);
+        };
+        skipBtn.onclick  = () => cleanup(file);
+        closeBtn.onclick = () => cleanup(null);
+      });
+    }
+
     function handleFiles(files) {
       const imageFiles = Array.from(files).filter(f => f.type.startsWith("image/"));
       if (!imageFiles.length) {
@@ -3421,8 +3543,13 @@
       clearStatus();
     }
 
-    // Backward-compat alias for single file (drag-drop, camera)
-    function handleFile(file) { handleFiles([file]); }
+    // Single file (drag-drop, camera, gallery) — crop first, then handle
+    async function handleFile(file) {
+      if (!file || !file.type || !file.type.startsWith("image/")) { handleFiles([file]); return; }
+      const cropped = await openCropper(file);
+      if (cropped === null) return;   // cancelled — leave the drop zone as-is
+      handleFiles([cropped]);
+    }
 
     function clearSelection() {
       selectedFiles = [];
@@ -3438,8 +3565,11 @@
       clearStatus();
     }
 
-    fileInput.addEventListener("change", () => {
-      if (fileInput.files.length > 0) handleFiles(Array.from(fileInput.files));
+    fileInput.addEventListener("change", async () => {
+      const files = Array.from(fileInput.files);
+      if (files.length === 1) await handleFile(files[0]);   // crop single image
+      else if (files.length > 1) handleFiles(files);          // multi-page: skip crop
+      fileInput.value = "";  // let the same file be picked again later
     });
 
     // Gallery input — opens photo library on mobile
