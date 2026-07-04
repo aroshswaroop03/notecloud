@@ -354,3 +354,11 @@ Note: a landing pricing table was added then removed in this window because it b
 - Both are prerequisites for Google Search Console verification (Phase B item)
 
 </details>
+
+<details><summary><strong>3:44PM IST</strong> &nbsp;·&nbsp; <code>fa8018c</code> &nbsp; DEPLOY.md: switch domain from notecloud.com → note-cloud.com</summary>
+
+- Actual registered domain has a hyphen (`note-cloud.com`), not `notecloud.com`
+- Replaced all 13 occurrences in `DEPLOY.md` (ACM cert names, Route 53 records, verification `dig`/`curl` commands, and the ASCII diagram at the top)
+- Templates keep the `notecloud-*` `localStorage` keys and `notecloud26@gmail.com` support email — those aren't the public domain, changing them would either break existing sessions or affect the user's chosen contact address
+
+</details>
