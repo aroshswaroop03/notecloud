@@ -380,6 +380,14 @@ Note: a landing pricing table was added then removed in this window because it b
 
 </details>
 
+<details><summary><strong>10:15PM IST</strong> &nbsp;·&nbsp; <code>89de288</code> &nbsp; Replace pencil scribble loader with pulsing orb + shimmer bar</summary>
+
+- Removed SVG scribble path, pencil emoji, and percentage counter
+- New: golden pulsing orb, rotating status messages (Reading → Decoding → Parsing → Converting → Almost there), thin shimmer progress bar
+- `notecloudprod.zip` rebuilt with this change
+
+</details>
+
 <details><summary><strong>9:47PM IST</strong> &nbsp;·&nbsp; <code>5984615</code> &nbsp; Gate AI Rewrite to Pro; open Google Docs to all tiers</summary>
 
 - **transcription.html:** AI Rewrite card now wrapped in `{% if is_pro %}` — non-pro users see a locked placeholder card with an "Upgrade to Pro" link
