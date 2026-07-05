@@ -275,80 +275,68 @@
       background: linear-gradient(to bottom, rgba(255,255,255,.15) 0%, transparent 60%);
       pointer-events: none;
     }
-    /* ── Scribble loading overlay ── */
+    /* ── Loading overlay ── */
     #loading-overlay {
       display: none;
       margin: .5rem 0;
-      padding: 1.25rem 1.5rem 1rem;
+      padding: 2rem 1.5rem 1.75rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      animation: fadeInUp .25s ease;
+      text-align: center;
+      animation: fadeInUp .3s ease;
     }
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    #loading-msg {
-      text-align: center;
-      font-size: .875rem;
-      color: var(--muted);
-      margin-bottom: .9rem;
-      min-height: 1.2em;
-      transition: opacity .25s;
+    #loading-orb {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--accent) 90%, #fff 10%), var(--accent) 60%, color-mix(in srgb, var(--accent) 60%, #000 40%));
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 40%, transparent);
+      animation: orb-pulse 1.6s ease-in-out infinite;
     }
-    #loading-track {
+    @keyframes orb-pulse {
+      0%   { box-shadow: 0 0 0 0   color-mix(in srgb, var(--accent) 35%, transparent); transform: scale(1); }
+      50%  { box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%,  transparent); transform: scale(1.07); }
+      100% { box-shadow: 0 0 0 0   color-mix(in srgb, var(--accent) 35%, transparent); transform: scale(1); }
+    }
+    #loading-msg {
+      font-size: .88rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      min-height: 1.2em;
+      transition: opacity .22s;
+      letter-spacing: .01em;
+    }
+    #loading-bar-wrap {
       width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    #loading-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width .4s ease-out;
       position: relative;
     }
-    #loading-svg {
-      width: 100%;
-      height: 36px;
-      display: block;
-      overflow: visible;
-    }
-    .scribble-bg {
-      fill: none;
-      stroke: var(--bar-track-bg);
-      stroke-width: 3;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .scribble-fg {
-      fill: none;
-      stroke: var(--accent);
-      stroke-width: 3;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      transition: stroke-dashoffset .35s ease-out;
-    }
-    #loading-pencil {
+    #loading-bar-fill::after {
+      content: '';
       position: absolute;
-      /* top: 50% puts us at the line's vertical center.
-         translate(-100%, -100%) shifts so the bottom-right of the
-         emoji (which is the eraser end) is at that point — meaning
-         the tip (bottom-left of the glyph, rotated -45deg) sits on
-         the drawn line's endpoint. Fine-tuned with extra px offsets. */
-      top: 50%;
-      left: 0%;
-      font-size: 20px;
-      line-height: 1;
-      pointer-events: none;
-      transform-origin: bottom right;
-      transition: left .35s ease-out;
-      animation: pencil-write .28s ease-in-out infinite alternate;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+      animation: bar-shimmer 1.2s ease-in-out infinite;
     }
-    @keyframes pencil-write {
-      from { transform: translate(-95%, -95%) rotate(-40deg); }
-      to   { transform: translate(-95%, -108%) rotate(-55deg); }
-    }
-    #loading-pct {
-      text-align: center;
-      margin-top: .45rem;
-      font-size: .75rem;
-      color: var(--accent);
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
+    @keyframes bar-shimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(300%); }
     }
     /* ── History search ── */
     #history-search {
@@ -3029,20 +3017,11 @@
       <button id="transcribe-btn" class="empty"><span id="transcribe-label">Transcribe handwriting</span></button>
     </div>
 
-    <!-- Pencil progress overlay (shown while Claude is processing) -->
+    <!-- Loading overlay (shown while Claude is processing) -->
     <div id="loading-overlay">
+      <div id="loading-orb"></div>
       <div id="loading-msg">Reading your handwriting…</div>
-      <div id="loading-track">
-        <!-- SVG scribble path — pencil draws this line left to right -->
-        <svg id="loading-svg" viewBox="0 0 400 36" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Ghost path (faint background) -->
-          <path class="scribble-bg" d="M4,18 C14,6 24,30 34,18 C44,6 54,30 64,18 C74,6 84,30 94,18 C104,6 114,30 124,18 C134,6 144,30 154,18 C164,6 174,30 184,18 C194,6 204,30 214,18 C224,6 234,30 244,18 C254,6 264,30 274,18 C284,6 294,30 304,18 C314,6 324,30 334,18 C344,6 354,30 364,18 C374,6 384,30 396,18"/>
-          <!-- Colored fill path (revealed left-to-right via dashoffset) -->
-          <path id="scribble-fg" class="scribble-fg" d="M4,18 C14,6 24,30 34,18 C44,6 54,30 64,18 C74,6 84,30 94,18 C104,6 114,30 124,18 C134,6 144,30 154,18 C164,6 174,30 184,18 C194,6 204,30 214,18 C224,6 234,30 244,18 C254,6 264,30 274,18 C284,6 294,30 304,18 C314,6 324,30 334,18 C344,6 354,30 364,18 C374,6 384,30 396,18"/>
-        </svg>
-        <span id="loading-pencil">✏️</span>
-      </div>
-      <div id="loading-pct">0%</div>
+      <div id="loading-bar-wrap"><div id="loading-bar-fill"></div></div>
     </div>
 
     <p id="status"></p>
@@ -3321,57 +3300,40 @@
     const gdocsBtn      = document.getElementById("gdocs-btn");
     const transcribeLabel = document.getElementById("transcribe-label");
 
-    // Scribble loader elements
+    // Loader elements
     const loadingOverlay = document.getElementById("loading-overlay");
-    const scribbleFg     = document.getElementById("scribble-fg");
     const loadingMsg     = document.getElementById("loading-msg");
-    const loadingPct     = document.getElementById("loading-pct");
-    const loadingPencil  = document.getElementById("loading-pencil");
+    const loadingBarFill = document.getElementById("loading-bar-fill");
 
-    // Measure path length once so we can drive dashoffset from it
-    let scribbleLen = 0;
-    if (scribbleFg) {
-      scribbleLen = scribbleFg.getTotalLength();
-      scribbleFg.style.strokeDasharray  = scribbleLen;
-      scribbleFg.style.strokeDashoffset = scribbleLen; // fully hidden
-    }
-
-let selectedFiles = [];
-    let loadingTimer  = null;
+    let selectedFiles = [];
+    let loadingTimer    = null;
     let loadingProgress = 0;
-    let noFileMsgIndex = 0;
+    let noFileMsgIndex  = 0;
 
     const loadingMessages = [
-      "loading"
+      "Reading your handwriting…",
+      "Decoding letter forms…",
+      "Parsing strokes…",
+      "Converting to text…",
+      "Almost there…",
     ];
 
-    function setScribbleProgress(pct) {
-      const offset = scribbleLen * (1 - pct / 100);
-      scribbleFg.style.strokeDashoffset = offset;
-      loadingPencil.style.left = pct + "%";
-      loadingPct.textContent = Math.round(pct) + "%";
+    function setLoaderProgress(pct) {
+      loadingBarFill.style.width = pct + "%";
     }
 
     function startPencilLoader() {
       loadingOverlay.style.display = "block";
       loadingProgress = 0;
-      // Disable transition for instant reset
-      scribbleFg.style.transition = "none";
-      loadingPencil.style.transition = "none";
-      setScribbleProgress(0);
-      // Re-enable transitions next frame
-      requestAnimationFrame(() => {
-        scribbleFg.style.transition  = "stroke-dashoffset .35s ease-out";
-        loadingPencil.style.transition = "left .35s ease-out";
-      });
+      setLoaderProgress(0);
       loadingMsg.textContent = loadingMessages[0];
       loadingMsg.style.opacity = "1";
       let msgIndex = 0;
       loadingTimer = setInterval(() => {
         const step = loadingProgress < 60 ? 2.2 : loadingProgress < 80 ? 0.9 : 0.25;
         loadingProgress = Math.min(loadingProgress + step, 88);
-        setScribbleProgress(loadingProgress);
-        const newIdx = Math.min(Math.floor(loadingProgress / 22), loadingMessages.length - 1);
+        setLoaderProgress(loadingProgress);
+        const newIdx = Math.min(Math.floor(loadingProgress / (88 / loadingMessages.length)), loadingMessages.length - 1);
         if (newIdx !== msgIndex) {
           msgIndex = newIdx;
           loadingMsg.style.opacity = "0";
@@ -3386,13 +3348,13 @@ let selectedFiles = [];
     function stopPencilLoader(success = true) {
       clearInterval(loadingTimer);
       if (success) {
-        setScribbleProgress(100);
+        setLoaderProgress(100);
         loadingMsg.style.opacity = "0";
         setTimeout(() => {
-          loadingMsg.textContent = "Done!";
+          loadingMsg.textContent = "Done ✓";
           loadingMsg.style.opacity = "1";
         }, 200);
-        setTimeout(() => { loadingOverlay.style.display = "none"; }, 900);
+        setTimeout(() => { loadingOverlay.style.display = "none"; }, 800);
       } else {
         loadingOverlay.style.display = "none";
       }
