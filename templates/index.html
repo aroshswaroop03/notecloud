@@ -2708,6 +2708,19 @@
   </div>
 
   <!-- ── Google Docs connect modal ── -->
+  <!-- ── Not-handwriting confirmation modal ── -->
+  <div class="modal-overlay" id="not-handwriting-modal">
+    <div class="modal" style="max-width:380px;text-align:center;padding:2rem 1.75rem 1.75rem">
+      <div style="font-size:2rem;margin-bottom:.75rem">🤔</div>
+      <div style="font-weight:700;font-size:1.05rem;margin-bottom:.5rem">This doesn't look like handwritten notes</div>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.5">The image appears to contain typed or printed text. Transcribe it anyway?</div>
+      <div style="display:flex;gap:.75rem">
+        <button class="modal-btn secondary" id="not-hw-cancel" style="flex:1">Cancel</button>
+        <button class="modal-btn primary" id="not-hw-confirm" style="flex:1">Transcribe anyway</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="gdocs-connect-modal">
     <div class="modal" style="max-width:400px;padding:0;overflow:hidden">
       <button id="gdocs-connect-close" aria-label="Close" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;z-index:2">✕</button>
@@ -3619,6 +3632,53 @@
           statusEl.style.color = "var(--error)";
           statusEl.textContent = data.message;
           if (upgradeModal) upgradeModal.classList.add("open");
+          return;
+        }
+
+        if (data.error === "no_handwriting") {
+          stopPencilLoader(false);
+          transcribeBtn.disabled = false;
+          transcribeBtn.classList.remove("loading");
+          transcribeLabel.textContent = selectedFiles.length > 1 ? `Transcribe ${selectedFiles.length} pages` : "Transcribe handwriting";
+          const modal = document.getElementById("not-handwriting-modal");
+          modal.classList.add("open");
+          document.getElementById("not-hw-cancel").onclick = () => modal.classList.remove("open");
+          document.getElementById("not-hw-confirm").onclick = async () => {
+            modal.classList.remove("open");
+            transcribeBtn.disabled = true;
+            transcribeBtn.classList.add("loading");
+            startPencilLoader();
+            formData.append("force", "true");
+            try {
+              const r2 = await fetch("/transcribe", { method: "POST", body: formData, credentials: "same-origin" });
+              const d2 = await r2.json();
+              if (d2.transcription) {
+                resultText.value = d2.transcription;
+                wordCount.textContent = `${countWords(d2.transcription)} words`;
+                resultSection.style.display = "block";
+                clearStatus();
+                resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                updateCounter(d2.tokens_remaining, d2.tokens_limit);
+                shareBtn.dataset.transId = d2.transcription_id || "";
+                const tid = d2.transcription_id;
+                if (tid) {
+                  dlTxtBtn.href  = `/transcriptions/${tid}/download/txt`;
+                  dlDocxBtn.href = `/transcriptions/${tid}/download/docx`;
+                  dlTxtBtn.style.display = ""; dlDocxBtn.style.display = "";
+                  if (gdocsBtn) gdocsBtn.style.display = "";
+                }
+                stopPencilLoader(true);
+              } else {
+                stopPencilLoader(false);
+                statusEl.style.color = "var(--error)";
+                statusEl.textContent = d2.error || "Something went wrong.";
+              }
+            } finally {
+              transcribeBtn.disabled = false;
+              transcribeBtn.classList.remove("loading");
+              transcribeLabel.textContent = selectedFiles.length > 1 ? `Transcribe ${selectedFiles.length} pages` : "Transcribe handwriting";
+            }
+          };
           return;
         }
 

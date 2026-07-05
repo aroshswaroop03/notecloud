@@ -1251,13 +1251,24 @@ def transcribe():
 
     # ── 3. Call the Anthropic API ───────────────────────────────────────────
 
+    force = request.form.get("force") == "true"
     page_note = f" There are {len(files)} pages — transcribe them in order, separating pages with '---'." if len(files) > 1 else ""
-    prompt_text = (
-        "Please transcribe all of the handwritten text in this image."
-        + page_note
-        + " Output only the transcribed text — no explanations, no formatting labels, "
-        "no extra commentary. If you cannot read a word clearly, indicate it with [illegible]."
-    )
+    if force:
+        prompt_text = (
+            "Please transcribe all text visible in this image, whether handwritten, typed, or printed."
+            + page_note
+            + " Output only the transcribed text — no explanations, no formatting labels, "
+            "no extra commentary. If you cannot read a word clearly, indicate it with [illegible]."
+        )
+    else:
+        prompt_text = (
+            "Please transcribe all of the handwritten text in this image."
+            + page_note
+            + " If the image contains no handwritten text (e.g. it shows typed, printed, or digital text only),"
+            " respond with exactly: [NOT_HANDWRITTEN]"
+            " Otherwise output only the transcribed text — no explanations, no formatting labels, "
+            "no extra commentary. If you cannot read a word clearly, indicate it with [illegible]."
+        )
 
     client = _anthropic
 
@@ -1278,7 +1289,11 @@ def transcribe():
         return jsonify({"error": f"Claude API error: {e}"}), 500
 
     # The response is a list of content blocks; we want the first text block.
-    transcription = message.content[0].text
+    transcription = message.content[0].text.strip()
+
+    # Detect non-handwritten images and surface a confirmation to the user.
+    if not force and transcription == "[NOT_HANDWRITTEN]":
+        return jsonify({"error": "no_handwriting"}), 200
 
     # ── 4. Count words and update the user's token balance ─────────────────
     # Each word in the transcription costs one token.
