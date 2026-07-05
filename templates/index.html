@@ -1227,13 +1227,21 @@
     }
 
     /* shared scroll-reveal */
-    .reveal {
-      opacity: 0;
-      transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+    .reveal { opacity: 0; }
+    .reveal.from-right.visible {
+      animation: reveal-from-right .75s cubic-bezier(.16,1,.3,1) forwards;
     }
-    .reveal.from-right { transform: translateX(100vw); }
-    .reveal.from-left  { transform: translateX(-100vw); }
-    .reveal.visible    { opacity: 1; transform: translateX(0); }
+    .reveal.from-left.visible {
+      animation: reveal-from-left .75s cubic-bezier(.16,1,.3,1) forwards;
+    }
+    @keyframes reveal-from-right {
+      from { opacity: 0; transform: translateX(100vw); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes reveal-from-left {
+      from { opacity: 0; transform: translateX(-100vw); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
 
     /* section label */
     .section-eyebrow {
