@@ -380,6 +380,13 @@ Note: a landing pricing table was added then removed in this window because it b
 
 </details>
 
+<details><summary><strong>10:48PM IST</strong> &nbsp;·&nbsp; <code>116b0eb</code> &nbsp; Show confirmation popup when image has no handwriting</summary>
+
+- `app.py`: prompt asks Claude to return `[NOT_HANDWRITTEN]` for typed/printed images; backend returns `{error: no_handwriting}`; `force=true` re-runs with a broader "transcribe any text" prompt
+- `index.html`: intercepts `no_handwriting`, stops the loader, opens a modal — Cancel dismisses, "Transcribe anyway" re-sends with `force=true` and runs the full success path
+
+</details>
+
 <details><summary><strong>10:15PM IST</strong> &nbsp;·&nbsp; <code>89de288</code> &nbsp; Replace pencil scribble loader with pulsing orb + shimmer bar</summary>
 
 - Removed SVG scribble path, pencil emoji, and percentage counter
