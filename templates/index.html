@@ -49,19 +49,6 @@
       transition: background-color .3s, color .3s, background-image .3s;
     }
 
-    #grid-glow {
-      position: fixed; inset: 0; z-index: -1; pointer-events: none;
-      background-image:
-        linear-gradient(var(--grid-bright) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-bright) 1px, transparent 1px);
-      background-size: 40px 40px;
-      -webkit-mask: radial-gradient(220px circle at var(--mx,-500px) var(--my,-500px),
-                    #000 0%, rgba(0,0,0,.5) 40%, transparent 72%);
-              mask: radial-gradient(220px circle at var(--mx,-500px) var(--my,-500px),
-                    #000 0%, rgba(0,0,0,.5) 40%, transparent 72%);
-      opacity: 0; transition: opacity .35s ease;
-    }
-    #grid-glow.active { opacity: 1; }
 
     /* ── Header ── */
     header {
@@ -2337,7 +2324,6 @@
 </head>
 <body>
 <script>document.body.classList.add(localStorage.getItem("notecloud-theme")==="light"?"light":"dark");</script>
-  <div id="grid-glow"></div>
 
   <!-- Background ambience -->
   <!-- Hamburger button — fixed top-left, opens history sidebar -->
@@ -5083,25 +5069,6 @@
   })();
 
 
-  // ── Spotlight grid glow ───────────────────────────────────────────────────
-  (function(){
-    if (!window.matchMedia('(pointer:fine)').matches) return;
-    const glow = document.getElementById('grid-glow');
-    if (!glow) return;
-    let mx = 0, my = 0, queued = false;
-    window.addEventListener('mousemove', (e) => {
-      mx = e.clientX; my = e.clientY;
-      if (!glow.classList.contains('active')) glow.classList.add('active');
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(() => {
-        queued = false;
-        glow.style.setProperty('--mx', mx + 'px');
-        glow.style.setProperty('--my', my + 'px');
-      });
-    }, { passive: true });
-    document.addEventListener('mouseleave', () => glow.classList.remove('active'));
-  })();
   </script>
 
 </body>
