@@ -410,6 +410,10 @@ def terms():
     return render_template("terms.html")
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return app.send_static_file("favicon.png")
+
 @app.route("/robots.txt")
 def robots_txt():
     body = (
