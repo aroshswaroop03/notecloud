@@ -2748,7 +2748,7 @@
           Continue with Google
         </button>
         <p style="color:var(--muted);font-size:.72rem;margin:.9rem 0 0;line-height:1.5">
-          By connecting, you agree to our <a href="/privacy" target="_blank" style="color:var(--accent);text-decoration:none">Privacy Policy</a>.
+          By connecting, you agree to our <a href="/privacy" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none">Privacy Policy</a>.
         </p>
         <p id="gdocs-connect-error" style="color:var(--error,#e05555);font-size:.8rem;margin-top:.75rem;display:none"></p>
       </div>
@@ -2786,7 +2786,7 @@
         <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem">
           <div id="settings-avatar-preview" style="width:56px;height:56px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:var(--accent);flex-shrink:0">
             {% if user.avatar %}
-              <img src="/static/avatars/{{ user.avatar }}" style="width:100%;height:100%;object-fit:cover" />
+              <img src="/static/avatars/{{ user.avatar }}" alt="Profile avatar" style="width:100%;height:100%;object-fit:cover" />
             {% else %}
               {{ (user.first_name or 'U')[0] | upper }}
             {% endif %}
@@ -4307,7 +4307,7 @@
             <div class="item-menu-wrap">
               <button class="item-menu-btn" title="More options">⋯</button>
               <div class="item-menu-dropdown">
-                <a class="item-menu-option" href="/transcription/${item.id}" target="_blank"
+                <a class="item-menu-option" href="/transcription/${item.id}" target="_blank" rel="noopener noreferrer"
                    onclick="this.href='/transcription/${item.id}?theme='+(document.body.classList.contains('light')?'light':'dark')">↗ Open</a>
                 <button class="item-menu-option item-rename-btn" data-id="${item.id}">✎ Rename</button>
                 <button class="item-menu-option item-add-nb-btn" data-id="${item.id}">＋ Add to notebook</button>
