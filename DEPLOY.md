@@ -128,10 +128,54 @@ In your EB environment → **Configuration** → **Updates, monitoring, and logg
 | `OWNER_CODE` | your owner unlock code |
 | `DB_PATH` | `/var/app/scrib_d.db` |
 | `FLASK_ENV` | `production` |
+| `GOOGLE_CLIENT_ID` | from Google Cloud Console (see below) |
+| `GOOGLE_CLIENT_SECRET` | from Google Cloud Console (see below) |
+| `GOOGLE_REDIRECT_URI` | `https://note-cloud.com/google/callback` |
+| `GOOGLE_LOGIN_REDIRECT_URI` | `https://note-cloud.com/auth/google/callback` |
+| `STRIPE_SECRET_KEY` | from dashboard.stripe.com (see below) |
+| `STRIPE_WEBHOOK_SECRET` | from the webhook endpoint you create (see below) |
+| `STRIPE_PRICE_STUDENT_MONTHLY` / `_ANNUAL` | the Price IDs for the Student plan |
+| `STRIPE_PRICE_PRO_MONTHLY` / `_ANNUAL` | the Price IDs for the Pro plan |
+| `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET` | from your Notion public integration (see below) |
+| `NOTION_REDIRECT_URI` | `https://note-cloud.com/notion/callback` |
+| `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | from your Apple Developer account (see below) |
+| `APPLE_REDIRECT_URI` | `https://note-cloud.com/auth/apple/callback` |
 
 Click **Apply** and wait for the environment to update.
 
 > `FLASK_ENV=production` enables secure session cookies (HTTPS-only). Do not skip this.
+>
+> **Google OAuth (Docs export + "Continue with Google"):** the `.env` file only has the
+> localhost redirect URIs, which only work for local dev. Before this works in prod:
+> 1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → your
+>    OAuth 2.0 Client ID → **Authorized redirect URIs**, add both prod URLs above
+>    (in addition to, not instead of, the localhost ones — keep those for local dev).
+> 2. Set the two `GOOGLE_REDIRECT_URI` / `GOOGLE_LOGIN_REDIRECT_URI` env vars above on EB.
+> 3. If the OAuth consent screen is still in "Testing" mode, either publish it or add
+>    your test users' emails under **OAuth consent screen → Test users**, or real users
+>    will get an "access blocked" error.
+>
+> **Stripe (payments):**
+> 1. Create the 4 recurring Prices (Student/Pro × monthly/annual) in the Stripe Dashboard
+>    → Product catalog, and copy each Price ID into the env vars above.
+> 2. Dashboard → Developers → Webhooks → **Add endpoint**, URL
+>    `https://note-cloud.com/stripe/webhook`, and subscribe to `checkout.session.completed`,
+>    `customer.subscription.updated`, and `customer.subscription.deleted`. Copy the signing
+>    secret it gives you into `STRIPE_WEBHOOK_SECRET`.
+> 3. Start in Stripe **test mode** end-to-end (test card `4242 4242 4242 4242`) before
+>    switching the secret key to a live one.
+>
+> **Notion export:** create a **public** integration (not internal) at
+> [notion.so/my-integrations](https://www.notion.so/my-integrations), set its redirect URI
+> to the prod URL above, and copy the OAuth client ID/secret into the env vars. Each user
+> connects their own workspace and picks which pages to share with Note-Cloud during that
+> flow — nothing else is needed server-side.
+>
+> **Apple Sign-In:** requires a paid Apple Developer account. In the Apple Developer
+> portal: register a Services ID (this is `APPLE_CLIENT_ID`, e.g. `com.note-cloud.web`)
+> with "Sign in with Apple" enabled and the prod redirect URI above configured, note your
+> Team ID (`APPLE_TEAM_ID`), then create a "Sign in with Apple" key — its Key ID is
+> `APPLE_KEY_ID` and the downloaded `.p8` file's contents are `APPLE_PRIVATE_KEY`.
 
 ---
 

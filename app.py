@@ -11,6 +11,7 @@ database built right into Python — no separate server needed) and Flask sessio
 import base64
 import gzip
 import io
+import json
 import os
 import re
 import secrets
@@ -35,6 +36,21 @@ try:
     GOOGLE_LIBS_AVAILABLE = True
 except ImportError:
     GOOGLE_LIBS_AVAILABLE = False
+try:
+    import stripe
+    STRIPE_LIBS_AVAILABLE = True
+except ImportError:
+    STRIPE_LIBS_AVAILABLE = False
+try:
+    import requests as http_requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+try:
+    import jwt as pyjwt
+    APPLE_LIBS_AVAILABLE = True
+except ImportError:
+    APPLE_LIBS_AVAILABLE = False
 from docx import Document
 from docx.shared import Pt
 from dotenv import load_dotenv
@@ -178,6 +194,32 @@ GOOGLE_LOGIN_SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
+# Stripe — set these in .env once you have a Stripe account
+STRIPE_SECRET_KEY     = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_IDS = {
+    ("student", "monthly"): os.getenv("STRIPE_PRICE_STUDENT_MONTHLY", ""),
+    ("student", "annual"):  os.getenv("STRIPE_PRICE_STUDENT_ANNUAL", ""),
+    ("pro", "monthly"):     os.getenv("STRIPE_PRICE_PRO_MONTHLY", ""),
+    ("pro", "annual"):      os.getenv("STRIPE_PRICE_PRO_ANNUAL", ""),
+}
+# Reverse lookup so the webhook can turn "which price did they buy" back into a tier
+STRIPE_PRICE_TO_TIER = {v: k[0] for k, v in STRIPE_PRICE_IDS.items() if v}
+if STRIPE_LIBS_AVAILABLE and STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+
+# Notion OAuth — set these in .env once you've created a public Notion integration
+NOTION_CLIENT_ID     = os.getenv("NOTION_CLIENT_ID", "")
+NOTION_CLIENT_SECRET = os.getenv("NOTION_CLIENT_SECRET", "")
+NOTION_REDIRECT_URI  = os.getenv("NOTION_REDIRECT_URI", "http://127.0.0.1:5000/notion/callback")
+
+# Sign in with Apple — set these in .env once you have an Apple Developer account
+APPLE_CLIENT_ID    = os.getenv("APPLE_CLIENT_ID", "")   # the Services ID, e.g. com.notecloud.web
+APPLE_TEAM_ID      = os.getenv("APPLE_TEAM_ID", "")
+APPLE_KEY_ID       = os.getenv("APPLE_KEY_ID", "")
+APPLE_PRIVATE_KEY  = os.getenv("APPLE_PRIVATE_KEY", "").replace("\\n", "\n")  # contents of the .p8 file
+APPLE_REDIRECT_URI = os.getenv("APPLE_REDIRECT_URI", "http://127.0.0.1:5000/auth/apple/callback")
+
 # The maximum upload size Flask will accept — 10 MB should be plenty for a photo
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 
@@ -312,6 +354,38 @@ def init_db():
             conn.commit()
         except Exception:
             pass
+
+    # Tracks whether a user has a real, self-chosen password. Accounts created
+    # via "Continue with Google" get a random, never-shown password hash, so
+    # password-confirmation flows (e.g. account deletion) must skip them.
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN has_password INTEGER DEFAULT 1")
+        conn.commit()
+    except Exception:
+        pass
+
+    # Stripe billing columns
+    for col in ["stripe_customer_id TEXT", "stripe_subscription_id TEXT", "stripe_cancel_at_period_end INTEGER DEFAULT 0"]:
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            conn.commit()
+        except Exception:
+            pass
+
+    # Notion OAuth columns
+    for col in ["notion_access_token TEXT", "notion_workspace_name TEXT", "notion_bot_id TEXT"]:
+        try:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            conn.commit()
+        except Exception:
+            pass
+
+    # Apple Sign-In — Apple's stable per-user identifier ("sub" claim)
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN apple_sub TEXT")
+        conn.commit()
+    except Exception:
+        pass
 
     # Notebooks — user-created folders to organise transcriptions
     conn.execute("""
@@ -616,7 +690,7 @@ def index():
     conn = get_db()
     user = conn.execute(
         """SELECT first_name, last_name, email, avatar, referral_code,
-                  bonus_tokens, tokens_today, last_token_date, tier, is_admin
+                  bonus_tokens, tokens_today, last_token_date, tier, is_admin, has_password
            FROM users WHERE id = ?""",
         (session["user_id"],)
     ).fetchone()
@@ -638,6 +712,7 @@ def index():
         tier=status["tier"],
         referral_bonus_tokens=REFERRAL_BONUS_TOKENS,
         tier_limits=TIER_LIMITS,
+        has_password=bool(user["has_password"]),
     )
 
 
@@ -670,44 +745,139 @@ def redeem_code():
 @login_required
 def upgrade():
     """
-    POST /upgrade  { "tier": "student" | "pro" }
-    Placeholder for Stripe. When Stripe keys are in .env, create a Checkout
-    Session here and return its URL. For now returns a coming-soon message.
+    POST /upgrade  { "tier": "student" | "pro", "period": "monthly" | "annual" }
+    Creates a Stripe Checkout Session and returns its URL. The user's tier is
+    NOT upgraded here — that only happens once Stripe confirms payment via the
+    /stripe/webhook route. Doing it here would let anyone hit this endpoint
+    and grant themselves a paid tier for free.
 
-    Each tier will need its own Stripe Price ID in .env:
-      STRIPE_PRICE_STUDENT=price_...
-      STRIPE_PRICE_PRO=price_...
+    Needs in .env: STRIPE_SECRET_KEY and one Price ID per tier/period, e.g.
+      STRIPE_PRICE_STUDENT_MONTHLY=price_...
+      STRIPE_PRICE_STUDENT_ANNUAL=price_...
+      STRIPE_PRICE_PRO_MONTHLY=price_...
+      STRIPE_PRICE_PRO_ANNUAL=price_...
     """
+    if not STRIPE_LIBS_AVAILABLE or not STRIPE_SECRET_KEY:
+        return jsonify({"error": "coming_soon", "message": "Payments coming soon — stay tuned!"}), 501
+
     data = request.get_json(silent=True) or {}
     tier   = data.get("tier", "pro")
     period = data.get("period", "monthly")
+    # The pricing UI's billing toggle uses "yearly" — treat it as "annual".
+    if period == "yearly":
+        period = "annual"
     if tier not in ("student", "pro"):
         return jsonify({"error": "Invalid tier."}), 400
     if period not in ("monthly", "annual"):
         return jsonify({"error": "Invalid billing period."}), 400
 
-    # TODO: uncomment when Stripe is set up:
-    # import stripe
-    # stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-    # period_key = "ANNUAL" if period == "annual" else "MONTHLY"
-    # price_id = os.getenv(f"STRIPE_PRICE_{tier.upper()}_{period_key}")
-    # checkout = stripe.checkout.Session.create(
-    #     payment_method_types=["card"],
-    #     line_items=[{"price": price_id, "quantity": 1}],
-    #     mode="subscription",
-    #     client_reference_id=str(session["user_id"]),
-    #     success_url=request.host_url + "?checkout=success",
-    #     cancel_url=request.host_url,
-    # )
-    # return jsonify({"url": checkout.url})
-    #
-    # IMPORTANT: do NOT upgrade the user's tier from the success_url — anyone
-    # could hit /?checkout=success to get free access. Instead, create a
-    # POST /stripe/webhook route that listens for the
-    # checkout.session.completed event and upgrades the tier there after
-    # verifying the Stripe signature.
+    price_id = STRIPE_PRICE_IDS.get((tier, period))
+    if not price_id:
+        return jsonify({"error": "That plan isn't configured yet."}), 503
 
-    return jsonify({"error": "coming_soon", "message": "Payments coming soon — stay tuned!"}), 501
+    conn = get_db()
+    user = conn.execute(
+        "SELECT email, stripe_customer_id FROM users WHERE id = ?", (session["user_id"],)
+    ).fetchone()
+    conn.close()
+
+    try:
+        checkout_kwargs = {
+            "payment_method_types": ["card"],
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "mode": "subscription",
+            "client_reference_id": str(session["user_id"]),
+            "success_url": request.host_url + "?checkout=success",
+            "cancel_url": request.host_url,
+        }
+        if user["stripe_customer_id"]:
+            checkout_kwargs["customer"] = user["stripe_customer_id"]
+        else:
+            checkout_kwargs["customer_email"] = user["email"]
+        checkout = stripe.checkout.Session.create(**checkout_kwargs)
+        return jsonify({"url": checkout.url})
+    except Exception as e:
+        app.logger.error("stripe checkout error: %s", e)
+        return jsonify({"error": "Could not start checkout — please try again."}), 500
+
+
+@app.route("/stripe/webhook", methods=["POST"])
+@csrf.exempt  # Stripe posts here directly — no CSRF token to send. The Stripe
+              # signature check inside this view is what verifies authenticity.
+def stripe_webhook():
+    """
+    POST /stripe/webhook
+    Receives billing lifecycle events from Stripe. This is the ONLY place a
+    user's tier is granted or revoked based on payment — never from a redirect
+    the browser controls, since that could be replayed or hit directly.
+
+    Configure this URL in the Stripe Dashboard → Developers → Webhooks, and
+    put the signing secret it gives you in STRIPE_WEBHOOK_SECRET.
+    """
+    if not STRIPE_LIBS_AVAILABLE or not STRIPE_SECRET_KEY:
+        return jsonify({"error": "Stripe not configured."}), 503
+
+    payload    = request.get_data()
+    sig_header = request.headers.get("Stripe-Signature", "")
+
+    try:
+        if STRIPE_WEBHOOK_SECRET:
+            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        else:
+            # No signing secret configured yet (e.g. still testing locally) —
+            # parse the payload directly. Set STRIPE_WEBHOOK_SECRET before
+            # going live so forged requests can't grant free access.
+            event = stripe.Event.construct_from(request.get_json(force=True), stripe.api_key)
+    except Exception as e:
+        app.logger.warning("stripe webhook signature/parse error: %s", e)
+        return jsonify({"error": "Invalid payload."}), 400
+
+    etype = event["type"]
+    obj   = event["data"]["object"]
+
+    conn = get_db()
+    try:
+        if etype == "checkout.session.completed":
+            user_id = obj.get("client_reference_id")
+            customer_id     = obj.get("customer")
+            subscription_id = obj.get("subscription")
+            if user_id:
+                tier = "pro"
+                try:
+                    if subscription_id:
+                        sub = stripe.Subscription.retrieve(subscription_id)
+                        price_id = sub["items"]["data"][0]["price"]["id"]
+                        tier = STRIPE_PRICE_TO_TIER.get(price_id, "pro")
+                except Exception as e:
+                    app.logger.warning("stripe: could not resolve tier from subscription: %s", e)
+                conn.execute(
+                    """UPDATE users SET tier = ?, stripe_customer_id = ?, stripe_subscription_id = ?,
+                       stripe_cancel_at_period_end = 0 WHERE id = ?""",
+                    (tier, customer_id, subscription_id, user_id),
+                )
+                conn.commit()
+
+        elif etype == "customer.subscription.updated":
+            sub_id = obj.get("id")
+            cancel_at_period_end = 1 if obj.get("cancel_at_period_end") else 0
+            conn.execute(
+                "UPDATE users SET stripe_cancel_at_period_end = ? WHERE stripe_subscription_id = ?",
+                (cancel_at_period_end, sub_id),
+            )
+            conn.commit()
+
+        elif etype == "customer.subscription.deleted":
+            sub_id = obj.get("id")
+            conn.execute(
+                """UPDATE users SET tier = 'free', stripe_subscription_id = NULL,
+                   stripe_cancel_at_period_end = 0 WHERE stripe_subscription_id = ?""",
+                (sub_id,),
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify({"ok": True})
 
 
 @app.route("/history")
@@ -1111,21 +1281,39 @@ def view_shared(token):
 def cancel_subscription():
     """
     POST /cancel-subscription
-    Downgrades the user to the free tier.
-    When Stripe is set up, also cancel the Stripe subscription here so
-    they aren't charged again after the current billing period ends.
+    Cancels the user's paid plan. If they have a real Stripe subscription, it's
+    set to cancel at the end of the current billing period (so they keep
+    access they already paid for) — the actual tier downgrade to 'free' only
+    happens later via the customer.subscription.deleted webhook, never here,
+    so cancelling can't be used to keep paid access indefinitely.
+
+    Accounts without a Stripe subscription (e.g. an admin/dev-code grant) are
+    downgraded immediately since there's no billing period to honor.
     """
     user_id = session["user_id"]
     conn = get_db()
-    user = conn.execute("SELECT tier, is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = conn.execute(
+        "SELECT tier, is_admin, stripe_subscription_id FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
 
     if user["is_admin"] or user["tier"] in ("free", "dev", None):
         conn.close()
         return jsonify({"error": "No active subscription to cancel."}), 400
 
-    # TODO: stripe.Subscription.cancel(user["stripe_subscription_id"])
-    # IMPORTANT: tier downgrade must happen via Stripe webhook (customer.subscription.deleted),
-    # not here — otherwise users could cancel and keep paid access until the webhook fires.
+    if user["stripe_subscription_id"] and STRIPE_LIBS_AVAILABLE and STRIPE_SECRET_KEY:
+        try:
+            stripe.Subscription.modify(user["stripe_subscription_id"], cancel_at_period_end=True)
+            conn.execute("UPDATE users SET stripe_cancel_at_period_end = 1 WHERE id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+            return jsonify({"ok": True, "message": "Your plan will end at the current billing period — you'll keep access until then."})
+        except Exception as e:
+            app.logger.error("stripe cancel error: %s", e)
+            conn.close()
+            return jsonify({"error": "Could not cancel — please try again."}), 500
+
+    # No Stripe subscription on file (e.g. a manually-granted tier) — nothing
+    # to bill, so just downgrade right away.
     conn.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
@@ -1589,28 +1777,35 @@ def profile_update():
 def profile_password():
     """
     POST /profile/password  { "current": "...", "new_password": "...", "confirm": "..." }
-    Changes the user's password after verifying their current one.
+    Changes the user's password after verifying their current one. Accounts
+    created via "Continue with Google" have no password to verify — for those,
+    this sets one for the first time instead of changing it.
     """
     data = request.get_json(silent=True) or {}
     current      = data.get("current",      "")
     new_password = data.get("new_password", "")
     confirm      = data.get("confirm",      "")
 
-    if not current or not new_password:
-        return jsonify({"error": "Current and new password are required."}), 400
+    if not new_password:
+        return jsonify({"error": "New password is required."}), 400
     if len(new_password) < 6:
         return jsonify({"error": "New password must be at least 6 characters."}), 400
     if new_password != confirm:
         return jsonify({"error": "New passwords do not match."}), 400
 
     conn = get_db()
-    user = conn.execute("SELECT password_hash FROM users WHERE id = ?", (session["user_id"],)).fetchone()
-    if not user or not check_password_hash(user["password_hash"], current):
+    user = conn.execute("SELECT password_hash, has_password FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not user:
         conn.close()
-        return jsonify({"error": "Current password is incorrect."}), 401
+        return jsonify({"error": "Account not found."}), 404
+
+    if user["has_password"]:
+        if not current or not check_password_hash(user["password_hash"], current):
+            conn.close()
+            return jsonify({"error": "Current password is incorrect."}), 401
 
     new_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
-    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, session["user_id"]))
+    conn.execute("UPDATE users SET password_hash = ?, has_password = 1 WHERE id = ?", (new_hash, session["user_id"]))
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
@@ -1621,19 +1816,23 @@ def profile_password():
 def account_delete():
     """
     POST /account/delete  { "password": "..." }
-    Permanently deletes the account and all associated data after password confirmation.
+    Permanently deletes the account and all associated data after password
+    confirmation. Accounts created via "Continue with Google" have no password
+    to confirm — the authenticated session is treated as sufficient for those.
     """
     data = request.get_json(silent=True) or {}
     password = data.get("password", "")
 
-    if not password:
-        return jsonify({"error": "Password confirmation is required."}), 400
-
     conn = get_db()
-    user = conn.execute("SELECT password_hash FROM users WHERE id = ?", (session["user_id"],)).fetchone()
-    if not user or not check_password_hash(user["password_hash"], password):
+    user = conn.execute("SELECT password_hash, has_password FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if not user:
         conn.close()
-        return jsonify({"error": "Incorrect password."}), 401
+        return jsonify({"error": "Account not found."}), 404
+
+    if user["has_password"]:
+        if not password or not check_password_hash(user["password_hash"], password):
+            conn.close()
+            return jsonify({"error": "Incorrect password."}), 401
 
     uid = session["user_id"]
     # Delete all transcriptions, notebook memberships, and notebooks first
@@ -1682,6 +1881,11 @@ def google_auth():
         prompt="consent",
     )
     session["google_oauth_state"] = state
+    # Only allow same-site relative paths — never redirect off-site.
+    next_url = request.args.get("next", "/")
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = "/"
+    session["google_oauth_next"] = next_url
     return redirect(auth_url)
 
 
@@ -1693,11 +1897,16 @@ def google_callback():
         return redirect("/?google_error=not_configured")
 
     state = session.pop("google_oauth_state", None)
+    next_url = session.pop("google_oauth_next", "/")
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = "/"
+    sep = "&" if "?" in next_url else "?"
+
     if not state or request.args.get("state") != state:
-        return redirect("/?google_error=invalid_state")
+        return redirect(f"{next_url}{sep}google_error=invalid_state")
 
     if "error" in request.args:
-        return redirect("/?google_error=access_denied")
+        return redirect(f"{next_url}{sep}google_error=access_denied")
 
     flow = _google_flow()
     flow.fetch_token(authorization_response=request.url)
@@ -1715,7 +1924,7 @@ def google_callback():
     )
     conn.commit()
     conn.close()
-    return redirect("/?google_connected=1")
+    return redirect(f"{next_url}{sep}google_connected=1")
 
 
 @app.route("/google/status")
@@ -1821,6 +2030,210 @@ def export_to_gdocs(trans_id):
         return jsonify({"error": "Google Docs export failed — please try again."}), 500
 
 
+# ── Notion integration ────────────────────────────────────────────────────────
+# Uses a public Notion integration (OAuth), so each user connects their own
+# workspace. Docs: https://developers.notion.com/docs/authorization
+
+NOTION_API_BASE = "https://api.notion.com/v1"
+NOTION_VERSION  = "2022-06-28"
+
+
+def _notion_headers(token):
+    return {
+        "Authorization": f"Bearer {token}",
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+    }
+
+
+@app.route("/notion/auth")
+@login_required
+def notion_auth():
+    """Redirect the user to Notion's OAuth consent screen."""
+    if not REQUESTS_AVAILABLE or not NOTION_CLIENT_ID:
+        return "Notion integration not configured — add NOTION_CLIENT_ID and NOTION_CLIENT_SECRET to .env", 503
+
+    state = secrets.token_urlsafe(24)
+    session["notion_oauth_state"] = state
+
+    next_url = request.args.get("next", "/")
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = "/"
+    session["notion_oauth_next"] = next_url
+
+    from urllib.parse import urlencode
+    params = {
+        "client_id": NOTION_CLIENT_ID,
+        "response_type": "code",
+        "owner": "user",
+        "redirect_uri": NOTION_REDIRECT_URI,
+        "state": state,
+    }
+    return redirect(f"{NOTION_API_BASE}/oauth/authorize?{urlencode(params)}")
+
+
+@app.route("/notion/callback")
+@login_required
+def notion_callback():
+    """Handle the OAuth callback, store the workspace token, and redirect back."""
+    next_url = session.pop("notion_oauth_next", "/")
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = "/"
+    sep = "&" if "?" in next_url else "?"
+
+    if not REQUESTS_AVAILABLE or not NOTION_CLIENT_ID:
+        return redirect(f"{next_url}{sep}notion_error=not_configured")
+
+    state = session.pop("notion_oauth_state", None)
+    if not state or request.args.get("state") != state:
+        return redirect(f"{next_url}{sep}notion_error=invalid_state")
+
+    if "error" in request.args:
+        return redirect(f"{next_url}{sep}notion_error=access_denied")
+
+    code = request.args.get("code")
+    if not code:
+        return redirect(f"{next_url}{sep}notion_error=access_denied")
+
+    try:
+        resp = http_requests.post(
+            f"{NOTION_API_BASE}/oauth/token",
+            auth=(NOTION_CLIENT_ID, NOTION_CLIENT_SECRET),
+            json={"grant_type": "authorization_code", "code": code, "redirect_uri": NOTION_REDIRECT_URI},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except Exception as e:
+        app.logger.error("notion token exchange error: %s", e)
+        return redirect(f"{next_url}{sep}notion_error=access_denied")
+
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET notion_access_token=?, notion_workspace_name=?, notion_bot_id=? WHERE id=?",
+        (
+            payload.get("access_token"),
+            payload.get("workspace_name"),
+            payload.get("bot_id"),
+            session["user_id"],
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return redirect(f"{next_url}{sep}notion_connected=1")
+
+
+@app.route("/notion/status")
+@login_required
+def notion_status():
+    """Return whether the user has connected Notion, and to which workspace."""
+    conn = get_db()
+    user = conn.execute(
+        "SELECT notion_access_token, notion_workspace_name FROM users WHERE id=?", (session["user_id"],)
+    ).fetchone()
+    conn.close()
+    return jsonify({
+        "connected": bool(user and user["notion_access_token"]),
+        "workspace": user["notion_workspace_name"] if user else None,
+    })
+
+
+@app.route("/notion/disconnect", methods=["POST"])
+@login_required
+def notion_disconnect():
+    """Remove the stored Notion token for the user."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE users SET notion_access_token=NULL, notion_workspace_name=NULL, notion_bot_id=NULL WHERE id=?",
+        (session["user_id"],),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+def _notion_text_blocks(text):
+    """Split text into Notion paragraph blocks, chunked under the 2000-char rich-text limit."""
+    blocks = []
+    for para in (text or "").split("\n\n"):
+        para = para.strip("\n")
+        if not para:
+            continue
+        for i in range(0, len(para), 1900):
+            chunk = para[i:i + 1900]
+            blocks.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {"rich_text": [{"type": "text", "text": {"content": chunk}}]},
+            })
+    return blocks or [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": []}}]
+
+
+@app.route("/transcriptions/<int:trans_id>/export/notion", methods=["POST"])
+@login_required
+def export_to_notion(trans_id):
+    """Create a new Notion page containing the transcription text."""
+    if not REQUESTS_AVAILABLE or not NOTION_CLIENT_ID:
+        return jsonify({"error": "Notion integration not configured."}), 503
+
+    conn = get_db()
+    row = conn.execute(
+        "SELECT text, title, created_at FROM transcriptions WHERE id=? AND user_id=?",
+        (trans_id, session["user_id"]),
+    ).fetchone()
+    user = conn.execute(
+        "SELECT notion_access_token FROM users WHERE id=?", (session["user_id"],)
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "Not found."}), 404
+    if not user or not user["notion_access_token"]:
+        return jsonify({"error": "notion_not_connected"}), 401
+
+    token = user["notion_access_token"]
+    headers = _notion_headers(token)
+
+    try:
+        # Notion has no "workspace root" you can create pages under directly —
+        # a new page must live inside a page or database the user has already
+        # shared with the integration during the connect flow. Find one.
+        search_resp = http_requests.post(
+            f"{NOTION_API_BASE}/search",
+            headers=headers,
+            json={"filter": {"value": "page", "property": "object"}, "page_size": 1},
+            timeout=10,
+        )
+        search_resp.raise_for_status()
+        results = search_resp.json().get("results", [])
+        if not results:
+            return jsonify({
+                "error": "notion_no_pages",
+                "message": "Connected, but no pages are shared with Note-Cloud yet. In Notion, open a page, "
+                           "click ⋯ → Connections, and add Note-Cloud — then try again.",
+            }), 422
+        parent_id = results[0]["id"]
+
+        doc_title = row["title"] or f"Transcription — {(row['created_at'] or '')[:10]}"
+        create_resp = http_requests.post(
+            f"{NOTION_API_BASE}/pages",
+            headers=headers,
+            json={
+                "parent": {"page_id": parent_id},
+                "properties": {"title": {"title": [{"type": "text", "text": {"content": doc_title}}]}},
+                "children": _notion_text_blocks(row["text"]),
+            },
+            timeout=10,
+        )
+        create_resp.raise_for_status()
+        page = create_resp.json()
+        url = page.get("url") or f"https://notion.so/{page['id'].replace('-', '')}"
+        return jsonify({"ok": True, "url": url})
+    except Exception as e:
+        app.logger.error("notion export error: %s", e)
+        return jsonify({"error": "Notion export failed — please try again."}), 500
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 # ── Google Login (OAuth for authentication) ───────────────────────────────────
@@ -1913,9 +2326,132 @@ def google_login_callback():
         try:
             cursor = conn.execute(
                 """INSERT INTO users
-                   (email, password_hash, first_name, last_name, created_at, referral_code, tier)
-                   VALUES (?, ?, ?, ?, ?, ?, 'free')""",
+                   (email, password_hash, first_name, last_name, created_at, referral_code, tier, has_password)
+                   VALUES (?, ?, ?, ?, ?, ?, 'free', 0)""",
                 (email, pw_hash, first_name or "User", last_name or "", created_at, ref_code),
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
+        except Exception:
+            conn.close()
+            return redirect("/login?error=account_error")
+
+        session["user_id"]    = new_id
+        session["user_email"] = email
+        conn.close()
+
+    return redirect("/")
+
+
+# ── Apple Sign-In (Sign in with Apple) ────────────────────────────────────────
+# Docs: https://developer.apple.com/documentation/sign_in_with_apple
+
+def _apple_configured():
+    return bool(APPLE_LIBS_AVAILABLE and APPLE_CLIENT_ID and APPLE_TEAM_ID and APPLE_KEY_ID and APPLE_PRIVATE_KEY)
+
+
+@app.route("/auth/apple")
+def apple_login():
+    """Redirect to Apple's Sign in with Apple consent screen."""
+    if not _apple_configured():
+        return redirect("/login?error=apple_not_configured")
+
+    state = secrets.token_urlsafe(24)
+    session["apple_oauth_state"] = state
+
+    from urllib.parse import urlencode
+    params = {
+        "client_id": APPLE_CLIENT_ID,
+        "redirect_uri": APPLE_REDIRECT_URI,
+        "response_type": "code id_token",
+        "response_mode": "form_post",
+        "scope": "name email",
+        "state": state,
+    }
+    return redirect(f"https://appleid.apple.com/auth/authorize?{urlencode(params)}")
+
+
+@app.route("/auth/apple/callback", methods=["POST"])
+@csrf.exempt  # Apple posts here directly — no CSRF token to send. The signed
+              # id_token + our own state check are what verify authenticity.
+def apple_login_callback():
+    """
+    Apple posts here (not a GET redirect) with the signed id_token, an
+    authorization code, and — only on the very first authorization ever — a
+    `user` field with the name Apple only shares once.
+    """
+    if not _apple_configured():
+        return redirect("/login?error=apple_not_configured")
+
+    state = session.pop("apple_oauth_state", None)
+    if not state or request.form.get("state") != state:
+        return redirect("/login?error=invalid_state")
+
+    if "error" in request.form:
+        return redirect("/login?error=access_denied")
+
+    id_token = request.form.get("id_token")
+    if not id_token:
+        return redirect("/login?error=access_denied")
+
+    try:
+        jwks_client = pyjwt.PyJWKClient("https://appleid.apple.com/auth/keys")
+        signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+        claims = pyjwt.decode(
+            id_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=APPLE_CLIENT_ID,
+            issuer="https://appleid.apple.com",
+        )
+    except Exception as e:
+        app.logger.error("apple id_token verification failed: %s", e)
+        return redirect("/login?error=access_denied")
+
+    apple_sub = claims.get("sub")
+    email     = (claims.get("email") or "").lower().strip()
+    if not apple_sub:
+        return redirect("/login?error=access_denied")
+
+    # Apple only sends the user's name once, on their very first authorization.
+    first_name, last_name = "", ""
+    user_json = request.form.get("user")
+    if user_json:
+        try:
+            name = json.loads(user_json).get("name", {})
+            first_name = name.get("firstName", "")
+            last_name  = name.get("lastName", "")
+        except Exception:
+            pass
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE apple_sub = ?", (apple_sub,)).fetchone()
+
+    if not user and email:
+        # First Apple login for an email that already has a password account —
+        # link them instead of creating a duplicate.
+        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if user:
+            conn.execute("UPDATE users SET apple_sub = ? WHERE id = ?", (apple_sub, user["id"]))
+            conn.commit()
+
+    if user:
+        session["user_id"]    = user["id"]
+        session["user_email"] = user["email"]
+        conn.close()
+    else:
+        if not email:
+            conn.close()
+            return redirect("/login?error=no_email")
+        pw_hash    = generate_password_hash(secrets.token_hex(32), method="pbkdf2:sha256")
+        created_at = datetime.utcnow().isoformat()
+        ref_code   = secrets.token_urlsafe(6).upper()[:8]
+        try:
+            cursor = conn.execute(
+                """INSERT INTO users
+                   (email, password_hash, first_name, last_name, created_at, referral_code, tier, has_password, apple_sub)
+                   VALUES (?, ?, ?, ?, ?, ?, 'free', 0, ?)""",
+                (email, pw_hash, first_name or "User", last_name or "", created_at, ref_code, apple_sub),
             )
             conn.commit()
             new_id = cursor.lastrowid
