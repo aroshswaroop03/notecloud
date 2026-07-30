@@ -402,3 +402,52 @@ Note: a landing pricing table was added then removed in this window because it b
 - Server-side Pro gate on `/rewrite` endpoint stays in place
 
 </details>
+
+## 7/28
+
+<details><summary><strong>6:25AM PDT</strong> &nbsp;·&nbsp; <code>ee48a79</code> &nbsp; Add rel=noopener to external links + alt text on avatar image</summary>
+
+- Added `rel="noopener noreferrer"` to the two `target="_blank"` links (Privacy Policy link, transcription "Open" link) to close a reverse-tabnabbing gap
+- Added `alt="Profile avatar"` to the settings avatar `<img>` for accessibility
+
+</details>
+
+## 7/30
+
+<details><summary><strong>2:15PM PDT</strong> &nbsp;·&nbsp; <code>066721d</code> &nbsp; Add Stripe payments, Notion export, and Apple Sign-In; fix Google-account password lockout</summary>
+
+**Payments:**
+- Real Stripe Checkout Session creation and a signature-verified `/stripe/webhook` — `checkout.session.completed` grants the tier, `customer.subscription.deleted` revokes it. Tier is never granted from a browser-controlled redirect.
+- `/cancel-subscription` now defers to end-of-billing-period via Stripe's `cancel_at_period_end` instead of downgrading immediately.
+
+**Notion export:**
+- Full OAuth connect flow mirroring the existing Google Docs integration (`/notion/auth`, `/notion/callback`, `/notion/status`, `/notion/disconnect`) plus page-creation export via the Notion API.
+
+**Apple Sign-In:**
+- Real backend with cryptographic `id_token` verification against Apple's public JWKS, replacing the "coming soon" UI stub.
+
+**Bug fixes:**
+- Accounts created via "Continue with Google" get a random, never-shown password — this silently locked them out of "Change password" and "Delete account" forever. Added a `has_password` flag so both flows skip the unusable password check for those accounts.
+- Google Docs export was missing entirely from the transcription detail page (only worked right after transcribing on the homepage) — now available there too.
+- `/google/auth` now accepts `?next=`, so the OAuth connect flow returns to whatever page it was started from instead of always bouncing to the homepage.
+
+</details>
+
+<details><summary><strong>2:15PM PDT</strong> &nbsp;·&nbsp; <code>452fc16</code> &nbsp; Redesign UI to an ink & paper theme with a blue accent; fix scroll-reveal and login tab-state bugs</summary>
+
+**Redesign:**
+- Replaced the pink/purple/orange gradient theme (multiple accent hues in one gradient, Inter everywhere — a textbook generic-AI-generated look) with a single considered blue accent, a warm paper/ink-black base, and Geist in place of Inter, consistent across all 6 pages.
+- Recolored the logo mark and favicon from leftover gold to the new blue via a hue-shift (preserves original shading rather than a flat recolor).
+- Fixed the login page's globe animation — the "land" scatter dots were still hardcoded to a mustard/gold that didn't match anything.
+- Restored `bg-orbs`, an ambient background effect with a fully built, perf-tuned CSS block but no HTML element ever using it — silently orphaned at some point. Added a matching paper-grain texture.
+
+**Bug fixes:**
+- `login.html`: "Log in" and "Start transcribing" shared the same slide mechanism, but only "Start transcribing" forced its own tab state — if you'd touched signup first, clicking "Log in" afterward silently kept showing the signup form. Both buttons now explicitly set their own tab state.
+- `login.html`: the auth-panel logo pointed at a PNG already deleted from disk — a broken image on the live login page.
+- `index.html`: the scroll-reveal below-fold sections were built "fail closed" (opacity:0 in plain CSS, only shown if a JS+IntersectionObserver chain ran perfectly). A leftover `transitionDelay`/`animation` mismatch from a past refactor meant the stagger timing silently did nothing. Rewrote it "fail open" — content is visible by default, JS only adds the hidden/slide-in state after the observer is confirmed working, wrapped in a try/catch. Swapped the 100vw off-screen slide for a safer 56px one.
+- `index.html`: an orphaned closing `</div>` after the ad-modal block had the whole document's tag balance off by one.
+- `index.html`: notebook items loaded into the inline editor never showed the Google Docs/Notion export buttons, unlike History items.
+
+Also removes two PNGs and a zip that were already deleted from disk but still tracked, and picks up an unrelated `to-do.md` edit already sitting in the working tree.
+
+</details>
