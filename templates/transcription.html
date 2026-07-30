@@ -7,41 +7,43 @@
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet"/>
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
     :root {
-      --bg:      #f2ead8;
-      --surface: #fffef9;
-      --border:  rgba(160,125,60,.18);
-      --accent:  #b8902a;
-      --text:    #1a1208;
-      --muted:   #8a7860;
-      --success: #4a7a48;
-      --error:   #a84040;
+      --bg:      #f7f4ee;
+      --surface: #fffefb;
+      --border:  rgba(26,23,18,.10);
+      --accent:  #355e8c;
+      --accent-dim: #22446b;
+      --text:    #1a1712;
+      --muted:   #756f62;
+      --success: #3a8a5c;
+      --error:   #a3402e;
       --radius:  14px;
-      --grid:    rgba(160,125,60,.055);
-      --grid-bright: rgba(160,125,60,.32);
+      --grid:    rgba(26,23,18,.035);
+      --grid-bright: rgba(53,94,140,.22);
     }
     body.dark {
-      --bg:        #0e0b07;
-      --surface:   #1a1510;
-      --border:    rgba(212,168,67,.13);
-      --accent:    #d4a843;
-      --text:      #f2ead8;
-      --muted:     rgba(242,234,216,.45);
-      --success:   #5a9e58;
-      --error:     #e05555;
-      --grid:      rgba(212,168,67,.04);
-      --grid-bright: rgba(212,168,67,.34);
-      --clear-bg:  rgba(20,16,10,.94);
+      --bg:        #100f0c;
+      --surface:   #1a1814;
+      --border:    rgba(255,255,255,.09);
+      --accent:    #639bdb;
+      --accent-dim: #4779b2;
+      --text:      #f3f1ea;
+      --muted:     rgba(243,241,234,.5);
+      --success:   #4cbb84;
+      --error:     #e2685a;
+      --grid:      rgba(255,255,255,.035);
+      --grid-bright: rgba(99,155,219,.28);
+      --clear-bg:  rgba(26,24,20,.92);
     }
     body.light {
-      --clear-bg:  rgba(255,254,249,.88);
+      --clear-bg:  rgba(247,244,238,.85);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Geist', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -143,7 +145,7 @@
       display: flex; flex-direction: column; gap: .3rem;
       transition: background .2s;
     }
-    .stat-cell:hover { background: rgba(184,144,42,.04); }
+    .stat-cell:hover { background: rgba(53,94,140,.04); }
     .stat-label {
       font-size: .65rem; font-weight: 700; letter-spacing: .1em;
       text-transform: uppercase; color: var(--muted);
@@ -254,7 +256,7 @@
     }
     .rw-btn:hover:not(:disabled) {
       border-color: var(--accent);
-      background: rgba(184,144,42,.07);
+      background: rgba(53,94,140,.07);
       color: var(--accent);
       transform: translateY(-1px);
     }
@@ -311,17 +313,17 @@
     .amb-blob { position: absolute; border-radius: 50%; filter: blur(48px); animation: amb-float linear infinite; }
     .amb-blob-1 {
       width: 70vmax; height: 55vmax; top: -25vmax; left: -10vmax;
-      background: radial-gradient(circle, rgba(212,168,67,.05) 0%, transparent 65%);
+      background: radial-gradient(circle, rgba(53,94,140,.07) 0%, transparent 65%);
       animation-duration: 20s;
     }
     .amb-blob-2 {
       width: 55vmax; height: 55vmax; bottom: -20vmax; right: -15vmax;
-      background: radial-gradient(circle, rgba(180,120,30,.04) 0%, transparent 65%);
+      background: radial-gradient(circle, rgba(53,94,140,.05) 0%, transparent 65%);
       animation-duration: 26s; animation-direction: reverse;
     }
     .amb-blob-3 {
       width: 40vmax; height: 40vmax; top: 40%; left: 30%;
-      background: radial-gradient(circle, rgba(212,168,67,.025) 0%, transparent 65%);
+      background: radial-gradient(circle, rgba(53,94,140,.035) 0%, transparent 65%);
       animation-duration: 34s;
     }
     @keyframes amb-float {
@@ -443,6 +445,21 @@
     </div>
     {% endif %}
 
+    <!-- Export -->
+    <div class="rewrite-card" id="export-card">
+      <div class="rewrite-header">
+        <span class="rewrite-header-label">Export &amp; share</span>
+      </div>
+      <div class="rewrite-btns">
+        <button class="rw-btn" id="copy-btn"><span class="rw-icon">⧉</span> Copy</button>
+        <button class="rw-btn" id="share-btn"><span class="rw-icon">🔗</span> Share link</button>
+        <a class="rw-btn" id="dl-txt-btn" href="/transcriptions/{{ t.id }}/download/txt" style="text-decoration:none"><span class="rw-icon">↓</span> .txt</a>
+        <a class="rw-btn" id="dl-docx-btn" href="/transcriptions/{{ t.id }}/download/docx" style="text-decoration:none"><span class="rw-icon">↓</span> .docx</a>
+        <button class="rw-btn" id="gdocs-btn"><span class="rw-icon">📄</span> Google Docs</button>
+        <button class="rw-btn" id="notion-btn"><span class="rw-icon">▧</span> Notion</button>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -552,7 +569,7 @@
   }
 
   // ── AI Rewrite ────────────────────────────────────────────────────────────
-  const rwBtns       = document.querySelectorAll('.rw-btn');
+  const rwBtns       = document.querySelectorAll('.rw-btn[data-style]');
   const rewritePreview  = document.getElementById('rewrite-preview');
   const rewriteText     = document.getElementById('rewrite-text');
   const previewStyleName= document.getElementById('preview-style-name');
@@ -622,6 +639,115 @@
     statusText.textContent = 'Discarded.';
   });
 
+  // ── Export & share ────────────────────────────────────────────────────────
+  (function(){
+    const copyBtn  = document.getElementById('copy-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const gdocsBtn = document.getElementById('gdocs-btn');
+
+    function flash(btn, html, ms){
+      const original = btn.innerHTML;
+      btn.innerHTML = html;
+      btn.disabled = true;
+      setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, ms);
+    }
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(editor.value);
+        flash(copyBtn, '<span class="rw-icon">✓</span> Copied!', 2000);
+      } catch {
+        flash(copyBtn, '<span class="rw-icon">✕</span> Failed', 2000);
+      }
+    });
+
+    shareBtn.addEventListener('click', async () => {
+      const original = shareBtn.innerHTML;
+      shareBtn.textContent = 'Generating…';
+      shareBtn.disabled = true;
+      try {
+        const res  = await fetch(`/transcriptions/${TRANS_ID}/share`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Failed');
+        await navigator.clipboard.writeText(data.url);
+        shareBtn.innerHTML = '<span class="rw-icon">✓</span> Link copied!';
+      } catch {
+        shareBtn.innerHTML = '<span class="rw-icon">✕</span> Failed';
+      } finally {
+        setTimeout(() => { shareBtn.innerHTML = original; shareBtn.disabled = false; }, 2500);
+      }
+    });
+
+    gdocsBtn.addEventListener('click', async () => {
+      const original = gdocsBtn.innerHTML;
+      gdocsBtn.textContent = 'Exporting…';
+      gdocsBtn.disabled = true;
+      try {
+        const res  = await fetch(`/transcriptions/${TRANS_ID}/export/gdocs`, { method: 'POST' });
+        const data = await res.json();
+        if (data.error === 'google_not_connected'){
+          window.location.href = '/google/auth?next=' + encodeURIComponent(location.pathname);
+          return;
+        }
+        if (data.url){
+          window.open(data.url, '_blank');
+          gdocsBtn.innerHTML = '<span class="rw-icon">✓</span> Opened';
+        } else {
+          gdocsBtn.innerHTML = '<span class="rw-icon">✕</span> Failed';
+        }
+      } catch {
+        gdocsBtn.innerHTML = '<span class="rw-icon">✕</span> Failed';
+      } finally {
+        setTimeout(() => { gdocsBtn.innerHTML = original; gdocsBtn.disabled = false; }, 2500);
+      }
+    });
+
+    const notionBtn = document.getElementById('notion-btn');
+    notionBtn.addEventListener('click', async () => {
+      const original = notionBtn.innerHTML;
+      notionBtn.textContent = 'Exporting…';
+      notionBtn.disabled = true;
+      try {
+        const res  = await fetch(`/transcriptions/${TRANS_ID}/export/notion`, { method: 'POST' });
+        const data = await res.json();
+        if (data.error === 'notion_not_connected'){
+          window.location.href = '/notion/auth?next=' + encodeURIComponent(location.pathname);
+          return;
+        }
+        if (data.error === 'notion_no_pages'){
+          alert(data.message);
+          notionBtn.innerHTML = original;
+          notionBtn.disabled = false;
+          return;
+        }
+        if (data.url){
+          window.open(data.url, '_blank');
+          notionBtn.innerHTML = '<span class="rw-icon">✓</span> Opened';
+        } else {
+          notionBtn.innerHTML = '<span class="rw-icon">✕</span> Failed';
+        }
+      } catch {
+        notionBtn.innerHTML = '<span class="rw-icon">✕</span> Failed';
+      } finally {
+        setTimeout(() => { notionBtn.innerHTML = original; notionBtn.disabled = false; }, 2500);
+      }
+    });
+
+    // Returning from /google/auth or /notion/auth — clean the URL, and if
+    // that's what sent us there, finish the export automatically.
+    const params = new URLSearchParams(location.search);
+    if (params.has('google_connected') || params.has('google_error')) {
+      const wasConnecting = params.has('google_connected');
+      history.replaceState({}, '', location.pathname);
+      if (wasConnecting) gdocsBtn.click();
+    }
+    if (params.has('notion_connected') || params.has('notion_error')) {
+      const wasConnecting = params.has('notion_connected');
+      history.replaceState({}, '', location.pathname);
+      if (wasConnecting) notionBtn.click();
+    }
+  })();
+
   // Apply theme from URL param (?theme=light or ?theme=dark)
   (function(){
     const theme = new URLSearchParams(location.search).get('theme') || 'dark';
@@ -630,7 +756,7 @@
   </script>
 
   <script>
-  // ── Floating gold particles ────────────────────────────────────────────────
+  // ── Floating accent particles ────────────────────────────────────────────
   (function(){
     const canvas = document.getElementById('particle-canvas');
     const ctx = canvas.getContext('2d');
@@ -654,7 +780,7 @@
         if (p.y < -12 || p.life > p.maxLife){ particles[i] = makeParticle(false); continue; }
         const a = p.alpha * Math.sin(p.life/p.maxLife * Math.PI) * .8;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(212,168,67,${a})`; ctx.fill();
+        ctx.fillStyle = `rgba(53,94,140,${a})`; ctx.fill();
       }
     }
     requestAnimationFrame(tick);

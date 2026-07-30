@@ -7,21 +7,21 @@
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:      #0e0e10;
-      --surface: #18181c;
+      --bg:      #100f0c;
+      --surface: #1a1814;
       --border:  rgba(255,255,255,.08);
-      --accent:  #c9a96e;
-      --text:    #e8e6e0;
+      --accent:  #639bdb;
+      --text:    #ede9df;
       --muted:   #6b6b72;
       --radius:  14px;
       --grid-line: rgba(255,255,255,.015);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Geist', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -42,7 +42,7 @@
       top: 0; left: 50%;
       transform: translateX(-50%);
       width: 600px; height: 260px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(201,169,110,.10), transparent 70%);
+      background: radial-gradient(ellipse at 50% 0%, rgba(99,155,219,.14), transparent 70%);
       pointer-events: none;
     }
 
@@ -65,16 +65,16 @@
     .try-btn {
       padding: .45rem 1.1rem;
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border: none;
       border-radius: 8px;
       font-family: inherit;
       font-size: .85rem;
       font-weight: 600;
       text-decoration: none;
-      transition: background .15s, transform .15s;
+      transition: filter .15s, transform .15s;
     }
-    .try-btn:hover { background: #d9b97e; transform: translateY(-1px); }
+    .try-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
     .card {
       width: 100%;
@@ -144,7 +144,7 @@
       gap: .4rem;
       transition: border-color .15s, background .15s;
     }
-    .copy-btn:hover { border-color: var(--accent); background: rgba(201,169,110,.06); }
+    .copy-btn:hover { border-color: var(--accent); background: rgba(99,155,219,.06); }
     .copy-btn.copied { border-color: #5cb88a; color: #5cb88a; }
 
     .attribution {

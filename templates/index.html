@@ -7,34 +7,35 @@
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:        #f2ead8;
-      --surface:   #fffef9;
-      --border:    rgba(160,125,60,.18);
-      --accent:    #b8902a;
-      --accent-dim:#9a7820;
-      --text:      #1a1208;
-      --muted:     #8a7860;
-      --success:   #4a7a48;
-      --error:     #a84040;
+      --bg:        #f7f4ee;
+      --surface:   #fffefb;
+      --border:    rgba(26,23,18,.10);
+      --accent:    #355e8c;
+      --accent-dim:#22446b;
+      --gradient:  linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+      --text:      #1a1712;
+      --muted:     #756f62;
+      --success:   #3a8a5c;
+      --error:     #a3402e;
       --radius:    14px;
 
-      --grid-line:      rgba(160,125,60,.055);
-      --grid-bright:    rgba(160,125,60,.32);
-      --drop-border:    rgba(160,125,60,.25);
-      --preview-fade:   rgba(242,234,216,.80);
-      --clear-bg:       rgba(255,254,249,.88);
-      --bar-track-bg:   rgba(160,125,60,.12);
-      --item-hover-bg:  rgba(160,125,60,.05);
-      --btn-secondary-bg: rgba(160,125,60,.08);
+      --grid-line:      rgba(26,23,18,.035);
+      --grid-bright:    rgba(53,94,140,.22);
+      --drop-border:    rgba(26,23,18,.14);
+      --preview-fade:   rgba(247,244,238,.85);
+      --clear-bg:       rgba(255,254,251,.9);
+      --bar-track-bg:   rgba(26,23,18,.08);
+      --item-hover-bg:  rgba(53,94,140,.05);
+      --btn-secondary-bg: rgba(26,23,18,.05);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Geist', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -65,7 +66,7 @@
       top: 0; left: 50%;
       transform: translateX(-50%);
       width: 600px; height: 300px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(184,144,42,.12), transparent 70%);
+      background: radial-gradient(ellipse at 50% 0%, rgba(53,94,140,.14), transparent 70%);
       pointer-events: none;
     }
     .logo {
@@ -81,6 +82,20 @@
       margin-top: .75rem;
       color: var(--muted);
       font-size: 1rem;
+    }
+    .tagline.typing::after {
+      content: '';
+      display: inline-block;
+      width: 2px;
+      height: .9em;
+      margin-left: 2px;
+      background: var(--accent);
+      vertical-align: -2px;
+      animation: caret-blink .8s steps(1) infinite;
+    }
+    @keyframes caret-blink {
+      0%, 49%  { opacity: 1; }
+      50%, 100% { opacity: 0; }
     }
 
     /* ── Main layout ── */
@@ -116,16 +131,29 @@
     }
     #drop-zone:hover, #drop-zone.drag-over {
       border-color: var(--accent);
-      background: rgba(184,144,42,.07);
-      box-shadow: 0 0 40px rgba(184,144,42,.15), inset 0 0 40px rgba(184,144,42,.04);
+      background: rgba(53,94,140,.07);
+      box-shadow: 0 0 40px rgba(53,94,140,.15), inset 0 0 40px rgba(53,94,140,.04);
     }
+    /* Contained cursor-follow glow — scoped to the drop-zone only */
+    #drop-zone { --mx: 50%; --my: 50%; }
+    #drop-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(320px circle at var(--mx) var(--my), rgba(53,94,140,.14), transparent 70%);
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+    #drop-zone:hover::before { opacity: 1; }
     /* Outer pulse rings on drag */
     #drop-zone.drag-over::before {
       content: '';
       position: absolute;
       inset: -8px;
       border-radius: calc(var(--radius) + 8px);
-      border: 1.5px solid rgba(184,144,42,.35);
+      border: 1.5px solid rgba(53,94,140,.35);
       opacity: 0;
       animation: pulse-ring-outer 1.1s ease-out infinite;
       pointer-events: none;
@@ -165,22 +193,22 @@
     .drop-label {
       display: inline-block;
       padding: .55rem 1.4rem;
-      background: var(--accent);
-      color: #0e0e10;
+      background: var(--gradient);
+      color: #fff;
       border-radius: 8px;
       font-size: .9rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background .15s, transform .15s;
+      transition: filter .15s, transform .15s;
     }
-    .drop-label:hover { background: var(--accent); transform: translateY(-1px); }
+    .drop-label:hover { filter: brightness(1.08); transform: translateY(-1px); }
     .drop-buttons { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
     .drop-label-camera {
       background: transparent;
       border: 1.5px solid var(--border);
       color: var(--text);
     }
-    .drop-label-camera:hover { background: rgba(184,144,42,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .drop-label-camera:hover { background: rgba(53,94,140,.08); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
     #drop-zone p { margin-top: .75rem; color: var(--muted); font-size: .875rem; }
     #file-input, #gallery-input, #camera-input { display: none; }
 
@@ -242,7 +270,7 @@
     #transcribe-btn {
       width: 100%;
       padding: .9rem;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+      background: var(--gradient);
       color: #fff;
       border: none;
       border-radius: var(--radius);
@@ -251,7 +279,7 @@
       font-family: inherit;
       cursor: pointer;
       transition: transform .2s, box-shadow .25s, opacity .2s, filter .2s;
-      box-shadow: 0 4px 28px rgba(184,144,42,.4);
+      box-shadow: 0 4px 28px rgba(22,58,43,.35);
       position: relative;
       overflow: hidden;
     }
@@ -375,7 +403,7 @@
     #transcribe-label { transition: opacity .2s; }
     #transcribe-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
     #transcribe-btn.empty { opacity: .5; }
-    #transcribe-btn.empty:hover { transform: none; box-shadow: 0 4px 28px rgba(184,144,42,.4); }
+    #transcribe-btn.empty:hover { transform: none; box-shadow: 0 4px 28px rgba(53,94,140,.4); }
     /* Empty-click roast: shake + go fully opaque so the burn lands */
     #transcribe-btn.roasting {
       opacity: 1 !important;
@@ -389,7 +417,7 @@
       60% { transform: translateX(5px); }
       80% { transform: translateX(-3px); }
     }
-    #transcribe-btn:not(:disabled):not(.empty):hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(184,144,42,.58); filter: brightness(1.07); }
+    #transcribe-btn:not(:disabled):not(.empty):hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(53,94,140,.58); filter: brightness(1.07); }
 
     /* ── Status ── */
     #status {
@@ -469,7 +497,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #copy-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); }
+    #copy-btn:hover { border-color: var(--accent); background: rgba(53,94,140,.06); }
     #copy-btn.copied { border-color: var(--success); color: var(--success); }
     #share-btn {
       padding: .45rem 1.1rem;
@@ -485,7 +513,7 @@
       align-items: center;
       gap: .4rem;
     }
-    #share-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); color: var(--accent); }
+    #share-btn:hover { border-color: var(--accent); background: rgba(53,94,140,.06); color: var(--accent); }
     #share-btn.copied { border-color: var(--success); color: var(--success); }
 
 /* Download buttons sit in a small group to the right of share */
@@ -508,7 +536,7 @@
       transition: border-color .2s, color .2s, background .2s;
       white-space: nowrap;
     }
-    .dl-btn:hover { border-color: var(--accent); background: rgba(184,144,42,.06); color: var(--accent); }
+    .dl-btn:hover { border-color: var(--accent); background: rgba(53,94,140,.06); color: var(--accent); }
 
     /* ── History sidebar ── */
     #sidebar-overlay {
@@ -529,7 +557,7 @@
       cursor: ew-resize; z-index: 10;
     }
     #sidebar-resize-handle:hover, body.sidebar-resizing #sidebar-resize-handle {
-      background: linear-gradient(90deg, transparent 2px, rgba(212,168,67,.35) 2px, rgba(212,168,67,.35) 4px, transparent 4px);
+      background: linear-gradient(90deg, transparent 2px, rgba(53,94,140,.35) 2px, rgba(53,94,140,.35) 4px, transparent 4px);
     }
     body.sidebar-resizing { cursor: ew-resize; user-select: none; }
 
@@ -790,7 +818,7 @@
     #create-notebook-btn {
       flex: 1;
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border: none;
       border-radius: 6px;
       padding: .35rem;
@@ -830,7 +858,7 @@
     }
     .notebook-row.drag-over {
       border-color: var(--accent);
-      background: rgba(184,144,42,.07);
+      background: rgba(53,94,140,.07);
     }
 
     .notebook-header {
@@ -1059,7 +1087,7 @@
       max-width: 400px;
       transform: translateY(10px) scale(.98);
       transition: transform .15s cubic-bezier(.16,1,.3,1);
-      box-shadow: 0 30px 80px rgba(0,0,0,.35), 0 0 60px rgba(184,144,42,.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,.35), 0 0 60px rgba(53,94,140,.08);
     }
     .modal-overlay.open .modal { transform: translateY(0) scale(1); }
     .modal h3 {
@@ -1097,7 +1125,7 @@
       border: none;
     }
     .modal-btn:hover { opacity: .85; transform: translateY(-1px); }
-    .modal-btn.primary { background: var(--accent); color: #0e0e10; }
+    .modal-btn.primary { background: var(--accent); color: #fff; }
     .modal-btn.secondary { background: var(--btn-secondary-bg); color: var(--text); border: 1px solid var(--border); }
     .modal-btn.danger-btn { background: rgba(224,112,112,.15); color: var(--error); border: 1px solid rgba(224,112,112,.3); }
     .modal-error { font-size: .82rem; color: var(--error); margin-top: .4rem; min-height: 1em; }
@@ -1119,7 +1147,7 @@
     .billing-toggle.active {
       background: var(--accent);
       border-color: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       font-weight: 600;
     }
 
@@ -1226,21 +1254,19 @@
       gap: 5rem;
     }
 
-    /* shared scroll-reveal */
-    .reveal { opacity: 0; }
-    .reveal.from-right.visible {
-      animation: reveal-from-right .75s cubic-bezier(.16,1,.3,1) forwards;
+    /* Shared scroll-reveal. Elements are fully visible by default — JS adds
+       .reveal-armed right after wiring up the observer, so if anything ever
+       goes wrong with the observer this content still just shows normally
+       instead of being permanently stuck invisible. */
+    .reveal.reveal-armed {
+      opacity: 0;
+      transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
     }
-    .reveal.from-left.visible {
-      animation: reveal-from-left .75s cubic-bezier(.16,1,.3,1) forwards;
-    }
-    @keyframes reveal-from-right {
-      from { opacity: 0; transform: translateX(100vw); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes reveal-from-left {
-      from { opacity: 0; transform: translateX(-100vw); }
-      to   { opacity: 1; transform: translateX(0); }
+    .reveal-armed.from-right { transform: translateX(56px); }
+    .reveal-armed.from-left  { transform: translateX(-56px); }
+    .reveal-armed.visible {
+      opacity: 1;
+      transform: translateX(0);
     }
 
     /* section label */
@@ -1288,7 +1314,7 @@
       background: var(--surface);
       padding: 2rem 1.75rem;
       position: relative;
-      transition: background .2s;
+      transition: background .2s, transform .35s cubic-bezier(.16,1,.3,1), box-shadow .35s;
     }
     .how-step:hover { background: var(--item-hover-bg); }
     .how-step-num {
@@ -1445,7 +1471,7 @@
       text-transform: none;
       letter-spacing: 0;
     }
-    .plan-price span { font-size: .72rem; font-weight: 400; color: var(--muted); font-family: 'Inter', sans-serif; }
+    .plan-price span { font-size: .72rem; font-weight: 400; color: var(--muted); font-family: 'Geist', sans-serif; }
     .check { color: var(--success); font-size: 1rem; }
     .cross { color: var(--muted); font-size: 1rem; }
     .cta-row td { padding-top: 1rem; padding-bottom: 1rem; }
@@ -1465,7 +1491,7 @@
     .table-upgrade-btn:hover { opacity: .8; transform: translateY(-1px); }
     .table-upgrade-btn.featured {
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border-color: transparent;
     }
 
@@ -1474,14 +1500,14 @@
       position: relative;
       border-radius: var(--radius);
       overflow: hidden;
-      border: 1px solid rgba(184,144,42,.25);
+      border: 1px solid rgba(53,94,140,.25);
       background: var(--surface);
     }
     .upgrade-pitch-glow {
       position: absolute;
       top: -80px; right: -80px;
       width: 340px; height: 340px;
-      background: radial-gradient(circle, rgba(184,144,42,.12), transparent 65%);
+      background: radial-gradient(circle, rgba(53,94,140,.12), transparent 65%);
       pointer-events: none;
     }
     .upgrade-pitch-inner {
@@ -1520,8 +1546,8 @@
     }
     .upgrade-pitch-plan:hover { transform: translateY(-2px); }
     .upgrade-pitch-plan.featured {
-      border-color: rgba(184,144,42,.5);
-      background: rgba(184,144,42,.04);
+      border-color: rgba(53,94,140,.5);
+      background: rgba(53,94,140,.04);
     }
     .upgrade-pitch-plan.featured:hover { border-color: var(--accent); }
     .upgrade-pitch-plan-badge {
@@ -1529,7 +1555,7 @@
       top: -11px; left: 50%;
       transform: translateX(-50%);
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       font-size: .62rem;
       font-weight: 700;
       letter-spacing: .08em;
@@ -1554,7 +1580,7 @@
       line-height: 1;
       margin-bottom: .35rem;
     }
-    .upgrade-pitch-plan-price span { font-size: .9rem; font-weight: 400; color: var(--muted); font-family: 'Inter', sans-serif; }
+    .upgrade-pitch-plan-price span { font-size: .9rem; font-weight: 400; color: var(--muted); font-family: 'Geist', sans-serif; }
     .upgrade-pitch-plan-detail {
       font-size: .8rem;
       color: var(--muted);
@@ -1565,7 +1591,7 @@
       width: 100%;
       padding: .7rem;
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border: none;
       border-radius: 8px;
       font-size: .85rem;
@@ -1720,7 +1746,7 @@
     }
     @keyframes ob-box-glow {
       0%, 30% { border-color: var(--border); }
-      50%, 70% { border-color: var(--accent); background: rgba(184,144,42,.06); }
+      50%, 70% { border-color: var(--accent); background: rgba(53,94,140,.06); }
       90%, 100% { border-color: var(--border); }
     }
 
@@ -1728,7 +1754,7 @@
     #ob-step2 .ob-btn-mock {
       padding: .7rem 1.8rem;
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border-radius: 10px;
       font-size: .9rem;
       font-weight: 600;
@@ -1737,7 +1763,7 @@
     }
     @keyframes ob-btn-pulse {
       0%, 30% { transform: scale(1); box-shadow: none; }
-      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(184,144,42,.15); }
+      50%      { transform: scale(.96); box-shadow: 0 0 0 6px rgba(53,94,140,.15); }
       70%      { transform: scale(1.02); }
       100%     { transform: scale(1); }
     }
@@ -1853,7 +1879,7 @@
     #ob-next {
       padding: .55rem 1.4rem;
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border: none;
       border-radius: 8px;
       font-size: .9rem;
@@ -1984,7 +2010,7 @@
       width: 100%;
       padding: .7rem;
       background: var(--accent);
-      color: #0e0e10;
+      color: #fff;
       border: none;
       border-radius: 8px;
       font-family: inherit;
@@ -2096,7 +2122,7 @@
       transition: border-color .15s, color .15s, background .15s;
     }
     .font-size-btn:hover { border-color: var(--accent); color: var(--text); }
-    .font-size-btn.active { background: rgba(184,144,42,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .font-size-btn.active { background: rgba(53,94,140,.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
     /* Stats grid tiles */
     .stat-tile {
@@ -2172,6 +2198,14 @@
     }
 
 
+    /* ── Paper grain — subtle texture so flat surfaces don't feel sterile ── */
+    .noise {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+
     /* ── Background orbs ── */
     .bg-orbs {
       position: fixed;
@@ -2192,7 +2226,7 @@
       width: 580px; height: 580px;
       background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
       bottom: -200px; right: -150px;
-      opacity: .09;
+      opacity: .1;
       animation: gorb2 32s ease-in-out infinite;
     }
     .bg-orbs .orb-3 {
@@ -2200,7 +2234,7 @@
       background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
       top: 50%; left: 50%;
       transform: translate(-50%,-50%);
-      opacity: .05;
+      opacity: .07;
       animation: gorb3 22s ease-in-out infinite;
     }
     @keyframes gorb1 {
@@ -2229,24 +2263,24 @@
 
     /* ── Dark mode variable overrides ── */
     body.dark {
-      --bg:        #0e0b07;
-      --surface:   #1a1510;
-      --border:    rgba(212,168,67,.13);
-      --accent:    #d4a843;
-      --accent-dim:#b8902a;
-      --text:      #f2ead8;
-      --muted:     rgba(242,234,216,.45);
-      --success:   #5a9e58;
-      --error:     #e05555;
+      --bg:        #0c0c10;
+      --surface:   #17161d;
+      --border:    rgba(255,255,255,.09);
+      --accent:    #639bdb;
+      --accent-dim:#4779b2;
+      --text:      #f3f2f6;
+      --muted:     rgba(243,242,246,.5);
+      --success:   #3fc191;
+      --error:     #e2685a;
 
-      --grid-line:      rgba(212,168,67,.04);
-      --grid-bright:    rgba(212,168,67,.28);
-      --drop-border:    rgba(212,168,67,.22);
-      --preview-fade:   rgba(14,11,7,.88);
-      --clear-bg:       rgba(20,16,10,.94);
-      --bar-track-bg:   rgba(212,168,67,.1);
-      --item-hover-bg:  rgba(212,168,67,.05);
-      --btn-secondary-bg: rgba(212,168,67,.07);
+      --grid-line:      rgba(255,255,255,.035);
+      --grid-bright:    rgba(99,155,219,.28);
+      --drop-border:    rgba(255,255,255,.16);
+      --preview-fade:   rgba(12,12,16,.88);
+      --clear-bg:       rgba(23,22,29,.92);
+      --bar-track-bg:   rgba(255,255,255,.08);
+      --item-hover-bg:  rgba(99,155,219,.08);
+      --btn-secondary-bg: rgba(255,255,255,.06);
     }
 
     /* Ensure main content sits above the orbs */
@@ -2273,7 +2307,7 @@
       transform: translateY(-2px);
     }
     #drop-zone.drag-over {
-      box-shadow: 0 0 0 4px rgba(184,144,42,.12), 0 0 60px rgba(184,144,42,.18), inset 0 0 40px rgba(184,144,42,.06) !important;
+      box-shadow: 0 0 0 4px rgba(53,94,140,.12), 0 0 60px rgba(53,94,140,.18), inset 0 0 40px rgba(53,94,140,.06) !important;
     }
 
     /* Transcribe button: magnetic wrapper */
@@ -2334,6 +2368,9 @@
 <script>document.body.classList.add(localStorage.getItem("notecloud-theme")==="light"?"light":"dark");</script>
 
   <!-- Background ambience -->
+  <div class="bg-orbs"><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="noise"></div>
+
   <!-- Hamburger button — fixed top-left, opens history sidebar -->
   <button id="hamburger-btn" title="History" aria-label="Open history">
     <span></span><span></span><span></span>
@@ -2353,7 +2390,7 @@
         <div class="ob-step active" id="ob-step1">
           <div class="ob-dropbox landing">
             <div class="ob-img-icon">
-              <svg width="22" height="18" viewBox="0 0 24 20" fill="none" stroke="#0e0e10" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="22" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="M21 17L16 12 5 21"/></svg>
+              <svg width="22" height="18" viewBox="0 0 24 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="1" y="3" width="22" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="M21 17L16 12 5 21"/></svg>
             </div>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
             <span class="ob-dropbox-label">Drop your image here</span>
@@ -2449,10 +2486,10 @@
           Notebooks
         </button>
       </div>
-      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(184,144,42,.06);border:1px solid rgba(184,144,42,.18);border-radius:10px;">
+      <div style="margin:.5rem .25rem 0;padding:.75rem;background:rgba(53,94,140,.06);border:1px solid rgba(53,94,140,.18);border-radius:10px;">
         <div style="font-size:.75rem;font-weight:600;color:var(--accent);margin-bottom:.3rem;">Student &amp; Pro</div>
         <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.6rem;">Organise your transcriptions into notebooks.</div>
-        <button onclick="document.getElementById('upgrade-modal').classList.add('open')" style="width:100%;padding:.45rem;background:var(--accent);color:#0e0e10;border:none;border-radius:7px;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Upgrade to unlock</button>
+        <button onclick="document.getElementById('upgrade-modal').classList.add('open')" style="width:100%;padding:.45rem;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;">Upgrade to unlock</button>
       </div>
     </div>
     {% else %}
@@ -2521,7 +2558,7 @@
       <button class="dropdown-item" id="open-subscription-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         Subscription
-        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:99px;background:rgba(184,144,42,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
+        <span style="margin-left:auto;font-size:.7rem;padding:.1rem .45rem;border-radius:5px;background:rgba(53,94,140,.15);color:var(--accent);font-weight:600">{{ (tier or 'free') | title }}</span>
       </button>
       <a class="dropdown-item danger" href="/logout">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2531,7 +2568,7 @@
   </div>
 
   <header>
-    <img src="/static/logo-icon.png" alt="Note-Cloud" style="display:block;width:44px;height:auto;margin:0 auto .9rem;filter:drop-shadow(0 4px 14px rgba(184,144,42,.22))" />
+    <img src="/static/logo-icon.png" alt="Note-Cloud" style="display:block;width:44px;height:auto;margin:0 auto .9rem;filter:drop-shadow(0 4px 14px rgba(53,94,140,.22))" />
     <p id="live-clock" style="
       font-size:.72rem; font-weight:500; letter-spacing:.06em;
       color:var(--muted); margin-bottom:.6rem;
@@ -2575,7 +2612,7 @@
       <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:1rem">
         <button id="toggle-monthly" class="billing-toggle active" onclick="setBilling('monthly')">Monthly</button>
         <button id="toggle-yearly"  class="billing-toggle"        onclick="setBilling('yearly')">Yearly</button>
-        <span id="yearly-badge" style="display:none;background:rgba(92,184,138,.15);color:var(--success);font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:99px">SAVE UP TO 15%</span>
+        <span id="yearly-badge" style="display:none;background:rgba(92,184,138,.15);color:var(--success);font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:5px">SAVE UP TO 15%</span>
       </div>
 
       <!-- Pricing cards -->
@@ -2591,7 +2628,7 @@
         </div>
         <!-- Pro tier -->
         <div style="flex:1;background:var(--bg);border:1.5px solid var(--accent);border-radius:10px;padding:.9rem;text-align:center;position:relative">
-          <div style="position:absolute;top:-.6rem;left:50%;transform:translateX(-50%);background:var(--accent);color:#0e0e10;font-size:.65rem;font-weight:700;padding:.15rem .5rem;border-radius:99px">BEST VALUE</div>
+          <div style="position:absolute;top:-.6rem;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:.65rem;font-weight:700;padding:.15rem .5rem;border-radius:5px">BEST VALUE</div>
           <div style="font-weight:600;font-size:.9rem;margin-bottom:.25rem">Pro</div>
           <div style="font-size:1.4rem;font-weight:700;color:var(--accent)" id="pro-price">$8.99</div>
           <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem" id="pro-period">/month</div>
@@ -2657,7 +2694,7 @@
               <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">Unlimited tokens</div>
             {% endif %}
           </div>
-          <span style="background:rgba(184,144,42,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:99px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
+          <span style="background:rgba(53,94,140,.15);color:var(--accent);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:5px">{{ (tier or 'free') | upper }}{% if tier == 'dev' %} ✦{% endif %}</span>
         </div>
       </div>
 
@@ -2755,10 +2792,46 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="notion-connect-modal">
+    <div class="modal" style="max-width:400px;padding:0;overflow:hidden">
+      <button id="notion-connect-close" aria-label="Close" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;z-index:2">✕</button>
+      <div style="padding:2.25rem 1.75rem 1.75rem;text-align:center">
+        <div style="width:56px;height:56px;margin:0 auto 1.1rem;border-radius:16px;background:rgba(20,20,25,.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" opacity=".12" style="color:var(--text)"/><path d="M8 8h1.2l4.8 6.6V8H15v8h-1.2L9 9.4V16H8V8z" fill="currentColor" style="color:var(--text)"/></svg>
+        </div>
+
+        <h3 style="font-size:1.25rem;margin:0 0 .4rem">Connect Notion</h3>
+        <p style="color:var(--muted);font-size:.85rem;line-height:1.55;margin:0 auto 1.4rem;max-width:300px">
+          Send your transcriptions straight into a Notion page. One quick sign-in and you're set.
+        </p>
+
+        <div style="text-align:left;display:flex;flex-direction:column;gap:.7rem;margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;gap:.65rem;font-size:.82rem;color:var(--text)">
+            <span style="color:var(--accent);flex-shrink:0">✓</span> Export transcriptions to a page in one click
+          </div>
+          <div style="display:flex;align-items:center;gap:.65rem;font-size:.82rem;color:var(--text)">
+            <span style="color:var(--accent);flex-shrink:0">✓</span> We only touch pages you share with us
+          </div>
+          <div style="display:flex;align-items:center;gap:.65rem;font-size:.82rem;color:var(--text)">
+            <span style="color:var(--accent);flex-shrink:0">✓</span> Disconnect anytime in settings
+          </div>
+        </div>
+
+        <button class="modal-btn primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:.65rem;padding:.7rem" id="notion-oauth-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3" fill="#fff" opacity=".9"/><path d="M8 8h1.2l4.8 6.6V8H15v8h-1.2L9 9.4V16H8V8z" fill="#000"/></svg>
+          Continue with Notion
+        </button>
+        <p style="color:var(--muted);font-size:.72rem;margin:.9rem 0 0;line-height:1.5">
+          By connecting, you agree to our <a href="/privacy" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none">Privacy Policy</a>.
+        </p>
+        <p id="notion-connect-error" style="color:var(--error,#e05555);font-size:.8rem;margin-top:.75rem;display:none"></p>
+      </div>
+    </div>
+  </div>
+
   {% if tier == 'free' %}
   <!-- ── Interstitial upgrade ad (free users only) ── -->
   <div class="modal-overlay" id="ad-modal" style="display:none"></div>
-  </div>
   {% endif %}
 
   <!-- ── Settings modal ── -->
@@ -2821,8 +2894,11 @@
 
         <hr class="settings-divider" />
 
-        <div class="settings-section-title">Change password</div>
-        <div class="settings-field">
+        <div class="settings-section-title">{{ 'Change password' if has_password else 'Set a password' }}</div>
+        {% if not has_password %}
+        <div style="font-size:.82rem;color:var(--muted);margin-bottom:.9rem">You signed up with Google, so there's no password yet — set one if you'd also like to log in with email.</div>
+        {% endif %}
+        <div class="settings-field" id="settings-pw-current-field" {% if not has_password %}style="display:none"{% endif %}>
           <label for="settings-pw-current">Current password</label>
           <input id="settings-pw-current" type="password" placeholder="••••••••" />
         </div>
@@ -2834,7 +2910,7 @@
           <label for="settings-pw-confirm">Confirm new password</label>
           <input id="settings-pw-confirm" type="password" placeholder="Repeat new password" />
         </div>
-        <button class="settings-save-btn" id="settings-pw-save">Update password</button>
+        <button class="settings-save-btn" id="settings-pw-save">{{ 'Update password' if has_password else 'Set password' }}</button>
         <p class="settings-msg" id="settings-pw-msg"></p>
 
         <hr class="settings-divider" />
@@ -2934,10 +3010,12 @@
           <div class="danger-zone-desc">This permanently removes your account, all transcriptions, and all notebooks. This cannot be undone.</div>
           <button class="danger-btn-outline" id="delete-account-btn">Delete my account</button>
           <div id="delete-confirm-form">
+            {% if has_password %}
             <div class="settings-field" style="margin-top:.75rem;margin-bottom:.6rem">
               <label for="delete-pw-confirm">Confirm your password to continue</label>
               <input id="delete-pw-confirm" type="password" placeholder="Your password" />
             </div>
+            {% endif %}
             <div style="display:flex;gap:.5rem">
               <button class="danger-btn-outline" id="delete-account-confirm" style="flex:1">Yes, delete everything</button>
               <button id="delete-account-cancel" style="flex:1;padding:.55rem;background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:inherit;font-size:.85rem;cursor:pointer">Cancel</button>
@@ -3039,11 +3117,11 @@
         <span class="result-label">Transcription</span>
         <span id="word-count"></span>
       </div>
-      <div id="name-prompt" style="display:none;padding:.55rem .9rem;background:rgba(212,168,67,.06);border-bottom:1px solid var(--border);display:none;align-items:center;gap:.5rem;flex-wrap:wrap;">
+      <div id="name-prompt" style="display:none;padding:.55rem .9rem;background:rgba(53,94,140,.06);border-bottom:1px solid var(--border);display:none;align-items:center;gap:.5rem;flex-wrap:wrap;">
         <span style="font-size:.78rem;color:var(--muted);flex-shrink:0">Name this?</span>
         <input id="name-prompt-input" type="text" placeholder="e.g. Biology notes, Oct 3" maxlength="60"
           style="flex:1;min-width:120px;padding:.3rem .55rem;font-size:.78rem;font-family:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;outline:none" />
-        <button id="name-prompt-save" style="padding:.3rem .7rem;font-size:.78rem;font-family:inherit;background:var(--accent);color:#0e0e10;border:none;border-radius:6px;cursor:pointer;font-weight:600">Save</button>
+        <button id="name-prompt-save" style="padding:.3rem .7rem;font-size:.78rem;font-family:inherit;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Save</button>
         <button id="name-prompt-skip" style="padding:.3rem .55rem;font-size:.78rem;font-family:inherit;background:none;color:var(--muted);border:none;cursor:pointer">Skip</button>
       </div>
       <textarea id="result-text" spellcheck="true" aria-label="Transcribed text"></textarea>
@@ -3074,6 +3152,10 @@
           <button id="gdocs-btn" class="dl-btn" style="display:none;border:none;cursor:pointer;background:none;font-family:inherit">
             <svg width="13" height="13" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
             Google Docs
+          </button>
+          <button id="notion-btn" class="dl-btn" style="display:none;border:none;cursor:pointer;background:none;font-family:inherit">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" opacity=".12"/><path d="M8 8h1.2l4.8 6.6V8H15v8h-1.2L9 9.4V16H8V8z" fill="currentColor"/></svg>
+            Notion
           </button>
         </div>
       </div>
@@ -3306,6 +3388,7 @@
     const dlTxtBtn      = document.getElementById("dl-txt-btn");
     const dlDocxBtn     = document.getElementById("dl-docx-btn");
     const gdocsBtn      = document.getElementById("gdocs-btn");
+    const notionBtn     = document.getElementById("notion-btn");
     const transcribeLabel = document.getElementById("transcribe-label");
 
     // Loader elements
@@ -3579,6 +3662,13 @@
       handleFile(e.dataTransfer.files[0]);
     });
 
+    // Cursor-tracked glow — purely decorative, scoped to this element only
+    dropZone.addEventListener("mousemove", (e) => {
+      const r = dropZone.getBoundingClientRect();
+      dropZone.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      dropZone.style.setProperty("--my", `${e.clientY - r.top}px`);
+    });
+
     transcribeBtn.addEventListener("click", async () => {
       if (!selectedFiles.length) {
         // Roast: shake the button, then fade the label out, swap to a burn,
@@ -3661,6 +3751,7 @@
                   dlDocxBtn.href = `/transcriptions/${tid}/download/docx`;
                   dlTxtBtn.style.display = ""; dlDocxBtn.style.display = "";
                   if (gdocsBtn) gdocsBtn.style.display = "";
+                  if (notionBtn) notionBtn.style.display = "";
                 }
                 stopPencilLoader(true);
               } else {
@@ -3694,6 +3785,7 @@
           dlTxtBtn.style.display  = "";
           dlDocxBtn.style.display = "";
           if (gdocsBtn) gdocsBtn.style.display = "";
+          if (notionBtn) notionBtn.style.display = "";
           // Show name prompt
           const namePrompt = document.getElementById("name-prompt");
           const nameInput  = document.getElementById("name-prompt-input");
@@ -4003,21 +4095,32 @@
     }
 
     // ── Scroll-reveal for below-fold sections ────────────────────────────────
-    const revealEls = document.querySelectorAll(".reveal");
-    revealEls.forEach((el, i) => {
-      el.classList.add(i % 2 === 0 ? "from-right" : "from-left");
-      el.style.transitionDelay = (i * 0.08) + "s";
-    });
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add("visible");
-        } else {
-          e.target.classList.remove("visible");
-        }
-      });
-    }, { rootMargin: "-15% 0px -15% 0px", threshold: 0 });
-    revealEls.forEach(el => revealObserver.observe(el));
+    // Wrapped defensively: elements are visible by default (no .reveal-armed
+    // class) until this succeeds, so a failure here can never hide content —
+    // worst case is just no slide-in animation. Also isolated in a try/catch
+    // so a problem here can't stop any script that runs after it.
+    try {
+      const revealEls = document.querySelectorAll(".reveal");
+      if (window.IntersectionObserver && revealEls.length) {
+        revealEls.forEach((el, i) => {
+          el.classList.add(i % 2 === 0 ? "from-right" : "from-left");
+          el.style.transitionDelay = (i * 0.08) + "s";
+          el.classList.add("reveal-armed");
+        });
+        const revealObserver = new IntersectionObserver((entries) => {
+          entries.forEach(e => {
+            if (e.isIntersecting) {
+              e.target.classList.add("visible");
+            } else {
+              e.target.classList.remove("visible");
+            }
+          });
+        }, { rootMargin: "0px 0px -10% 0px", threshold: 0.05 });
+        revealEls.forEach(el => revealObserver.observe(el));
+      }
+    } catch (err) {
+      console.error("scroll-reveal setup failed, content stays visible:", err);
+    }
 
 
     // ── Google Docs export ────────────────────────────────────────────────────
@@ -4089,6 +4192,83 @@
           setTimeout(() => { gdocsBtn.innerHTML = originalHTML; }, 3000);
         } finally {
           gdocsBtn.disabled = false;
+        }
+      });
+    }
+
+    // ── Notion export ────────────────────────────────────────────────────────
+    if (notionBtn) {
+      let notionConnected = false;
+
+      fetch("/notion/status", { credentials: "same-origin" })
+        .then(r => r.json())
+        .then(d => { notionConnected = d.connected; });
+
+      const _nParams = new URLSearchParams(window.location.search);
+      if (_nParams.get("notion_connected")) {
+        notionConnected = true;
+        history.replaceState({}, "", window.location.pathname);
+      }
+      if (_nParams.get("notion_error")) {
+        history.replaceState({}, "", window.location.pathname);
+      }
+
+      const notionConnectModal = document.getElementById("notion-connect-modal");
+      document.getElementById("notion-connect-close").addEventListener("click", () => {
+        notionConnectModal.classList.remove("open");
+      });
+      document.getElementById("notion-oauth-btn").addEventListener("click", () => {
+        window.location.href = "/notion/auth";
+      });
+
+      notionBtn.addEventListener("click", async () => {
+        const transId = shareBtn.dataset.transId;
+        if (!transId) return;
+
+        if (!notionConnected) {
+          notionConnectModal.classList.add("open");
+          return;
+        }
+
+        const originalHTML = notionBtn.innerHTML;
+        notionBtn.textContent = "Exporting…";
+        notionBtn.disabled = true;
+
+        try {
+          const res = await fetch(`/transcriptions/${transId}/export/notion`, {
+            method: "POST",
+            credentials: "same-origin",
+          });
+          const data = await res.json();
+
+          if (data.error === "notion_not_connected") {
+            notionConnected = false;
+            notionConnectModal.classList.add("open");
+            notionBtn.innerHTML = originalHTML;
+            notionBtn.disabled = false;
+            return;
+          }
+
+          if (data.error === "notion_no_pages") {
+            alert(data.message);
+            notionBtn.innerHTML = originalHTML;
+            notionBtn.disabled = false;
+            return;
+          }
+
+          if (data.url) {
+            window.open(data.url, "_blank");
+            notionBtn.textContent = "Opened ✓";
+            setTimeout(() => { notionBtn.innerHTML = originalHTML; }, 3000);
+          } else {
+            notionBtn.textContent = "Failed";
+            setTimeout(() => { notionBtn.innerHTML = originalHTML; }, 3000);
+          }
+        } catch {
+          notionBtn.textContent = "Failed";
+          setTimeout(() => { notionBtn.innerHTML = originalHTML; }, 3000);
+        } finally {
+          notionBtn.disabled = false;
         }
       });
     }
@@ -4708,6 +4888,8 @@
           dlDocxBtn.href = `/transcriptions/${item.id}/download/docx`;
           dlTxtBtn.style.display  = "";
           dlDocxBtn.style.display = "";
+          if (gdocsBtn) gdocsBtn.style.display = "";
+          if (notionBtn) notionBtn.style.display = "";
           closeSidebar();
           resultSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
         });
@@ -5073,7 +5255,17 @@
       `${timeGreet}${name}. Your notes are waiting.`,
       `Hello${name} — let's turn those scribbles into text.`,
     ];
-    el.textContent = extras[Math.floor(Math.random() * extras.length)];
+    const msg = extras[Math.floor(Math.random() * extras.length)];
+    // Typewriter reveal instead of dumping the text in all at once
+    el.textContent = '';
+    el.classList.add('typing');
+    let i = 0;
+    (function typeNext(){
+      if (i > msg.length) { el.classList.remove('typing'); return; }
+      el.textContent = msg.slice(0, i);
+      i++;
+      setTimeout(typeNext, 18 + Math.random() * 22);
+    })();
   })();
 
 
