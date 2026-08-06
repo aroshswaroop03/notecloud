@@ -7,20 +7,41 @@
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    :root { --bg:#100f0c; --surface:#1a1814; --text:#f3f1ea; --muted:rgba(243,241,234,.6); --gold:#639bdb; --border:rgba(255,255,255,.09); }
+    :root {
+      --bg:#f7f4ee; --surface:#fffefb; --border:rgba(26,23,18,.10);
+      --ink: #1a1712;
+      --accent:#b5502f; --accent-dim:#7a3319; --text:#1a1712; --muted:#756f62;
+      --success:#3a8a5c; --error:#a3402e;
+      --shadow-sm: 3px 3px 0 var(--ink);
+    }
     * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family:'Geist',system-ui,sans-serif; line-height:1.7; }
-    .wrap { max-width:760px; margin:0 auto; padding:3.5rem 1.5rem 5rem; }
-    a { color:var(--gold); }
-    h1 { font-family:'Playfair Display',Georgia,serif; font-size:2.2rem; margin:0 0 .3rem; }
-    h2 { font-size:1.15rem; margin:2.4rem 0 .6rem; color:var(--gold); }
-    .updated { color:var(--muted); font-size:.85rem; margin-bottom:2.5rem; }
-    p, li { color:var(--text); opacity:.92; font-size:.95rem; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:'Outfit',system-ui,sans-serif; line-height:1.7; }
+    .wrap { max-width:65ch; margin:0 auto; padding:3.5rem 1.5rem 5rem; }
+    a { color:var(--accent); }
+    h1 { font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:3rem; letter-spacing:-.01em; text-transform:uppercase; line-height:.95; margin:0 0 .4rem; color:var(--text); }
+    h2 { font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:1.5rem; letter-spacing:-.005em; margin:2.4rem 0 .6rem; color:var(--accent-dim); }
+    .updated { font-family:'IBM Plex Mono',monospace; color:var(--muted); font-size:.8rem; letter-spacing:.02em; margin-bottom:2.5rem; }
+    p, li { color:var(--text); opacity:.85; font-size:.95rem; line-height:1.7; }
     ul { padding-left:1.2rem; }
-    .back { display:inline-block; margin-bottom:2rem; color:var(--muted); text-decoration:none; font-size:.85rem; }
-    .back:hover { color:var(--gold); }
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      margin-bottom: 2.5rem;
+      padding: .5rem 1rem;
+      color: var(--text);
+      background: var(--surface);
+      text-decoration: none;
+      font-size: .8rem;
+      font-weight: 600;
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .15s, box-shadow .15s, color .15s;
+    }
+    .back:hover { color: var(--accent); transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
   </style>
 </head>
 <body>

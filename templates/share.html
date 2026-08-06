@@ -7,21 +7,29 @@
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:      #100f0c;
-      --surface: #1a1814;
-      --border:  rgba(255,255,255,.08);
-      --accent:  #639bdb;
-      --text:    #ede9df;
-      --muted:   #6b6b72;
-      --radius:  14px;
-      --grid-line: rgba(255,255,255,.015);
+      --bg:         #f7f4ee;
+      --surface:    #fffefb;
+      --border:     rgba(26,23,18,.10);
+      --ink:        #1a1712;
+      --accent:     #b5502f;
+      --accent-dim: #7a3319;
+      --accent2:    #e0a622;
+      --text:       #1a1712;
+      --muted:      #756f62;
+      --success:    #3a8a5c;
+      --error:      #a3402e;
+      --radius:  6px;
+      --shadow:    5px 5px 0 var(--ink);
+      --shadow-sm: 3px 3px 0 var(--ink);
+      --shadow-lg: 9px 9px 0 var(--ink);
+      --grid-line: rgba(26,23,18,.035);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Geist', system-ui, sans-serif;
+      font-family: 'Outfit', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -42,7 +50,7 @@
       top: 0; left: 50%;
       transform: translateX(-50%);
       width: 600px; height: 260px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(99,155,219,.14), transparent 70%);
+      background: radial-gradient(ellipse at 50% 0%, rgba(181,80,47,.12), transparent 70%);
       pointer-events: none;
     }
 
@@ -55,33 +63,38 @@
       padding: 1.5rem 0 2rem;
     }
     .logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: -1px;
+      font-family: 'Big Shoulders Display', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      text-transform: uppercase;
+      line-height: .9;
     }
     .logo span { color: var(--accent); }
 
     .try-btn {
-      padding: .45rem 1.1rem;
+      padding: .5rem 1.2rem;
       background: var(--accent);
       color: #fff;
-      border: none;
-      border-radius: 8px;
+      border: 2px solid var(--ink);
+      border-radius: var(--radius);
       font-family: inherit;
       font-size: .85rem;
-      font-weight: 600;
+      font-weight: 700;
       text-decoration: none;
-      transition: filter .15s, transform .15s;
+      box-shadow: var(--shadow-sm);
+      transition: transform .15s, box-shadow .15s;
     }
-    .try-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .try-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
+    .try-btn:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
 
     .card {
       width: 100%;
       max-width: 680px;
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 3px solid var(--ink);
       border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
       overflow: hidden;
       animation: slide-in .45s cubic-bezier(.2,.8,.4,1) both;
     }
@@ -100,14 +113,18 @@
       gap: .5rem;
     }
     .card-label {
-      font-size: .7rem;
-      font-weight: 600;
+      font-size: .68rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: .12em;
-      color: var(--accent);
+      letter-spacing: .1em;
+      color: var(--ink);
+      background: var(--accent2);
+      border: 2px solid var(--ink);
+      padding: .15rem .5rem;
     }
     .card-meta {
-      font-size: .75rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .72rem;
       color: var(--muted);
     }
 
@@ -128,24 +145,31 @@
       flex-wrap: wrap;
       gap: .75rem;
     }
-    .word-count { font-size: .78rem; color: var(--muted); }
+    .word-count {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .74rem;
+      color: var(--muted);
+    }
 
     .copy-btn {
       padding: .42rem 1rem;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: var(--radius);
       color: var(--text);
       font-family: inherit;
       font-size: .82rem;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: .4rem;
-      transition: border-color .15s, background .15s;
+      box-shadow: var(--shadow-sm);
+      transition: transform .15s, box-shadow .15s, border-color .15s, background .15s, color .15s;
     }
-    .copy-btn:hover { border-color: var(--accent); background: rgba(99,155,219,.06); }
-    .copy-btn.copied { border-color: #5cb88a; color: #5cb88a; }
+    .copy-btn:hover { border-color: var(--accent); background: rgba(181,80,47,.06); transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
+    .copy-btn:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
+    .copy-btn.copied { border-color: var(--success); color: var(--success); }
 
     .attribution {
       margin-top: 2rem;
@@ -160,7 +184,7 @@
 <body>
 
   <header>
-    <div class="logo">Scrib<span>-</span>d</div>
+    <div class="logo">Note<span>-</span>Cloud</div>
     <a class="try-btn" href="/login">Try it free →</a>
   </header>
 

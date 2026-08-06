@@ -357,7 +357,7 @@ Note: a landing pricing table was added then removed in this window because it b
 
 <details><summary><strong>3:44PM IST</strong> &nbsp;·&nbsp; <code>fa8018c</code> &nbsp; DEPLOY.md: switch domain from notecloud.com → note-cloud.com</summary>
 
-## 7/4 (continued)
+## 7/4 (pre-commit)
 
 <details><summary><strong>4:02PM IST</strong> &nbsp;·&nbsp; <code>8b0b626</code> &nbsp; Remove AI cleanup button; add globe/particle bg to transcription page</summary>
 
@@ -414,7 +414,7 @@ Note: a landing pricing table was added then removed in this window because it b
 
 ## 7/30
 
-<details><summary><strong>2:15PM PDT</strong> &nbsp;·&nbsp; <code>066721d</code> &nbsp; Add Stripe payments, Notion export, and Apple Sign-In; fix Google-account password lockout</summary>
+<details><summary><strong>11:05PM PDT</strong> &nbsp;·&nbsp; <code>066721d</code> &nbsp; Add Stripe payments, Notion export, and Apple Sign-In; fix Google-account password lockout</summary>
 
 **Payments:**
 - Real Stripe Checkout Session creation and a signature-verified `/stripe/webhook` — `checkout.session.completed` grants the tier, `customer.subscription.deleted` revokes it. Tier is never granted from a browser-controlled redirect.
@@ -433,7 +433,7 @@ Note: a landing pricing table was added then removed in this window because it b
 
 </details>
 
-<details><summary><strong>2:15PM PDT</strong> &nbsp;·&nbsp; <code>452fc16</code> &nbsp; Redesign UI to an ink & paper theme with a blue accent; fix scroll-reveal and login tab-state bugs</summary>
+<details><summary><strong>1:14PM PDT</strong> &nbsp;·&nbsp; <code>452fc16</code> &nbsp; Redesign UI to an ink & paper theme with a blue accent; fix scroll-reveal and login tab-state bugs</summary>
 
 **Redesign:**
 - Replaced the pink/purple/orange gradient theme (multiple accent hues in one gradient, Inter everywhere — a textbook generic-AI-generated look) with a single considered blue accent, a warm paper/ink-black base, and Geist in place of Inter, consistent across all 6 pages.
