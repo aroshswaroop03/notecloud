@@ -451,3 +451,21 @@ Note: a landing pricing table was added then removed in this window because it b
 Also removes two PNGs and a zip that were already deleted from disk but still tracked, and picks up an unrelated `to-do.md` edit already sitting in the working tree.
 
 </details>
+
+## 8/6
+
+<details><summary><strong>2:10PM PDT</strong> &nbsp;·&nbsp; <code>ec04019</code> &nbsp; Redesign entire frontend to a neo-brutalist "Field Index" theme; fix Scrib-d branding bug</summary>
+
+**Redesign:**
+- Replaced the ink & paper / blue-accent theme across all 6 templates with a bolder, distinct direction: rust/terracotta accent + mustard secondary, Big Shoulders Display for headlines, Outfit for body, IBM Plex Mono for labels/numerals/metadata.
+- Removed remaining generic-AI patterns: sun/moon icon toggle → text stamp, pill badges → bordered rectangular stamps, emoji icons → SVG/mono numerals, 3-card "how it works" grid → numbered ledger rail, 4-cell tips grid → asymmetric list, boastful stat cards → inline annotations, gradient-text hero → plain type, pulsing "Powered by Claude AI" badge → removed, rainbow "breathing" card border → single restrained border, elastic/overshoot easing → smooth ease-out curve.
+- Escalated to a neo-brutalist signature: hard offset box-shadows (no blur) and thick 2-3px borders on every card/button/modal, with a hover "lift" (translate + bigger shadow) and active "press" (translate to 0 + tiny shadow).
+- `index.html`: sidebar becomes a permanent left-hand column on desktop (≥1180px) instead of a hamburger-triggered slide-in drawer; sticky header with blurred backdrop; staggered reveal animations for list rows; skeleton loading placeholders for the history/notebooks lists; smooth scroll.
+- Fixed a content bug: `share.html`'s header logo read "Scrib-d" instead of "Note-Cloud".
+
+**Bug fixes (from this session's own changes):**
+- The desktop sidebar was first implemented as a shared CSS Grid where the sidebar spanned all rows with an explicit `height:100vh` — this blew up the auto-sized row tracks for header/upload-bar/main/below-fold into huge empty gaps, effectively hiding the transcription UI. Replaced with a simpler, decoupled pattern: fixed-position sidebar + `padding-left` on body.
+- Hover/active button shadows were hardcoded to `var(--ink)`, which is a light cream color in dark mode — light offset shadows read as a glow/artifact rather than a shadow. Split into a separate `--shadow-color` token that stays dark in both themes, while `--ink` (used for borders) stays theme-appropriate.
+- `main`'s brief two-column (upload/result side-by-side) experiment relied on CSS Grid auto-placement without explicitly pinning every child to column 1, letting the transcribe button and status line drift into column 2; reverted this specific layout for stability.
+
+</details>
