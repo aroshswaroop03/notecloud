@@ -4,216 +4,296 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Shared note</title>
+  <meta name="description" content="A handwritten note, transcribed into clean text with Note-Cloud." />
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet" />
   <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       NOTE-CLOUD — "Studio" · public share view
+       Monochrome surfaces, one highlighter-lime accent used sparingly.
+       Committed to the dark canvas so a shared link matches the app shell.
+       Display: Newsreader · UI: Archivo · Data: JetBrains Mono
+       ═══════════════════════════════════════════════════════════════════ */
+
     :root {
-      --bg:         #f7f4ee;
-      --surface:    #fffefb;
-      --border:     rgba(26,23,18,.10);
-      --ink:        #1a1712;
-      --accent:     #b5502f;
-      --accent-dim: #7a3319;
-      --accent2:    #e0a622;
-      --text:       #1a1712;
-      --muted:      #756f62;
-      --success:    #3a8a5c;
-      --error:      #a3402e;
-      --radius:  6px;
-      --shadow:    5px 5px 0 var(--ink);
-      --shadow-sm: 3px 3px 0 var(--ink);
-      --shadow-lg: 9px 9px 0 var(--ink);
-      --grid-line: rgba(26,23,18,.035);
+      color-scheme: dark;
+
+      --bg:          #0f0f11;
+      --bg-sunk:     #0a0a0c;
+      --surface:     #17171a;
+      --raised:      #1f1f24;
+      --border:      rgba(255,255,255,.09);
+      --border-firm: rgba(255,255,255,.16);
+
+      --text:        #f2f1ee;
+      --muted:       rgba(242,241,238,.58);
+      --faint:       rgba(242,241,238,.34);
+
+      /* the one accent — a highlighter, used sparingly */
+      --accent:      #cdf24a;
+      --accent-soft: rgba(205,242,74,.14);
+      --accent-line: rgba(205,242,74,.42);
+      --on-accent:   #14160b;
+
+      /* primary actions invert the canvas instead of taking a hue */
+      --solid:       #f2f1ee;
+      --on-solid:    #131316;
+
+      --ok:          #5ed39b;
+      --bad:         #f2705d;
+
+      --r-xs: 6px;
+      --r-sm: 9px;
+      --r:    13px;
+      --r-lg: 20px;
+
+      --lift-1: 0 1px 2px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
+      --lift-2: 0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.26);
+      --lift-3: 0 8px 24px rgba(0,0,0,.40), 0 32px 80px rgba(0,0,0,.44);
+
+      --ease: cubic-bezier(.22,1,.36,1);
     }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: 'Outfit', system-ui, sans-serif;
+      font-family: 'Archivo', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem 1.25rem 4rem;
-      background-image:
-        linear-gradient(var(--grid-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-      background-size: 40px 40px;
+      min-height: 100dvh;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
-    /* glow */
+    /* Paper grain — breaks the flatness of large empty surfaces */
     body::before {
       content: '';
-      position: fixed;
-      top: 0; left: 50%;
-      transform: translateX(-50%);
-      width: 600px; height: 260px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(181,80,47,.12), transparent 70%);
+      position: fixed; inset: 0; z-index: 0;
       pointer-events: none;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    header {
-      width: 100%;
-      max-width: 680px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.5rem 0 2rem;
+    ::selection { background: var(--accent-soft); color: var(--text); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: var(--r-xs);
     }
-    .logo {
-      font-family: 'Big Shoulders Display', sans-serif;
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -.5px;
+
+    button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+    a { color: inherit; }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem;
+      font-weight: 500;
+      letter-spacing: .16em;
       text-transform: uppercase;
-      line-height: .9;
+      color: var(--faint);
     }
-    .logo span { color: var(--accent); }
 
-    .try-btn {
-      padding: .5rem 1.2rem;
-      background: var(--accent);
-      color: #fff;
-      border: 2px solid var(--ink);
-      border-radius: var(--radius);
-      font-family: inherit;
-      font-size: .85rem;
-      font-weight: 700;
-      text-decoration: none;
-      box-shadow: var(--shadow-sm);
-      transition: transform .15s, box-shadow .15s;
-    }
-    .try-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    .try-btn:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
+    .shell { position: relative; z-index: 1; }
 
-    .card {
+    .col {
       width: 100%;
-      max-width: 680px;
-      background: var(--surface);
-      border: 3px solid var(--ink);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
-      overflow: hidden;
-      animation: slide-in .45s cubic-bezier(.2,.8,.4,1) both;
-    }
-    @keyframes slide-in {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 1.75rem;
     }
 
-    .card-header {
-      padding: 1.1rem 1.5rem .9rem;
+    /* ── Top bar ───────────────────────────────────────────────────────── */
+    .topbar {
       border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: .5rem;
     }
-    .card-label {
-      font-size: .68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      color: var(--ink);
-      background: var(--accent2);
-      border: 2px solid var(--ink);
-      padding: .15rem .5rem;
+    .topbar-in {
+      display: flex; align-items: center; gap: 1rem;
+      height: 62px;
     }
-    .card-meta {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .72rem;
-      color: var(--muted);
+    .brand {
+      display: flex; align-items: center; gap: .55rem;
+      margin-right: auto;
+      text-decoration: none;
     }
+    .brand img { width: 22px; height: auto; display: block; }
+    .brand-name {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.3rem; font-weight: 400;
+      letter-spacing: -.01em;
+    }
+    .brand-name span { color: var(--accent); }
 
-    .card-text {
-      padding: 1.5rem;
-      font-size: 1rem;
-      line-height: 1.85;
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+      padding: .62rem 1.25rem;
+      border-radius: var(--r-sm);
+      font-size: .86rem; font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform .18s var(--ease), opacity .18s, background .18s, border-color .18s, color .18s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn--solid { background: var(--solid); color: var(--on-solid); }
+    .btn--solid:hover { opacity: .86; }
+    .btn--ghost { border: 1px solid var(--border); color: var(--muted); }
+    .btn--ghost:hover { border-color: var(--accent-line); color: var(--text); }
+
+    /* ── Masthead ──────────────────────────────────────────────────────── */
+    main { padding: 4rem 0 6rem; }
+
+    .masthead { margin-bottom: 2.25rem; }
+    .masthead .eyebrow { display: block; margin-bottom: 1rem; }
+    .masthead h1 {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(2.1rem, 5.2vw, 3.1rem);
+      font-weight: 400;
+      line-height: 1.08;
+      letter-spacing: -.015em;
+      text-wrap: balance;
+      max-width: 17ch;
+    }
+    .byline {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: .55rem;
+      margin-top: 1.1rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .7rem;
+      letter-spacing: .04em;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+    .byline b { color: var(--muted); font-weight: 500; }
+    .byline i { font-style: normal; color: var(--border-firm); }
+
+    /* ── The note ──────────────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--lift-2);
+      overflow: hidden;
+      animation: rise .45s var(--ease) both;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    .note-body {
+      padding: 2.25rem 2rem;
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.14rem;
+      font-weight: 400;
+      line-height: 1.8;
+      color: var(--text);
       white-space: pre-wrap;
       word-break: break-word;
     }
+    @media (max-width: 560px) {
+      .note-body { padding: 1.6rem 1.25rem; font-size: 1.05rem; }
+    }
 
-    .card-footer {
-      padding: .85rem 1.5rem;
+    .note-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .75rem;
+      padding: .85rem 1.35rem;
       border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: .75rem;
+      background: var(--bg-sunk);
     }
     .word-count {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .74rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .7rem;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .42rem .85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: .78rem;
       color: var(--muted);
+      transition: border-color .18s, color .18s, background .18s;
     }
+    .chip:hover { border-color: var(--accent-line); color: var(--text); background: var(--surface); }
+    .chip.copied { border-color: var(--ok); color: var(--ok); }
 
-    .copy-btn {
-      padding: .42rem 1rem;
-      background: var(--surface);
-      border: 2px solid var(--ink);
-      border-radius: var(--radius);
-      color: var(--text);
-      font-family: inherit;
-      font-size: .82rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-      box-shadow: var(--shadow-sm);
-      transition: transform .15s, box-shadow .15s, border-color .15s, background .15s, color .15s;
-    }
-    .copy-btn:hover { border-color: var(--accent); background: rgba(181,80,47,.06); transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    .copy-btn:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
-    .copy-btn.copied { border-color: var(--success); color: var(--success); }
-
+    /* ── Attribution ───────────────────────────────────────────────────── */
     .attribution {
-      margin-top: 2rem;
-      font-size: .8rem;
-      color: var(--muted);
-      text-align: center;
+      margin-top: 2.5rem;
+      padding-top: 1.75rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: baseline; flex-wrap: wrap;
+      gap: .5rem;
+      font-size: .86rem;
+      color: var(--faint);
     }
-    .attribution a { color: var(--accent); text-decoration: none; }
-    .attribution a:hover { text-decoration: underline; }
+    .attribution a {
+      color: var(--text);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-line);
+      transition: color .18s, border-color .18s;
+    }
+    .attribution a:hover { color: var(--accent); border-color: var(--accent); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="logo">Note<span>-</span>Cloud</div>
-    <a class="try-btn" href="/login">Try it free →</a>
-  </header>
+  <div class="shell">
 
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">Shared transcription</span>
-      <span class="card-meta">
-        Shared by {{ item.first_name }} {{ item.last_name }}
-        &nbsp;·&nbsp;
-        {{ item.created_at[:10] }}
-      </span>
-    </div>
+    <header class="topbar">
+      <div class="col topbar-in">
+        <a class="brand" href="/login">
+          <img src="/static/favicon.png" alt="" />
+          <span class="brand-name">Note<span>-</span>Cloud</span>
+        </a>
+        <a class="btn btn--ghost" href="/login">Try it free</a>
+      </div>
+    </header>
 
-    <div class="card-text" id="transcription-text">{{ item.text }}</div>
+    <main class="col">
 
-    <div class="card-footer">
-      <span class="word-count">{{ item.word_count }} word{{ 's' if item.word_count != 1 else '' }}</span>
-      <button class="copy-btn" id="copy-btn">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
-        Copy text
-      </button>
-    </div>
+      <div class="masthead">
+        <span class="eyebrow">Shared transcription</span>
+        <h1>A handwritten note, read back as text.</h1>
+        <div class="byline">
+          <span>Shared by <b>{{ item.first_name }} {{ item.last_name }}</b></span>
+          <i>/</i>
+          <span>{{ item.created_at[:10] }}</span>
+        </div>
+      </div>
+
+      <article class="panel">
+        <div class="note-body" id="transcription-text">{{ item.text }}</div>
+        <div class="note-foot">
+          <span class="word-count">{{ item.word_count }} word{{ 's' if item.word_count != 1 else '' }}</span>
+          <button class="chip" id="copy-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy text
+          </button>
+        </div>
+      </article>
+
+      <p class="attribution">
+        Transcribed with <a href="/login">Note-Cloud</a> — photograph handwritten notes, get clean editable text back in seconds.
+      </p>
+
+    </main>
+
   </div>
-
-  <p class="attribution">
-    Transcribed with <a href="/login">Note-Cloud</a> — turn handwritten notes into text instantly.
-  </p>
 
   <script>
     document.getElementById("copy-btn").addEventListener("click", function() {

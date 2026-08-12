@@ -4,814 +4,853 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Handwriting Transcriber</title>
+  <meta name="description" content="Photograph handwritten notes and get clean, editable text back in seconds." />
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet" />
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       NOTE-CLOUD — "Studio" · landing + auth
+       Same system as the app: monochrome surfaces carry the interface and
+       one highlighter-lime accent marks only what matters. Primary actions
+       invert the canvas rather than taking a hue. This page is dark only —
+       there is no signed-in theme preference to read yet.
+       Display: Newsreader · UI: Archivo · Data: JetBrains Mono
+       ═══════════════════════════════════════════════════════════════════ */
+
     :root {
-      --bg:       #0d0c0a;
-      --bg2:      #131210;
-      --surface:  #181712;
-      --surface2: #201e19;
-      --border:   rgba(255,255,255,.09);
-      --border2:  rgba(201,107,69,.32);
-      --ink:      #f2ede1;
-      --gold:     #d97a4f;
-      --gold2:    #9c4f2e;
-      --accent2:  #e0a622;
-      --gold-dim: rgba(201,107,69,.07);
-      --text:     #f3f1ea;
-      --text2:    #b8a999;
-      --muted:    rgba(243,241,234,.4);
-      --success:  #4cbb84;
-      --error:    #e2685a;
-      --radius:   8px;
-      --radius-sm:6px;
-      --shadow:    5px 5px 0 var(--ink);
-      --shadow-sm: 3px 3px 0 var(--ink);
-      --shadow-lg: 9px 9px 0 var(--ink);
+      --bg:          #0f0f11;
+      --bg-sunk:     #0a0a0c;
+      --surface:     #17171a;
+      --raised:      #1f1f24;
+      --border:      rgba(255,255,255,.09);
+      --border-firm: rgba(255,255,255,.16);
+
+      --text:        #f2f1ee;
+      --muted:       rgba(242,241,238,.58);
+      --faint:       rgba(242,241,238,.34);
+
+      /* the one accent — a highlighter, used sparingly */
+      --accent:      #cdf24a;
+      --accent-soft: rgba(205,242,74,.14);
+      --accent-line: rgba(205,242,74,.42);
+      --on-accent:   #14160b;
+
+      /* primary actions invert the canvas instead of taking a hue */
+      --solid:       #f2f1ee;
+      --on-solid:    #131316;
+
+      --ok:          #5ed39b;
+      --warn:        #f2c14a;
+      --bad:         #f2705d;
+      /* alias: the auth script writes `var(--error)` into #error-msg */
+      --error:       #f2705d;
+
+      --r-xs: 6px;
+      --r-sm: 9px;
+      --r:    13px;
+      --r-lg: 20px;
+
+      /* shadows tinted to the canvas, never flat black */
+      --lift-1: 0 1px 2px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
+      --lift-2: 0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.26);
+      --lift-3: 0 8px 24px rgba(0,0,0,.40), 0 32px 80px rgba(0,0,0,.44);
+
+      --ease: cubic-bezier(.22,1,.36,1);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { height: 100%; }
-    html, body { overflow: hidden; }
+
+    html, body { height: 100%; overflow: hidden; }
 
     body {
-      font-family: 'Outfit', system-ui, sans-serif;
+      font-family: 'Archivo', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      height: 100%;
+      min-height: 100dvh;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
-
-    /* ── Noise ── */
-    .noise {
-      position: fixed; inset: 0; z-index: 1; pointer-events: none;
-      opacity: .048;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 200px;
-    }
-
-    /* ── Ambient glows ── */
-    .ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-    .amb-blob {
-      position: absolute;
-      border-radius: 50%;
-      /* These blobs are 70vmax and animate forever behind the globe; an 80px
-         blur on them is enormous to rasterize. 48px looks the same at this size
-         and opacity for a fraction of the GPU cost. */
-      filter: blur(48px);
-      animation: amb-float linear infinite;
-    }
-    .amb-blob-1 {
-      width: 70vmax; height: 55vmax;
-      top: -25vmax; left: -10vmax;
-      background: radial-gradient(circle, rgba(201,107,69,.07) 0%, transparent 65%);
-      animation-duration: 20s;
-    }
-    .amb-blob-2 {
-      width: 55vmax; height: 55vmax;
-      bottom: -20vmax; right: -15vmax;
-      background: radial-gradient(circle, rgba(180,120,30,.05) 0%, transparent 65%);
-      animation-duration: 26s;
-      animation-direction: reverse;
-    }
-    .amb-blob-3 {
-      width: 40vmax; height: 40vmax;
-      top: 40%; left: 30%;
-      background: radial-gradient(circle, rgba(201,107,69,.03) 0%, transparent 65%);
-      animation-duration: 34s;
-    }
-    @keyframes amb-float {
-      0%,100% { transform: translate(0,0) scale(1);   }
-      33%      { transform: translate(40px,30px) scale(1.05); }
-      66%      { transform: translate(-30px,20px) scale(.96); }
-    }
-
-    /* ── Map grid ── */
-    .bg-grid {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image:
-        linear-gradient(rgba(201,107,69,.038) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(201,107,69,.038) 1px, transparent 1px);
-      background-size: 44px 44px;
-    }
-
-    /* ── Globe canvas ── */
-    #globe-canvas {
-      position: fixed; inset: 0;
-      width: 100vw; height: 100vh;
+    /* Paper grain — breaks the flatness of large empty surfaces */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
       pointer-events: none;
-      z-index: 0;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    /* ── Particle canvas ── */
-    #particle-canvas {
-      position: fixed; inset: 0;
-      width: 100vw; height: 100vh;
-      pointer-events: none;
-      z-index: 1;
-      opacity: .7;
+    ::selection { background: var(--accent-soft); color: var(--text); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: var(--r-xs);
     }
 
-    /* ── Slide container ── */
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { background: none; border: none; cursor: pointer; }
+    a { color: inherit; }
+
+    .u-mono {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Small uppercase section label — the recurring wayfinding device */
+    .eyebrow {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem;
+      font-weight: 500;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+
+    /* The single highlighter mark on the page */
+    .mark {
+      background: linear-gradient(transparent 60%, var(--accent-soft) 60%);
+      padding: 0 .06em;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+      padding: .62rem 1.25rem;
+      border-radius: var(--r-sm);
+      font-size: .86rem; font-weight: 500;
+      cursor: pointer;
+      transition: transform .18s var(--ease), opacity .18s, background .18s, border-color .18s, color .18s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn--solid { background: var(--solid); color: var(--on-solid); }
+    .btn--solid:hover { opacity: .86; }
+    .btn--ghost { border: 1px solid var(--border); color: var(--muted); }
+    .btn--ghost:hover { border-color: var(--accent-line); color: var(--text); }
+    .btn--quiet { color: var(--muted); }
+    .btn--quiet:hover { color: var(--text); }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--lift-1);
+    }
+
+    .chip {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .42rem .85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    /* ── Slide mechanism ───────────────────────────────────────────────────
+       Two full-viewport halves inside a 200vw rail; the auth panel is one
+       translate away. Kept from the previous build because the whole page
+       (and its JS) is built around that single transform. */
     #slide-container {
-      position: relative; z-index: 2;
-      display: flex; width: 200vw; height: 100vh;
-      transition: transform .9s cubic-bezier(.76,0,.24,1);
+      position: relative; z-index: 1;
+      display: flex;
+      width: 200vw; height: 100dvh;
+      transition: transform .72s var(--ease);
     }
     #slide-container.show-auth { transform: translateX(-50%); }
-    .panel { width: 50%; height: 100%; position: relative; }
+    .slide-panel { width: 50%; height: 100%; position: relative; }
 
-    /* ── Landing panel ── */
-    #landing-panel  { display: flex; flex-direction: column; overflow: hidden; }
+    /* ── Landing ───────────────────────────────────────────────────────── */
+    #landing-panel { display: flex; flex-direction: column; overflow: hidden; }
     #landing-content {
-      position: relative; z-index: 1; flex: 1;
+      flex: 1;
       overflow-y: auto; overflow-x: hidden;
-      display: flex; flex-direction: column; align-items: center;
-      padding: 0 1.5rem 2rem;
-      scrollbar-width: none;
+      scroll-behavior: smooth;
     }
-    #landing-content::-webkit-scrollbar { display: none; }
+    #landing-content::-webkit-scrollbar { width: 3px; }
+    #landing-content::-webkit-scrollbar-thumb { background: var(--border-firm); border-radius: 99px; }
 
-    /* ── Hero ── */
-    .landing-main {
-      min-height: 100vh;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-align: center;
-      padding: 3rem 0 7rem; /* extra bottom padding clears the scroll hint */
-      width: 100%; max-width: 720px;
-      position: relative;
+    .col {
+      width: 100%;
+      max-width: 940px;
+      margin: 0 auto;
+      padding: 0 1.75rem;
     }
 
-    /* Kicker label — plain mono text, no pulsing "powered by AI" badge */
-    .landing-kicker {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .68rem; font-weight: 500;
-      color: var(--muted); letter-spacing: .14em; text-transform: uppercase;
-      margin-bottom: 2.5rem;
-      opacity: 0; animation: rise .8s .08s cubic-bezier(.16,1,.3,1) forwards;
+    /* Masthead */
+    .masthead {
+      display: flex; align-items: center; gap: 1rem;
+      height: 74px;
     }
-
-    /* Small fixed brand mark in the top-left corner */
-    .corner-logo {
-      position: fixed;
-      top: 1.1rem; left: 1.25rem;
-      width: 56px; height: auto;
-      z-index: 50;
-      filter: drop-shadow(0 3px 12px rgba(201,107,69,.22));
-      pointer-events: none;
+    .brand { display: flex; align-items: center; gap: .6rem; margin-right: auto; }
+    .brand img { width: 24px; height: auto; display: block; }
+    .brand-name {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.32rem; font-weight: 400;
+      letter-spacing: -.01em;
     }
+    .brand-name span { color: var(--accent); }
 
-    /* Hero title */
+    /* Hero */
+    .hero {
+      padding: clamp(3rem, 9vh, 6rem) 0 clamp(3rem, 8vh, 5rem);
+      border-bottom: 1px solid var(--border);
+    }
     .hero-title {
-      font-family: 'Big Shoulders Display', sans-serif;
-      font-size: clamp(6rem, 16vw, 11rem);
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: -3px;
-      line-height: .82;
-      color: var(--text);
-      opacity: 0; animation: rise .95s .2s cubic-bezier(.16,1,.3,1) forwards;
-      position: relative;
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(2.9rem, 7.2vw, 5.6rem);
+      font-weight: 300;
+      line-height: 1.02;
+      letter-spacing: -.025em;
+      margin: 1.15rem 0 0;
+      max-width: 15ch;
+      text-wrap: balance;
     }
-    .hero-title em {
-      font-style: normal;
-      color: var(--gold);
-    }
-
-    /* Tagline */
     .landing-tagline {
-      margin-top: 1.6rem;
-      color: var(--text2);
-      font-size: 1.05rem; font-weight: 300;
-      line-height: 1.75; max-width: 460px;
-      min-height: 1.75em;
-      opacity: 0; animation: rise .8s .42s cubic-bezier(.16,1,.3,1) forwards;
+      margin-top: 1.5rem;
+      max-width: 52ch;
+      font-size: 1.02rem;
+      line-height: 1.75;
+      color: var(--muted);
+      min-height: 3.5em;          /* reserve space so the typewriter can't shift layout */
     }
+    .landing-tagline::after {
+      content: '';
+      display: inline-block;
+      width: 2px; height: .95em;
+      margin-left: 3px;
+      background: var(--accent);
+      vertical-align: -.13em;
+      /* blinks while the tagline types itself in, then retires — the typing
+         run is ~3.2s, so the caret leaves shortly after the last character */
+      animation: caret .9s steps(1) infinite,
+                 caret-retire .01s linear 4.2s forwards;
+    }
+    @keyframes caret { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+    @keyframes caret-retire { to { opacity: 0; visibility: hidden; } }
 
-    /* Ticker */
-    .ticker-wrap {
-      width: 100vw; overflow: hidden;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: .95rem 0;
-      margin: 2.2rem 0;
-      opacity: 0; animation: fade .6s .58s forwards;
-      mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
-      display: flex; align-items: center;
+    .cta-row {
+      display: flex; align-items: center; flex-wrap: wrap; gap: .85rem 1.25rem;
+      margin-top: 2.4rem;
     }
-    .ticker-inner {
-      display: flex; align-items: center; gap: 2.5rem;
-      width: max-content;
-      animation: ticker-move 38s linear infinite;
-      font-size: .72rem; font-weight: 500; line-height: 1;
-      color: var(--muted); letter-spacing: .04em; white-space: nowrap;
-    }
-    .tsep { color: var(--gold); opacity: .4; font-size: .5rem; }
-    @keyframes ticker-move { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-
-    /* Feature pills */
-    .feature-pills {
-      display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center;
-      margin-bottom: 2.75rem;
-      opacity: 0; animation: rise .7s .68s cubic-bezier(.16,1,.3,1) forwards;
-    }
-    .feature-pill {
-      display: inline-flex; align-items: center;
-      background: var(--surface2);
-      border: 2px solid var(--border2);
-      border-radius: 3px;
-      padding: .42rem 1.05rem;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .68rem; font-weight: 600; letter-spacing: .02em; color: var(--text2);
-      transition: background .18s, border-color .18s, color .18s, transform .18s;
-    }
-    .feature-pill:hover {
-      border-color: var(--gold);
-      color: var(--text);
-      transform: translateY(-2px);
-      cursor: default;
-    }
-
-    /* CTA */
-    .cta-group {
-      display: flex; flex-direction: column; align-items: center; gap: .95rem;
-      opacity: 0; animation: rise .7s .8s cubic-bezier(.16,1,.3,1) forwards;
-    }
-    .cta-btn-wrap { position: relative; } /* magnetic wrapper */
-
     #get-started-btn {
-      position: relative;
-      display: inline-flex; align-items: center; gap: .75rem;
-      padding: 1.15rem 3.2rem;
-      background: var(--gold);
-      color: #fff;
-      border: 3px solid var(--ink); border-radius: var(--radius-sm);
-      font-size: 1rem; font-weight: 700; font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      overflow: hidden;
-      box-shadow: var(--shadow-lg);
-      transition: transform .15s, box-shadow .15s;
+      padding: .92rem 1.9rem;
+      font-size: .95rem; font-weight: 600;
+      border-radius: var(--r);
     }
-    #get-started-btn::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(160deg, rgba(255,255,255,.22) 0%, transparent 55%);
-      pointer-events: none;
+    #get-started-btn:hover { transform: translateY(-2px); }
+    #get-started-btn:active { transform: translateY(0); }
+    .btn-arrow { transition: transform .3s var(--ease); }
+    #get-started-btn:hover .btn-arrow { transform: translateX(4px); }
+    .cta-note {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--faint);
     }
-    /* shimmer sweep on hover */
-    #get-started-btn::after {
-      content: '';
-      position: absolute;
-      width: 50%; height: 100%; top: 0; left: -60%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
-      skewX: -15deg;
-      transition: left 0s;
-    }
-    #get-started-btn:hover {
-      transform: translate(-3px,-3px);
-      box-shadow: 12px 12px 0 var(--ink);
-    }
-    #get-started-btn:active { transform: translate(0,0); box-shadow: 2px 2px 0 var(--ink); }
-    .btn-arrow { transition: transform .3s cubic-bezier(.16,1,.3,1); }
-    #get-started-btn:hover .btn-arrow { transform: translateX(5px); }
 
-    /* Ripple */
-    .ripple {
-      position: absolute;
+    /* Quiet inline annotations, not boastful stat cards */
+    .facts { display: flex; flex-wrap: wrap; gap: 2.5rem; margin-top: 3rem; }
+    .fact { display: flex; flex-direction: column; gap: .2rem; }
+    .fact-value {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.9rem; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .fact-label { font-size: .82rem; color: var(--muted); max-width: 22ch; }
+
+    /* Below the fold */
+    .below-fold {
+      padding: 5rem 0 4rem;
+      display: flex; flex-direction: column;
+      gap: 5.5rem;
+    }
+    .section-head { margin-bottom: 2.5rem; }
+    .section-title {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(1.9rem, 4.4vw, 2.8rem);
+      font-weight: 400; line-height: 1.1;
+      letter-spacing: -.015em;
+      margin-top: .85rem;
+      max-width: 20ch;
+      text-wrap: balance;
+    }
+
+    /* How it works — asymmetric numbered rail */
+    .steps { display: flex; flex-direction: column; }
+    .step {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      gap: 1.5rem;
+      padding: 1.9rem 0;
+      border-top: 1px solid var(--border);
+      align-items: start;
+    }
+    .step:last-child { border-bottom: 1px solid var(--border); }
+    .step-num {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .68rem; letter-spacing: .1em;
+      color: var(--accent);
+      padding-top: .35rem;
+    }
+    .step-title { font-size: 1.02rem; font-weight: 600; margin-bottom: .35rem; }
+    .step-desc { font-size: .89rem; color: var(--muted); line-height: 1.7; max-width: 52ch; }
+
+    /* Founder story — an aside set in the reading column, not a shouty card */
+    .story {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
+      gap: 2.5rem 3.5rem;
+      align-items: start;
+      padding: 3rem 3rem 2.6rem;
+    }
+    .story-title {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(1.9rem, 4vw, 2.6rem);
+      font-weight: 400; line-height: 1.08;
+      letter-spacing: -.015em;
+      margin-top: .8rem;
+    }
+    .story-body p {
+      font-size: .95rem; line-height: 1.85;
+      color: var(--muted);
+    }
+    .story-body p + p { margin-top: 1.1rem; }
+    .story-hl { color: var(--text); font-weight: 500; }
+    .story-sign {
+      display: flex; align-items: center; gap: .9rem;
+      margin-top: 2rem;
+      padding-top: 1.35rem;
+      border-top: 1px solid var(--border);
+    }
+    .story-avatar {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: grid; place-items: center;
       border-radius: 50%;
-      background: rgba(255,255,255,.35);
-      transform: scale(0);
-      animation: ripple-expand .55s cubic-bezier(.4,0,.2,1) forwards;
-      pointer-events: none;
+      background: var(--raised);
+      border: 1px solid var(--border);
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.05rem;
+      color: var(--muted);
     }
-    @keyframes ripple-expand {
-      to { transform: scale(4); opacity: 0; }
+    .story-sign-name {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--faint);
+    }
+    .story-sign-role { font-size: .82rem; color: var(--muted); margin-top: .2rem; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.25rem 0 3.25rem;
+      display: flex; flex-wrap: wrap; gap: .75rem 1.5rem;
+      align-items: center;
+      font-size: .8rem; color: var(--faint);
+    }
+    footer a { text-decoration: none; transition: color .18s; }
+    footer a:hover { color: var(--text); }
+    .footer-sep { opacity: .4; }
+
+    /* ── Auth ──────────────────────────────────────────────────────────── */
+    #auth-panel { display: flex; overflow: hidden; }
+    .auth-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      width: 100%; height: 100%;
     }
 
-    .cta-note { font-size: .74rem; color: var(--muted); }
-    .cta-signin { font-size: .84rem; color: var(--muted); }
-    .cta-signin button {
-      background: none; border: none; color: var(--text2);
-      font-family: inherit; font-size: inherit; cursor: pointer;
-      text-decoration: underline; text-underline-offset: 3px;
-      text-decoration-color: rgba(201,107,69,.25);
-      transition: color .18s, text-decoration-color .18s;
+    /* Left rail of the split screen — quiet context, never a sales pitch */
+    .auth-aside {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 0; overflow: hidden;
+      padding: 2.5rem 3rem;
+      background: var(--bg-sunk);
+      border-right: 1px solid var(--border);
     }
-    .cta-signin button:hover { color: var(--gold); text-decoration-color: rgba(201,107,69,.7); }
-
-    /* Scroll hint */
-    .scroll-hint {
-      position: absolute; bottom: 2.25rem; left: 50%; transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: .55rem;
-      font-size: .6rem; letter-spacing: .17em; text-transform: uppercase;
-      opacity: 0; animation: fade .6s 1.2s forwards;
-      transition: opacity .4s;
+    .aside-line {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(1.9rem, 2.6vw, 2.6rem);
+      font-weight: 300;
+      line-height: 1.12;
+      letter-spacing: -.02em;
+      max-width: 15ch;
+      margin-top: 1rem;
     }
-    .scroll-hint.hidden { opacity: 0 !important; pointer-events: none; }
-    .scroll-hint span {
-      background: transparent;
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-weight: 600;
-      font-family: 'IBM Plex Mono', monospace;
-      border-radius: 3px;
-      /* extra left padding offsets the trailing letter-spacing so the word is truly centred */
-      padding: .42rem .95rem .42rem calc(.95rem + .17em);
+    .aside-list { list-style: none; display: grid; gap: .7rem; margin-top: 2rem; }
+    .aside-list li {
+      display: flex; gap: .7rem; align-items: baseline;
+      font-size: .86rem; color: var(--muted);
     }
-    .scroll-needle {
-      width: 1px; height: 44px;
-      background: linear-gradient(to bottom, var(--gold), transparent);
-      animation: needle-drip 2.4s ease-in-out infinite;
+    .aside-list li::before {
+      content: '—';
+      color: var(--accent);
+      flex-shrink: 0;
     }
-    @keyframes needle-drip {
-      0%,100% { transform: scaleY(1); transform-origin: top; opacity: .7; }
-      50%      { transform: scaleY(.5); transform-origin: top; opacity: .25; }
+    .aside-foot {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--faint);
     }
 
-    /* ── About section ── */
-    .landing-about {
-      width: 100%; max-width: 620px; margin-top: 0;
-      opacity: 0; transform: translateY(44px);
-      transition: opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1);
-      position: relative; z-index: 2;
-      background: #fff;
-      border-radius: 22px;
-      padding: 2.8rem 2.8rem 2.4rem;
-      box-shadow: 0 8px 48px rgba(0,0,0,.09);
+    .auth-main {
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 0;              /* grid item must be allowed to shrink to scroll */
+      overflow-y: auto;
+      padding: 2rem 1.5rem 3rem;
     }
-    .landing-about.visible { opacity: 1; transform: translateY(0); }
-    /* SVG frame that the liquid stroke continues into, surrounding the card */
-    #card-frame-svg {
-      position: absolute;
-      left: -20px; top: -20px;
-      pointer-events: none;
-      overflow: visible;
-    }
+    .auth-main::-webkit-scrollbar { width: 3px; }
+    .auth-main::-webkit-scrollbar-thumb { background: var(--border-firm); border-radius: 99px; }
+    .auth-inner { width: 100%; max-width: 420px; margin: auto 0; }
 
-    .about-tag {
-      display: inline-flex; align-items: center; gap: .5rem;
-      font-size: .63rem; font-weight: 700; letter-spacing: .18em;
-      text-transform: uppercase; color: #c96b45; margin-bottom: 1.3rem;
-    }
-    .about-tag::before { content:''; width:22px; height:1px; background:#c96b45; display:inline-block; opacity:.55; }
-
-    .about-heading {
-      font-family: 'Big Shoulders Display', sans-serif;
-      font-size: clamp(2.6rem, 6vw, 3.8rem); font-weight: 800;
-      text-transform: uppercase;
-      line-height: .92; letter-spacing: -1px;
-      color: #1a1712; margin-bottom: 2.25rem;
-    }
-
-    .about-quote {
-      padding: 1.85rem 2.1rem 1.85rem 2.3rem;
-      background: rgba(201,107,69,.06);
-      border: 1px solid rgba(201,107,69,.22);
-      border-left: 2.5px solid #c96b45;
-      border-radius: 0 14px 14px 0;
-      margin-bottom: 1.4rem;
-    }
-    .about-quote p { color: #3d372c; font-size: .93rem; line-height: 1.88; font-weight: 300; }
-    .about-quote p + p { margin-top: .95rem; }
-    .about-hl { color: #1a1712; font-weight: 500; }
-
-    .about-footer {
-      display: flex; align-items: center; gap: 1.1rem;
-      padding: 1.25rem 1.6rem;
-      background: rgba(201,107,69,.07);
-      border: 1px solid rgba(201,107,69,.18);
-      border-radius: 14px;
-    }
-    .about-avatar {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: .9rem; color: var(--bg); flex-shrink: 0;
-      box-shadow: 0 4px 18px rgba(201,107,69,.35);
-    }
-    .about-sig-name { font-size: .88rem; font-weight: 600; color: #1a1712; }
-    .about-sig-role { font-size: .74rem; color: #756f62; margin-top: .18rem; }
-
-
-    /* ── Auth panel ── */
-    #auth-panel {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      overflow-y: auto; padding: 2rem 1.5rem;
-    }
-    .auth-inner { position: relative; z-index: 1; width: 100%; max-width: 430px; }
-
-    .auth-back {
+    #back-btn {
       display: inline-flex; align-items: center; gap: .45rem;
-      background: none; border: none; color: var(--muted);
-      font-family: inherit; font-size: .84rem; cursor: pointer;
-      padding: 0; margin-bottom: 2.25rem;
-      transition: color .18s, gap .22s;
+      padding: .35rem .6rem .35rem .45rem;
+      margin: 0 0 1.6rem -.45rem;
+      border-radius: var(--r-sm);
+      font-size: .82rem;
+      color: var(--muted);
+      transition: color .18s, background .18s;
     }
-    .auth-back:hover { color: var(--text); gap: .6rem; background: rgba(201,107,69,.06); border-radius: 8px; padding: .2rem .5rem; margin-left: -.5rem; }
+    #back-btn:hover { color: var(--text); background: var(--raised); }
 
-    .auth-logo {
-      display: block;
-      height: 96px; width: auto;
-      margin: 0 auto 1.5rem;
-    }
-
-    /* Card frame — thick border, hard offset shadow, no soft glow */
-    .card-shell {
-      position: relative;
-      border-radius: calc(var(--radius) + 2px);
-      padding: 3px;
-      background: var(--ink);
-      box-shadow: var(--shadow-lg), 0 28px 90px rgba(0,0,0,.55);
+    .auth-head { margin-bottom: 1.4rem; }
+    .auth-head h1 {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.9rem; font-weight: 400;
+      line-height: 1.12; letter-spacing: -.015em;
+      margin-top: .55rem;
     }
 
-    .auth-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: transform .12s ease;
-    }
-    .auth-card.shake { animation: card-shake .42s cubic-bezier(.36,.07,.19,.97); }
-    @keyframes card-shake {
-      10%,90%{transform:translateX(-2px)} 20%,80%{transform:translateX(3px)}
-      30%,50%,70%{transform:translateX(-5px)} 40%,60%{transform:translateX(5px)}
+    #card-shell { position: relative; }
+
+    #auth-card { overflow: hidden; }
+    #auth-card.shake { animation: nudge .4s var(--ease); }
+    @keyframes nudge {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      55% { transform: translateX(3px); }
+      80% { transform: translateX(-1px); }
     }
 
-    /* ── iOS segmented tab control ── */
-    .tab-bar {
-      padding: .75rem .75rem .6rem;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-    }
+    /* Segmented tabs — a sliding pill in a sunken track */
+    .tab-bar { padding: .8rem .8rem 0; }
     .tab-track {
       position: relative;
       display: flex;
-      background: rgba(255,255,255,.04);
-      border: 2px solid var(--border2);
-      border-radius: 6px;
       padding: 3px;
+      background: var(--bg-sunk);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
     }
-    /* The sliding pill indicator */
     .tab-pill {
       position: absolute;
       top: 3px; left: 3px;
       width: calc(50% - 3px); height: calc(100% - 6px);
-      background: var(--gold);
-      border: 2px solid var(--ink);
-      border-radius: 4px;
-      transition: transform .3s cubic-bezier(.16,1,.3,1);
+      background: var(--raised);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xs);
+      box-shadow: var(--lift-1);
+      transition: transform .3s var(--ease);
       pointer-events: none;
     }
     .tab-pill.to-signup { transform: translateX(100%); }
-
     .tab-btn {
-      flex: 1; padding: .62rem .5rem;
-      background: transparent; border: none;
-      color: var(--muted); font-family: inherit;
-      font-size: .84rem; font-weight: 500; cursor: pointer;
-      border-radius: 6px;
+      flex: 1;
       position: relative; z-index: 1;
-      transition: color .22s, font-weight .22s, transform .3s cubic-bezier(.16,1,.3,1);
-      text-align: center;
+      padding: .55rem .5rem;
+      font-size: .84rem; font-weight: 500;
+      color: var(--faint);
+      border-radius: var(--r-xs);
+      transition: color .22s;
     }
-    .tab-btn:hover { color: var(--text2); transform: scale(1.06); }
-    .tab-btn.active { color: var(--text); font-weight: 600; transform: scale(1.08); }
-    .tab-btn:not(.active):hover { transform: scale(1.05); }
+    .tab-btn:hover { color: var(--muted); }
+    .tab-btn.active { color: var(--text); }
 
-    /* Form */
-    .form-body { padding: 1.85rem; display: flex; flex-direction: column; gap: 1.15rem; }
+    .form-body { padding: 1.5rem 1.6rem 1.7rem; display: flex; flex-direction: column; gap: 1rem; }
 
-    .social-btns { display: flex; flex-direction: column; gap: .65rem; }
+    .social-btns { display: flex; flex-direction: column; gap: .55rem; }
     .social-btn {
-      width: 100%; padding: .88rem 1rem;
-      display: flex; align-items: center; justify-content: center; gap: .65rem;
-      border-radius: var(--radius-sm); font-family: 'Outfit', sans-serif;
-      font-size: .875rem; font-weight: 600; cursor: pointer;
-      transition: transform .15s, box-shadow .15s;
-      border: 2px solid;
+      width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      padding: .78rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: var(--raised);
+      font-size: .87rem; font-weight: 500;
+      color: var(--text);
+      transition: border-color .18s, background .18s, transform .18s var(--ease);
     }
-    .social-btn:hover { transform: translate(-2px,-2px); }
-    .social-btn.google {
-      background: #fff; color: #3c4043; border-color: var(--ink);
-      box-shadow: var(--shadow-sm);
+    .social-btn:hover { border-color: var(--border-firm); background: var(--surface); transform: translateY(-1px); }
+    .social-btn:active { transform: translateY(0); }
+    .social-btn svg { flex-shrink: 0; }
+
+    .divider-row {
+      display: flex; align-items: center; gap: .75rem;
+      margin: .35rem 0 .1rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .58rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--faint);
     }
-    .social-btn.google:hover { box-shadow: 5px 5px 0 var(--ink); }
-    .social-btn.apple {
-      background: var(--surface2); color: var(--text); border-color: var(--ink);
-      box-shadow: var(--shadow-sm);
-    }
-    .social-btn.apple:hover {
-      background: #241c26;
-      box-shadow: 5px 5px 0 var(--ink);
+    .divider-row::before, .divider-row::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
-    .divider {
-      display: flex; align-items: center; gap: .8rem;
-      color: var(--muted); font-size: .7rem; letter-spacing: .05em;
-    }
-    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
-
-    .field { display: flex; flex-direction: column; gap: .45rem; }
-    .field-row { display: flex; gap: .65rem; }
-    .field-row .field { flex: 1; }
+    .field { display: flex; flex-direction: column; gap: .38rem; }
+    .field-row { display: flex; gap: .6rem; }
+    .field-row .field { flex: 1; min-width: 0; }
     .field label {
-      font-size: .67rem; font-weight: 600; color: var(--muted);
-      letter-spacing: .1em; text-transform: uppercase;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .6rem; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--faint);
     }
     .field input {
-      width: 100%; padding: .88rem 1.12rem;
-      background: var(--bg2);
-      border: 2px solid var(--border);
-      border-radius: 6px;
-      color: var(--text); font-family: inherit; font-size: .9rem; outline: none;
-      transition: border-color .18s, box-shadow .18s, background .18s;
-      cursor: text;
+      width: 100%;
+      padding: .72rem .85rem;
+      background: var(--bg-sunk);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .18s, background .18s;
     }
-    .field input:hover:not(:focus) {
-      border-color: rgba(201,107,69,.35);
-      background: rgba(201,107,69,.02);
-    }
-    .field input:focus {
-      background: rgba(201,107,69,.04);
-      border-color: var(--gold);
-      box-shadow: 3px 3px 0 var(--gold);
-    }
-    .field input::placeholder { color: rgba(242,234,216,.18); }
+    .field input:hover:not(:focus) { border-color: var(--border-firm); }
+    .field input:focus { border-color: var(--accent-line); }
+    .field input::placeholder { color: var(--faint); }
+    .field-opt { font-weight: 400; opacity: .6; letter-spacing: .06em; }
     .signup-only { display: none; }
 
-    .submit-btn {
-      width: 100%; padding: .98rem;
-      background: var(--gold);
-      color: #fff;
-      border: 2px solid var(--ink); border-radius: var(--radius-sm);
-      font-size: .95rem; font-weight: 700; font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      transition: transform .15s, box-shadow .15s;
-      box-shadow: var(--shadow);
-      position: relative; overflow: hidden; margin-top: .1rem;
-    }
-    .submit-btn::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(160deg, rgba(255,255,255,.2) 0%, transparent 55%);
-      pointer-events: none;
-    }
-    .submit-btn::after {
-      content: ''; position: absolute;
-      width: 50%; height: 100%; top: 0; left: -60%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
-    }
-    .submit-btn:hover:not(:disabled) {
-      box-shadow: var(--shadow-lg);
-      transform: translate(-3px,-3px);
-    }
-    .submit-btn:hover:not(:disabled)::after { left: 140%; transition: left .5s ease; }
-    .submit-btn:disabled { opacity: .36; cursor: not-allowed; transform: none; }
-    .submit-btn.loading::before {
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
-      animation: shimmer 1.3s linear infinite;
-    }
-    @keyframes shimmer { from{left:-60%} to{left:140%} }
-    #error-msg { min-height: 1.2em; font-size: .82rem; color: var(--error); text-align: center; }
-
-    /* ── Scroll wave (in-flow, starts at "scroll" text) ── */
-    #scroll-wave-wrap {
+    #submit-btn {
       width: 100%;
-      max-width: 440px;
-      height: 440px;
-      flex-shrink: 0;
-      pointer-events: none;
+      margin-top: .35rem;
+      padding: .88rem;
+      background: var(--solid);
+      color: var(--on-solid);
+      border-radius: var(--r-sm);
+      font-size: .92rem; font-weight: 600;
+      transition: opacity .18s, transform .18s var(--ease);
+    }
+    #submit-btn:not(:disabled):hover { transform: translateY(-1px); opacity: .9; }
+    #submit-btn:not(:disabled):active { transform: translateY(0); }
+    #submit-btn:disabled { opacity: .45; cursor: not-allowed; }
+    #submit-btn.loading {
+      cursor: progress;
+      background: linear-gradient(100deg,
+        var(--solid) 0%, var(--solid) 38%,
+        color-mix(in srgb, var(--solid) 72%, var(--accent)) 50%,
+        var(--solid) 62%, var(--solid) 100%);
+      background-size: 260% 100%;
+      animation: btn-sweep 1.5s linear infinite;
+    }
+    @keyframes btn-sweep { from { background-position: 180% 0; } to { background-position: -80% 0; } }
+
+    #error-msg {
+      min-height: 1.2em;
+      font-size: .82rem;
+      color: var(--bad);
+      text-align: center;
+    }
+
+    .auth-legal {
+      margin-top: 1.15rem;
+      text-align: center;
+      font-size: .74rem;
+      color: var(--faint);
+      line-height: 1.7;
+    }
+    .auth-legal a { text-decoration: none; border-bottom: 1px solid var(--border-firm); transition: color .18s; }
+    .auth-legal a:hover { color: var(--text); }
+
+    /* ── Scroll reveal ─────────────────────────────────────────────────────
+       Fail-open: content is visible by default. JS adds .reveal-armed only
+       after the IntersectionObserver is confirmed wired, so a JS failure
+       leaves content readable instead of permanently invisible. */
+    .reveal.reveal-armed {
       opacity: 0;
-      transition: opacity .5s;
-      margin-top: .5rem;
+      transform: translateY(22px);
+      transition: opacity .8s var(--ease), transform .8s var(--ease);
     }
-    #scroll-wave-wrap.visible { opacity: 1; }
-    #scroll-wave-wrap.hidden  { opacity: 0; }
+    .reveal-armed.from-right { transform: translateY(22px) translateX(30px); }
+    .reveal-armed.from-left  { transform: translateY(22px) translateX(-30px); }
+    .reveal-armed.visible { opacity: 1; transform: none; }
 
-    #scroll-draw-svg {
-      width: 100%; height: 100%;
-      display: block;
-      overflow: visible;
+    .reveal.reveal-armed .step,
+    .reveal.reveal-armed .fact {
+      opacity: 0; transform: translateY(14px);
+      transition: opacity .55s var(--ease), transform .55s var(--ease);
+    }
+    .reveal.reveal-armed.visible .step,
+    .reveal.reveal-armed.visible .fact { opacity: 1; transform: none; }
+    .reveal .step:nth-child(1), .reveal .fact:nth-child(1) { transition-delay: .06s; }
+    .reveal .step:nth-child(2), .reveal .fact:nth-child(2) { transition-delay: .14s; }
+    .reveal .step:nth-child(3), .reveal .fact:nth-child(3) { transition-delay: .22s; }
+
+    /* ── Accessibility / motion ────────────────────────────────────────── */
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
     }
 
-    /* ── Background explosion ── */
-    #bg-explode {
-      position: fixed; inset: 0; z-index: 1;
-      background: #f0ead8;
-      clip-path: circle(0% at 50% 50%);
-      pointer-events: none;
-      /* promote to its own compositing layer so the growing clip-path
-         doesn't cause the browser to repaint the whole viewport each frame */
-      will-change: clip-path;
-      transform: translateZ(0);
+    @media (prefers-reduced-motion: reduce) {
+      #landing-content { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
     }
-    /* About section text flips dark once yellow bg arrives */
 
-    /* ── Global keyframes ── */
-    @keyframes rise { from{opacity:0;transform:translateY(26px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes fade { from{opacity:0} to{opacity:1} }
-
-    /* ── Mobile: restore regular cursor ── */
-    @media (max-width: 600px) {
-      .hero-title { letter-spacing: -3px; }
-      .ticker-wrap { margin: 1.5rem 0; }
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (min-width: 900px) {
+      .auth-grid { grid-template-columns: 1fr 1fr; }
+      .auth-aside { display: flex; }
+    }
+    @media (min-width: 1240px) {
+      .auth-grid { grid-template-columns: 1.15fr 1fr; }
+    }
+    @media (max-width: 860px) {
+      .story { grid-template-columns: 1fr; gap: 1.75rem; padding: 2.25rem 1.75rem 2rem; }
+    }
+    @media (max-width: 620px) {
+      .step { grid-template-columns: 1fr; gap: .5rem; }
+      .facts { gap: 1.75rem; }
+    }
+    @media (max-width: 560px) {
+      .col { padding: 0 1.15rem; }
+      .below-fold { padding: 3.5rem 0 2.5rem; gap: 4rem; }
+      .story { padding: 1.9rem 1.35rem 1.75rem; }
+      .form-body { padding: 1.25rem 1.15rem 1.5rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Fixed brand mark, top-left -->
-  <img class="corner-logo" src="/static/logo-icon.png" alt="Note-Cloud" />
-
-  <!-- Layers (behind everything) -->
-  <canvas id="globe-canvas"></canvas>
-  <canvas id="particle-canvas"></canvas>
-  <div class="ambient">
-    <div class="amb-blob amb-blob-1"></div>
-    <div class="amb-blob amb-blob-2"></div>
-    <div class="amb-blob amb-blob-3"></div>
-  </div>
-  <div class="bg-grid"></div>
-  <div class="noise"></div>
-  <div id="bg-explode"></div>
-
-  <!-- App -->
   <div id="slide-container">
 
-    <!-- ─────────── PANEL 1: Landing ─────────── -->
-    <div class="panel" id="landing-panel">
+    <!-- ══ Panel 1 — Landing ═══════════════════════════════════════════ -->
+    <div class="slide-panel" id="landing-panel">
       <div id="landing-content">
-        <div class="landing-main">
 
-          <div class="landing-kicker">Handwriting, digitized</div>
-
-          <h1 class="hero-title">Note<em>—</em>Cloud</h1>
-
-          <p class="landing-tagline"></p>
-
-          <div class="ticker-wrap" aria-hidden="true">
-            <div class="ticker-inner">
-              <span>✦ Claude AI vision</span><span class="tsep">◈</span>
-              <span>Instant transcription</span><span class="tsep">◈</span>
-              <span>Reads any handwriting</span><span class="tsep">◈</span>
-              <span>Export .txt &amp; .docx</span><span class="tsep">◈</span>
-              <span>Google Docs sync</span><span class="tsep">◈</span>
-              <span>Share with a link</span><span class="tsep">◈</span>
-              <span>Free to start</span><span class="tsep">◈</span>
-              <span>✦ Claude AI vision</span><span class="tsep">◈</span>
-              <span>Instant transcription</span><span class="tsep">◈</span>
-              <span>Reads any handwriting</span><span class="tsep">◈</span>
-              <span>Export .txt &amp; .docx</span><span class="tsep">◈</span>
-              <span>Google Docs sync</span><span class="tsep">◈</span>
-              <span>Share with a link</span><span class="tsep">◈</span>
-              <span>Free to start</span><span class="tsep">◈</span>
+        <div class="col">
+          <header class="masthead">
+            <div class="brand">
+              <img src="/static/logo-icon.png" alt="" aria-hidden="true" />
+              <span class="brand-name">Note<span>·</span>Cloud</span>
             </div>
-          </div>
+            <button class="btn btn--quiet" id="go-login-btn" type="button">Log in</button>
+          </header>
+        </div>
 
-          <div class="feature-pills">
-            <span class="feature-pill">Seconds, not hours</span>
-            <span class="feature-pill">Claude AI vision</span>
-            <span class="feature-pill">Export anywhere</span>
-            <span class="feature-pill">Private &amp; secure</span>
-          </div>
+        <div class="col">
+          <section class="hero">
+            <span class="eyebrow">Handwriting, digitized</span>
+            <h1 class="hero-title">Notes you wrote <span class="mark">by hand</span>, typed out in seconds.</h1>
+            <p class="landing-tagline"></p>
 
-          <div class="cta-group">
-            <div class="cta-btn-wrap">
-              <button id="get-started-btn">
+            <div class="cta-row">
+              <button class="btn btn--solid" id="get-started-btn" type="button">
                 Start transcribing
-                <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg class="btn-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                 </svg>
               </button>
+              <span class="cta-note">Free to start · No card</span>
             </div>
-<p class="cta-signin">Already have an account? <button id="go-login-btn">Log in</button></p>
-          </div>
 
-          <div class="scroll-hint" id="scroll-hint">
-            <span>scroll</span>
-          </div>
-        </div>
-
-        <!-- Wave: grows from "scroll" text downward as user scrolls -->
-        <div id="scroll-wave-wrap">
-          <svg id="scroll-draw-svg" viewBox="0 -20 400 400" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">
-            <!-- ghost -->
-            <path d="M200,-59 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,360"
-              stroke="rgba(201,107,69,.13)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <!-- animated coil -->
-            <path id="scroll-drawn-line"
-              d="M200,-59 L200,10 C390,10 390,80 200,80 C10,80 10,55 200,55 C390,55 390,130 200,130 C10,130 10,105 200,105 C390,105 390,180 200,180 C10,180 10,155 200,155 C390,155 390,230 200,230 C10,230 10,205 200,205 C390,205 390,280 200,280 L200,360"
-              stroke="#c96b45" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          </svg>
-        </div>
-
-        <!-- About section -->
-        <div class="landing-about" id="landing-about">
-          <!-- Liquid frame: stroke continues from the coil and traces around this card (d set in JS) -->
-          <svg id="card-frame-svg" preserveAspectRatio="none" aria-hidden="true">
-            <path id="card-frame-ghost" fill="none" stroke="rgba(201,107,69,.13)" stroke-width="2.5" stroke-linejoin="round"/>
-            <path id="card-frame-left"  fill="none" stroke="#c96b45" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-            <path id="card-frame-right" fill="none" stroke="#c96b45" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-          </svg>
-          <div class="about-tag">The story</div>
-          <h2 class="about-heading">Why I built this</h2>
-          <div class="about-quote">
-            <p>As a student, I loved taking notes on my computer — until I hit a strict <span class="about-hl">"no device policy"</span> in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
-            <p>Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.</p>
-          </div>
-          <div class="about-footer">
-            <div class="about-avatar">A</div>
-            <div>
-              <div class="about-sig-name">Summer 2026</div>
-              <div class="about-sig-role">Built with curiosity, summer boredom, and a lot of notebooks ✦</div>
+            <div class="facts reveal">
+              <div class="fact">
+                <span class="fact-value u-mono">~2s</span>
+                <span class="fact-label">to transcribe a full page</span>
+              </div>
+              <div class="fact">
+                <span class="fact-value u-mono">95%+</span>
+                <span class="fact-label">accuracy on clear, well-lit handwriting</span>
+              </div>
+              <div class="fact">
+                <span class="fact-value u-mono">4</span>
+                <span class="fact-label">ways out: .txt, .docx, Google Docs, Notion</span>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
 
-        <footer style="margin-top:4rem;text-align:center;font-size:.78rem;color:#756f62">
-          <a href="/privacy" style="color:inherit;text-decoration:none;margin:0 .6rem">Privacy Policy</a>
-          <span style="opacity:.4">·</span>
-          <a href="/terms" style="color:inherit;text-decoration:none;margin:0 .6rem">Terms of Service</a>
-          <span style="margin-left:.6rem;opacity:.7">© Note-Cloud</span>
-        </footer>
+        <div class="col below-fold">
+
+          <section class="reveal">
+            <div class="section-head">
+              <span class="eyebrow">How it works</span>
+              <h2 class="section-title">Three steps, about two seconds.</h2>
+            </div>
+            <div class="steps">
+              <article class="step">
+                <div class="step-num">01</div>
+                <div>
+                  <h3 class="step-title">Snap or upload</h3>
+                  <p class="step-desc">Photograph your handwritten page, or drag an image straight onto the drop zone. Multiple pages at once is fine.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-num">02</div>
+                <div>
+                  <h3 class="step-title">The handwriting gets read</h3>
+                  <p class="step-desc">A vision model works through the page — including cursive and the parts you'd struggle to read yourself.</p>
+                </div>
+              </article>
+              <article class="step">
+                <div class="step-num">03</div>
+                <div>
+                  <h3 class="step-title">Edit and take it with you</h3>
+                  <p class="step-desc">Fix anything that came out wrong, then copy it, download .txt or .docx, push it to Google Docs or Notion, or share a link.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="reveal">
+            <div class="panel story">
+              <div>
+                <span class="eyebrow">The story</span>
+                <h2 class="story-title">Why I built this</h2>
+              </div>
+              <div class="story-body">
+                <p>As a student, I loved taking notes on my computer — until I hit a strict <span class="story-hl">"no device policy"</span> in middle school. Back to pen and paper. Friends were copying class notes onto their devices at home every night. I looked everywhere for a solution — nothing affordable, nothing built for this.</p>
+                <p>Note-Cloud is that tool. It uses Claude's vision AI to read handwriting, so even messy notes can make it into your notes app, email, or wherever you need them.</p>
+                <div class="story-sign">
+                  <div class="story-avatar" aria-hidden="true">A</div>
+                  <div>
+                    <div class="story-sign-name">Summer 2026</div>
+                    <div class="story-sign-role">Built with curiosity, summer boredom, and a lot of notebooks</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer>
+            <span>© Note-Cloud</span>
+            <span class="footer-sep">·</span>
+            <a href="/privacy">Privacy</a>
+            <span class="footer-sep">·</span>
+            <a href="/terms">Terms</a>
+          </footer>
+        </div>
+
       </div>
     </div>
 
-    <!-- ─────────── PANEL 2: Auth ─────────── -->
-    <div class="panel" id="auth-panel">
-      <div class="auth-inner">
+    <!-- ══ Panel 2 — Auth ══════════════════════════════════════════════ -->
+    <div class="slide-panel" id="auth-panel">
+      <div class="auth-grid">
 
-        <button class="auth-back" id="back-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          Back
-        </button>
+        <aside class="auth-aside">
+          <div>
+            <div class="brand">
+              <img src="/static/logo-icon.png" alt="" aria-hidden="true" />
+              <span class="brand-name">Note<span>·</span>Cloud</span>
+            </div>
+            <p class="aside-line">A notebook page in, editable text out.</p>
+          </div>
+          <ul class="aside-list">
+            <li>Photograph a page and get clean text back in about two seconds.</li>
+            <li>Everything you transcribe stays in a searchable library.</li>
+            <li>Export to .txt, .docx, Google Docs or Notion whenever you want it elsewhere.</li>
+          </ul>
+          <div class="aside-foot">Free to start · No card required</div>
+        </aside>
 
-        <img class="auth-logo" src="/static/logo-icon.png" alt="Note-Cloud" />
+        <div class="auth-main">
+          <div class="auth-inner">
 
-        <div class="card-shell" id="card-shell">
-          <div class="auth-card" id="auth-card">
-            <div class="tab-bar">
-              <div class="tab-track">
-                <div class="tab-pill" id="tab-pill"></div>
-                <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
-                <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
+            <button id="back-btn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              Back
+            </button>
+
+            <div class="auth-head">
+              <span class="eyebrow">Account</span>
+              <h1>Pick up where your notebook left off.</h1>
+            </div>
+
+            <div id="card-shell">
+              <div class="panel" id="auth-card">
+                <div class="tab-bar">
+                  <div class="tab-track">
+                    <div class="tab-pill" id="tab-pill"></div>
+                    <button class="tab-btn active" id="tab-login"  type="button">Log in</button>
+                    <button class="tab-btn"        id="tab-signup" type="button">Sign up</button>
+                  </div>
+                </div>
+
+                <form class="form-body" id="auth-form" novalidate>
+                  <div class="social-btns">
+                    <button type="button" class="social-btn" id="btn-google">
+                      <svg width="16" height="16" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84l6.1-6.1C34.36 3.02 29.45 1 24 1 14.82 1 7.07 6.48 3.64 14.22l7.1 5.52C12.4 13.67 17.73 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.56 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.7c-.55 2.96-2.2 5.46-4.68 7.14l7.18 5.58C43.25 37.26 46.56 31.36 46.56 24.5z"/>
+                        <path fill="#FBBC05" d="M10.74 28.26A14.52 14.52 0 0 1 9.5 24c0-1.48.26-2.92.72-4.26l-7.1-5.52A23.93 23.93 0 0 0 0 24c0 3.86.92 7.5 2.56 10.72l8.18-6.46z"/>
+                        <path fill="#34A853" d="M24 47c5.45 0 10.02-1.8 13.36-4.88l-7.18-5.58C28.34 38.32 26.28 39 24 39c-6.27 0-11.6-4.17-13.52-9.74l-8.18 6.46C5.94 42.28 14.28 47 24 47z"/>
+                      </svg>
+                      Continue with Google
+                    </button>
+                    <button type="button" class="social-btn" id="btn-apple">
+                      <svg width="14" height="17" viewBox="0 0 15 18" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+                        <path d="M14.25 13.16c-.28.65-.61 1.25-1 1.8-.52.75-.95 1.27-1.28 1.56-.51.47-1.06.71-1.65.72-.42 0-.93-.12-1.52-.36-.59-.24-1.13-.36-1.63-.36-.52 0-1.08.12-1.68.36-.6.24-1.08.37-1.46.38-.57.02-1.13-.23-1.68-.75-.36-.31-.81-.85-1.35-1.62C1.44 14.1.97 13.2.6 12.15.2 11.03 0 9.94 0 8.88c0-1.22.26-2.27.79-3.14A4.63 4.63 0 0 1 2.45 4.1a4.42 4.42 0 0 1 2.22-.63c.44 0 1.01.13 1.73.4.71.26 1.17.4 1.37.4.15 0 .67-.16 1.53-.47.82-.29 1.51-.41 2.08-.36 1.54.12 2.69.73 3.46 1.83-1.37.83-2.05 2-2.04 3.48.01 1.16.43 2.13 1.26 2.88.37.36.79.63 1.25.83-.1.29-.21.57-.33.84zM10.9.36c0 .91-.33 1.76-.99 2.54-.79.93-1.75 1.46-2.79 1.38a2.8 2.8 0 0 1-.02-.34c0-.87.38-1.8 1.05-2.56.34-.39.77-.71 1.29-.97C9.96.15 10.46 0 10.93 0c.01.12.02.24.02.36z"/>
+                      </svg>
+                      Continue with Apple
+                    </button>
+                  </div>
+
+                  <div class="divider-row">or with email</div>
+
+                  <div class="field-row signup-only" id="name-row">
+                    <div class="field">
+                      <label for="first-name">First</label>
+                      <input type="text" id="first-name" name="first_name" placeholder="Alex" autocomplete="given-name"/>
+                    </div>
+                    <div class="field">
+                      <label for="last-name">Last</label>
+                      <input type="text" id="last-name" name="last_name" placeholder="Smith" autocomplete="family-name"/>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required/>
+                  </div>
+
+                  <div class="field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
+                  </div>
+
+                  <div class="field signup-only" id="confirm-field">
+                    <label for="confirm">Confirm password</label>
+                    <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password"/>
+                  </div>
+
+                  <div class="field signup-only" id="referral-field">
+                    <label for="referral-code">Referral code <span class="field-opt">optional</span></label>
+                    <input type="text" id="referral-code" name="referral_code" placeholder="e.g. XK9MPQ2R" autocomplete="off" style="text-transform:uppercase"/>
+                  </div>
+
+                  <button id="submit-btn" type="submit">Log in</button>
+                  <p id="error-msg" role="alert" aria-live="polite"></p>
+                </form>
               </div>
             </div>
-            <form class="form-body" id="auth-form" novalidate>
-              <div class="social-btns">
-                <button type="button" class="social-btn google" id="btn-google">
-                  <svg width="17" height="17" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.84l6.1-6.1C34.36 3.02 29.45 1 24 1 14.82 1 7.07 6.48 3.64 14.22l7.1 5.52C12.4 13.67 17.73 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.56 24.5c0-1.64-.15-3.22-.42-4.75H24v9h12.7c-.55 2.96-2.2 5.46-4.68 7.14l7.18 5.58C43.25 37.26 46.56 31.36 46.56 24.5z"/>
-                    <path fill="#FBBC05" d="M10.74 28.26A14.52 14.52 0 0 1 9.5 24c0-1.48.26-2.92.72-4.26l-7.1-5.52A23.93 23.93 0 0 0 0 24c0 3.86.92 7.5 2.56 10.72l8.18-6.46z"/>
-                    <path fill="#34A853" d="M24 47c5.45 0 10.02-1.8 13.36-4.88l-7.18-5.58C28.34 38.32 26.28 39 24 39c-6.27 0-11.6-4.17-13.52-9.74l-8.18 6.46C5.94 42.28 14.28 47 24 47z"/>
-                  </svg>
-                  Continue with Google
-                </button>
-                <button type="button" class="social-btn apple" id="btn-apple">
-                  <svg width="14" height="17" viewBox="0 0 15 18" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                    <path d="M14.25 13.16c-.28.65-.61 1.25-1 1.8-.52.75-.95 1.27-1.28 1.56-.51.47-1.06.71-1.65.72-.42 0-.93-.12-1.52-.36-.59-.24-1.13-.36-1.63-.36-.52 0-1.08.12-1.68.36-.6.24-1.08.37-1.46.38-.57.02-1.13-.23-1.68-.75-.36-.31-.81-.85-1.35-1.62C1.44 14.1.97 13.2.6 12.15.2 11.03 0 9.94 0 8.88c0-1.22.26-2.27.79-3.14A4.63 4.63 0 0 1 2.45 4.1a4.42 4.42 0 0 1 2.22-.63c.44 0 1.01.13 1.73.4.71.26 1.17.4 1.37.4.15 0 .67-.16 1.53-.47.82-.29 1.51-.41 2.08-.36 1.54.12 2.69.73 3.46 1.83-1.37.83-2.05 2-2.04 3.48.01 1.16.43 2.13 1.26 2.88.37.36.79.63 1.25.83-.1.29-.21.57-.33.84zM10.9.36c0 .91-.33 1.76-.99 2.54-.79.93-1.75 1.46-2.79 1.38a2.8 2.8 0 0 1-.02-.34c0-.87.38-1.8 1.05-2.56.34-.39.77-.71 1.29-.97C9.96.15 10.46 0 10.93 0c.01.12.02.24.02.36z"/>
-                  </svg>
-                  Continue with Apple
-                </button>
-              </div>
 
-              <div class="divider">or continue with email</div>
+            <p class="auth-legal">
+              By continuing you agree to our
+              <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
+            </p>
 
-              <div class="field-row signup-only" id="name-row">
-                <div class="field">
-                  <label for="first-name">First</label>
-                  <input type="text" id="first-name" name="first_name" placeholder="Alex" autocomplete="given-name"/>
-                </div>
-                <div class="field">
-                  <label for="last-name">Last</label>
-                  <input type="text" id="last-name" name="last_name" placeholder="Smith" autocomplete="family-name"/>
-                </div>
-              </div>
-              <div class="field">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required/>
-              </div>
-              <div class="field">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
-              </div>
-              <div class="field signup-only" id="confirm-field">
-                <label for="confirm">Confirm password</label>
-                <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password"/>
-              </div>
-              <div class="field signup-only" id="referral-field">
-                <label for="referral-code">Referral code <span style="font-weight:400;opacity:.5">(optional)</span></label>
-                <input type="text" id="referral-code" name="referral_code" placeholder="e.g. XK9MPQ2R" autocomplete="off" style="text-transform:uppercase"/>
-              </div>
-              <button class="submit-btn" type="submit" id="submit-btn">Log in</button>
-              <p id="error-msg"></p>
-            </form>
           </div>
         </div>
 
@@ -830,201 +869,6 @@
         opts.headers = Object.assign({}, opts.headers, {'X-CSRFToken': tok});
       return _f(url, opts);
     };
-  })();
-
-  // ── Ripple on CTA button ──────────────────────────────────────────────────
-  (function(){
-    const btn = document.getElementById('get-started-btn');
-    if (!btn) return;
-    btn.addEventListener('mousedown', e => {
-      const r    = btn.getBoundingClientRect();
-      const size = Math.max(r.width, r.height);
-      const x    = e.clientX - r.left - size / 2;
-      const y    = e.clientY - r.top  - size / 2;
-      const rpl  = document.createElement('span');
-      rpl.className = 'ripple';
-      rpl.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
-      btn.appendChild(rpl);
-      rpl.addEventListener('animationend', () => rpl.remove());
-    });
-  })();
-
-  // ── Globe ─────────────────────────────────────────────────────────────────
-  (function(){
-    const canvas = document.getElementById('globe-canvas');
-    const ctx = canvas.getContext('2d');
-    let W, H;
-    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
-    resize(); window.addEventListener('resize', resize);
-
-    const R = Math.min(innerWidth, innerHeight) * .38;
-    let angle = 0, mTiltX = 0, mTiltY = 0, cTiltX = 0, cTiltY = 0;
-
-    // Cursor acts as a repelling magnet on the dots (screen-space)
-    let mouseX = -9999, mouseY = -9999;
-    const REPEL_R = 130, REPEL_MAX = 46;
-
-    document.addEventListener('mousemove', e => {
-      mTiltX = (e.clientX / W - .5) * .12;
-      mTiltY = (e.clientY / H - .5) * .06;
-      mouseX = e.clientX; mouseY = e.clientY;
-    });
-    document.addEventListener('mouseleave', () => { mouseX = mouseY = -9999; });
-
-    // Build dots
-    const dots = [];
-    // Latitude rings
-    for (let lat = -80; lat <= 80; lat += 15){
-      const y = Math.sin(lat * Math.PI / 180);
-      const cr = Math.cos(lat * Math.PI / 180);
-      const n = Math.max(6, Math.round(52 * cr));
-      for (let i = 0; i < n; i++){
-        const lon = (i / n) * Math.PI * 2;
-        dots.push({ x: Math.cos(lon)*cr, y, z: Math.sin(lon)*cr, r: .8, type: 0 });
-      }
-    }
-    // Longitude lines
-    for (let lon = 0; lon < 360; lon += 18){
-      const a = lon * Math.PI / 180;
-      for (let lat = -85; lat <= 85; lat += 5.5){
-        const y = Math.sin(lat * Math.PI / 180);
-        const cr = Math.cos(lat * Math.PI / 180);
-        dots.push({ x: Math.cos(a)*cr, y, z: Math.sin(a)*cr, r: .8, type: 0 });
-      }
-    }
-    // Land scatter dots
-    for (let i = 0; i < 600; i++){
-      const u = Math.random()*2 - 1;
-      const t = Math.random()*Math.PI*2;
-      const r = Math.sqrt(1 - u*u);
-      dots.push({ x: Math.cos(t)*r, y: u, z: Math.sin(t)*r, r: 1.7, type: 1 });
-    }
-
-    // Pre-allocated projection buffer — reused every frame (no per-frame GC churn)
-    const proj = dots.map(() => ({ px: 0, py: 0, z: 0, r: 0, type: 0 }));
-    const REPEL_R2 = REPEL_R * REPEL_R;
-    const cx = () => W / 2, cy = () => H / 2;
-    let lastT = 0;
-    const FRAME_MS = 1000 / 30; // decorative bg → 30fps is plenty, halves CPU
-
-    function draw(now){
-      if (!document.hidden) requestAnimationFrame(draw);
-      else { setTimeout(() => draw(performance.now()), 500); return; }
-      // Throttle to ~30fps
-      if (now - lastT < FRAME_MS) return;
-      lastT = now;
-
-      ctx.clearRect(0, 0, W, H);
-      angle += 0.0022 * (FRAME_MS / 16.67); // keep speed consistent at 30fps
-      cTiltX += (mTiltX - cTiltX) * .08;
-      cTiltY += (mTiltY - cTiltY) * .08;
-
-      const hw = W / 2, hh = H / 2;
-
-      // Globe atmosphere glow
-      const grd = ctx.createRadialGradient(hw, hh, R*.4, hw, hh, R*1.25);
-      grd.addColorStop(0, 'rgba(201,107,69,.025)');
-      grd.addColorStop(.7, 'rgba(201,107,69,.012)');
-      grd.addColorStop(1, 'transparent');
-      ctx.beginPath(); ctx.arc(hw, hh, R*1.25, 0, Math.PI*2);
-      ctx.fillStyle = grd; ctx.fill();
-
-      // Hoist all trig out of the per-dot loop — these are constant for the frame
-      const cosA = Math.cos(angle),  sinA = Math.sin(angle);
-      const cosY = Math.cos(cTiltY), sinY = Math.sin(cTiltY);
-      const cosX = Math.cos(cTiltX), sinX = Math.sin(cTiltX);
-
-      // Project dots into the reused buffer
-      for (let i = 0; i < dots.length; i++){
-        const d = dots[i], p = proj[i];
-        const x  = d.x * cosA - d.z * sinA;
-        const z  = d.x * sinA + d.z * cosA;
-        const y  = d.y;
-        const z2 =  y * sinY + z * cosY;
-        p.px = hw + (x * cosX + z2 * sinX) * R;
-        p.py = hh - (y * cosY - z * sinY) * R;
-        p.z  = -x * sinX + z2 * cosX;
-        p.r  = d.r; p.type = d.type;
-      }
-      proj.sort((a, b) => a.z - b.z);
-
-      // Batch fills by type to cut fillStyle churn
-      for (let i = 0; i < proj.length; i++){
-        const p = proj[i];
-        const depth = (p.z + 1) / 2;
-        if (depth < 0.008) continue;
-
-        let px = p.px, py = p.py;
-        const dx = px - mouseX, dy = py - mouseY;
-        const d2 = dx*dx + dy*dy;
-        if (d2 < REPEL_R2) {
-          const dist = Math.sqrt(d2) || 1;
-          const force = 1 - dist / REPEL_R;
-          const push = force * force * REPEL_MAX;
-          px += (dx / dist) * push;
-          py += (dy / dist) * push;
-        }
-
-        const size = p.r * (.35 + depth * 1.35);
-        ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI*2);
-        ctx.fillStyle = p.type === 0
-          ? `rgba(201,107,69,${depth * .5})`
-          : `rgba(233,240,250,${depth * .85})`;
-        ctx.fill();
-      }
-    }
-    requestAnimationFrame(draw);
-  })();
-
-  // ── Floating gold particles ───────────────────────────────────────────────
-  (function(){
-    const canvas = document.getElementById('particle-canvas');
-    const ctx = canvas.getContext('2d');
-    let W, H;
-    function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
-    resize(); window.addEventListener('resize', resize);
-
-    const particles = Array.from({length: 55}, () => makeParticle(true));
-
-    function makeParticle(init){
-      return {
-        x:  Math.random() * (typeof W !== 'undefined' ? W : innerWidth),
-        y:  init ? Math.random() * innerHeight : innerHeight + 10,
-        r:  Math.random() * 1.4 + .4,
-        vx: (Math.random() - .5) * .35,
-        vy: -(Math.random() * .5 + .18),
-        alpha: Math.random() * .4 + .05,
-        life: Math.random(),
-        maxLife: Math.random() * .4 + .6,
-      };
-    }
-
-    let lastT = 0;
-    const FRAME_MS = 1000 / 30;
-    function tick(now){
-      if (!document.hidden) requestAnimationFrame(tick);
-      else { setTimeout(() => tick(performance.now()), 500); return; }
-      if (now - lastT < FRAME_MS) return;
-      lastT = now;
-
-      ctx.clearRect(0, 0, W, H);
-      for (let i = 0; i < particles.length; i++){
-        const p = particles[i];
-        p.x  += p.vx;
-        p.y  += p.vy;
-        p.life += .0018;
-        if (p.y < -12 || p.life > p.maxLife){
-          particles[i] = makeParticle(false);
-          continue;
-        }
-        const t = p.life / p.maxLife;
-        const a = p.alpha * Math.sin(t * Math.PI) * .8;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(201,107,69,${a})`;
-        ctx.fill();
-      }
-    }
-    requestAnimationFrame(tick);
   })();
 
   // ── Typewriter tagline ────────────────────────────────────────────────────
@@ -1133,237 +977,29 @@
     }
   });
 
-  // ── Scale effect on auth card hover ──────────────────────────────────────
-  (function(){
-    const shell = document.getElementById('card-shell');
-    if (!shell) return;
-    shell.addEventListener('mouseenter', () => {
-      shell.style.transition = 'transform .3s cubic-bezier(.16,1,.3,1)';
-      shell.style.transform  = 'scale(1.025)';
-    });
-    shell.addEventListener('mouseleave', () => {
-      shell.style.transition = 'transform .45s cubic-bezier(.16,1,.3,1)';
-      shell.style.transform  = '';
-    });
-  })();
-
-  // ── Scroll reveal (about + pricing sections) ─────────────────────────────
-  // IntersectionObserver instead of a per-scroll getBoundingClientRect loop —
-  // the browser computes visibility off the main thread and only calls back
-  // when it actually changes.
-  const lc      = document.getElementById('landing-content');
-  const about   = document.getElementById('landing-about');
-  const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); }
-    });
-  }, { root: lc, rootMargin: '0px 0px -8% 0px' });
-  if (about) revealObserver.observe(about);
-
-  // ── Scroll draw wave ──────────────────────────────────────────────────────
-  (function(){
-    const wrap   = document.getElementById('scroll-wave-wrap');
-    const lineEl = document.getElementById('scroll-drawn-line');
-    if (!wrap || !lineEl) return;
-
-    const TOTAL = lineEl.getTotalLength();
-    lineEl.style.strokeDasharray  = TOTAL;
-    lineEl.style.strokeDashoffset = TOTAL;
-
-    // ── Card frame: the liquid continues from the coil and traces around the card ──
-    const frameSvg   = document.getElementById('card-frame-svg');
-    const frameGhost = document.getElementById('card-frame-ghost');
-    const frameLeft  = document.getElementById('card-frame-left');
-    const frameRight = document.getElementById('card-frame-right');
-    let FRAME_LEN = 0; // length of one half (left/right are symmetric)
-    const OUTSET = 20, RADIUS = 32;
-
-    function buildFrame(){
-      if (!about || !frameSvg) return;
-      const W = about.offsetWidth  + OUTSET * 2;   // frame box spans 20px outside the card
-      const H = about.offsetHeight + OUTSET * 2;
-      const r = Math.min(RADIUS, W / 2, H / 2);
-      const cx = W / 2;
-      frameSvg.setAttribute('width',  W);
-      frameSvg.setAttribute('height', H);
-      frameSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      // full rounded-rect (faint ghost)
-      frameGhost.setAttribute('d',
-        `M${r},0 H${W-r} A${r},${r} 0 0 1 ${W},${r} V${H-r} A${r},${r} 0 0 1 ${W-r},${H}`
-        + ` H${r} A${r},${r} 0 0 1 0,${H-r} V${r} A${r},${r} 0 0 1 ${r},0 Z`);
-      // two halves, each starting at top-centre and flowing down a side to bottom-centre
-      frameRight.setAttribute('d',
-        `M${cx},0 H${W-r} A${r},${r} 0 0 1 ${W},${r} V${H-r} A${r},${r} 0 0 1 ${W-r},${H} H${cx}`);
-      frameLeft.setAttribute('d',
-        `M${cx},0 H${r} A${r},${r} 0 0 0 0,${r} V${H-r} A${r},${r} 0 0 0 ${r},${H} H${cx}`);
-      FRAME_LEN = frameRight.getTotalLength();
-      [frameLeft, frameRight].forEach(p => { p.style.strokeDasharray = FRAME_LEN; });
-      paint(scrollProgress()); // re-apply current fill to the freshly-sized paths
+  // ── Scroll reveal ─────────────────────────────────────────────────────────
+  // Fail-open: sections are visible by default and only get .reveal-armed once
+  // the observer is confirmed wired, so a failure here can never hide content.
+  // Isolated in a try/catch so it cannot stop the auth script above or below.
+  try {
+    const scrollRoot = document.getElementById('landing-content');
+    const revealEls  = document.querySelectorAll('.reveal');
+    if (window.IntersectionObserver && revealEls.length) {
+      revealEls.forEach((el, i) => {
+        el.classList.add(i % 2 === 0 ? 'from-right' : 'from-left');
+        el.style.transitionDelay = (i * 0.08) + 's';
+        el.classList.add('reveal-armed');
+      });
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) e.target.classList.add('visible');
+        });
+      }, { root: scrollRoot, rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+      revealEls.forEach(el => revealObserver.observe(el));
     }
-
-    const bgExplode = document.getElementById('bg-explode');
-    const EXPLODE_START = 0.5;  // wave starts washing in
-    const EXPLODE_END   = 1.0;  // fully yellow exactly at the bottom (the about card)
-    const FRAME_START   = 0.82; // scroll progress at which the liquid reaches the card frame
-
-    function paint(p){
-      // One continuous liquid: coil fills first, then it pours around the card frame.
-      const coilP  = Math.min(p / FRAME_START, 1);
-      lineEl.style.strokeDashoffset = TOTAL * (1 - coilP);
-      if (FRAME_LEN) {
-        const frameP = Math.max(0, Math.min(1, (p - FRAME_START) / (1 - FRAME_START)));
-        const off = FRAME_LEN * (1 - frameP);
-        frameLeft.style.strokeDashoffset  = off;
-        frameRight.style.strokeDashoffset = off;
-      }
-      const t = Math.max(0, Math.min(1, (p - EXPLODE_START) / (EXPLODE_END - EXPLODE_START)));
-      bgExplode.style.clipPath = `circle(${(t * 150).toFixed(1)}% at 50% 50%)`;
-      document.body.classList.toggle('bg-yellow', t > 0.6);
-    }
-    function scrollProgress(){
-      const sMax = lc.scrollHeight - lc.clientHeight;
-      return sMax > 0 ? Math.min(lc.scrollTop / sMax, 1) : 0;
-    }
-
-    // ── Forza jump-cam scroll takeover ────────────────────────────────────
-    // Cross a trigger point going down → the page ignores wheel/touch input
-    // and slowly drives you to the bottom on a smooth ease-out curve, so the
-    // yellow explosion always plays out cinematically regardless of how hard
-    // the user flicked. Re-arms when they scroll back above the trigger.
-    const TRIGGER     = 0.32;   // scroll progress at which the cutscene kicks in
-    const REARM_BELOW = 0.24;   // must go back above this to re-trigger
-    const CUTSCENE_MS = 3200;   // total takeover duration — feels like a slow cinematic pan
-
-    let cutsceneActive = false;
-    let cutsceneArmed  = true;
-    function easeOutCubic(x){ return 1 - Math.pow(1 - x, 3); }
-
-    function startCutscene(){
-      if (cutsceneActive) return;
-      const sMax = lc.scrollHeight - lc.clientHeight;
-      if (sMax <= 0) return;
-      const triggerY = sMax * TRIGGER;
-      // If a fast flick / momentum already blew us well past the trigger, snap
-      // back to the trigger so the cutscene has room to play out. Otherwise
-      // start from wherever we currently are (natural continuation).
-      let startY = lc.scrollTop;
-      if (startY > triggerY + sMax * 0.04) {
-        startY = triggerY;
-      }
-      const endY = sMax;
-      if (endY - startY < 2) return;
-      cutsceneActive = true;
-      cutsceneArmed  = false;
-      lc.scrollTop = startY;
-      // Kill any in-flight momentum so our RAF loop owns scroll exclusively.
-      // Scrollbars are already hidden by CSS so this causes no layout shift.
-      const prevOverflow = lc.style.overflowY;
-      lc.style.overflowY = 'hidden';
-      const startT = performance.now();
-      function step(now){
-        const t = Math.min(1, (now - startT) / CUTSCENE_MS);
-        const e = easeOutCubic(t);                  // fast in, slowly settles at the bottom
-        lc.scrollTop = startY + (endY - startY) * e;
-        paint(scrollProgress());
-        if (t < 1) requestAnimationFrame(step);
-        else {
-          lc.style.overflowY = prevOverflow || '';
-          cutsceneActive = false;
-        }
-      }
-      requestAnimationFrame(step);
-    }
-
-    // Given the current scroll position and an incoming downward delta, decide
-    // whether to fire the cutscene now (used in wheel/touchmove handlers so we
-    // can preempt a hard flick BEFORE the browser scrolls past the trigger).
-    function shouldFireOn(deltaY){
-      if (cutsceneActive || !cutsceneArmed || deltaY <= 0) return false;
-      const sMax = lc.scrollHeight - lc.clientHeight;
-      if (sMax <= 0) return false;
-      const triggerY = sMax * TRIGGER;
-      return (lc.scrollTop + deltaY) >= triggerY;
-    }
-
-    // ── Wheel: preempt fast flicks and swallow input during cutscene ──
-    function onWheel(e){
-      if (cutsceneActive) { e.preventDefault(); e.stopPropagation(); return; }
-      if (shouldFireOn(e.deltaY)) {
-        e.preventDefault();
-        e.stopPropagation();
-        startCutscene();
-      }
-    }
-    lc.addEventListener('wheel',     onWheel, { passive: false });
-    window.addEventListener('wheel', onWheel, { passive: false });
-
-    // ── Touch: preempt during drag; momentum after release goes through onScroll ──
-    let touchLastY = null;
-    lc.addEventListener('touchstart', (e) => {
-      touchLastY = e.touches[0].clientY;
-    }, { passive: true });
-    lc.addEventListener('touchmove', (e) => {
-      if (cutsceneActive) { e.preventDefault(); e.stopPropagation(); return; }
-      const y = e.touches[0].clientY;
-      const dy = (touchLastY == null ? 0 : (touchLastY - y));  // + = scrolling down
-      touchLastY = y;
-      if (shouldFireOn(dy)) {
-        e.preventDefault();
-        e.stopPropagation();
-        startCutscene();
-      }
-    }, { passive: false });
-    lc.addEventListener('touchend', () => { touchLastY = null; }, { passive: true });
-
-    // ── Keyboard scroll keys: swallow during cutscene ──
-    window.addEventListener('keydown', (e) => {
-      if (!cutsceneActive) return;
-      // page-up/down, arrows, space, home/end all try to scroll — block them
-      if ([32,33,34,35,36,37,38,39,40].includes(e.keyCode)) { e.preventDefault(); e.stopPropagation(); }
-    }, { passive: false });
-
-    let prevScrollTop = lc.scrollTop;
-    function onScroll(){
-      if (cutsceneActive) return;                    // cutscene paints itself
-      const st = lc.scrollTop;
-      const goingDown = st > prevScrollTop;
-      prevScrollTop = st;
-
-      const p = scrollProgress();
-      if (p < REARM_BELOW) cutsceneArmed = true;     // re-arm well above the trigger
-
-      if (st > 8){
-        wrap.classList.add('visible');
-        wrap.classList.remove('hidden');
-      }
-
-      // Fallback path — mostly for touch momentum after release, since wheel /
-      // touchmove is already caught above. If a hard fling blew straight past
-      // the trigger, startCutscene() will snap-back to the trigger.
-      if (cutsceneArmed && goingDown && p >= TRIGGER) {
-        startCutscene();
-        return;
-      }
-      paint(p);
-    }
-    lc.addEventListener('scroll', onScroll, { passive: true });
-
-    buildFrame();
-    window.addEventListener('resize', buildFrame, { passive: true });
-
-    function hideWave(){
-      wrap.classList.remove('visible');
-      wrap.classList.add('hidden');
-    }
-    document.getElementById('get-started-btn').addEventListener('click', hideWave);
-    document.getElementById('go-login-btn').addEventListener('click', hideWave);
-    document.getElementById('back-btn').addEventListener('click', () => {
-      if (lc.scrollTop > 8) wrap.classList.add('visible');
-      wrap.classList.remove('hidden');
-    });
-
-    paint(scrollProgress());
-  })();
+  } catch (err) {
+    console.error('scroll-reveal setup failed, content stays visible:', err);
+  }
 
   // ── Google OAuth error param ──────────────────────────────────────────────
   const _gErr = new URLSearchParams(window.location.search).get('error');

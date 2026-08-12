@@ -4,59 +4,222 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacy Policy — Note-Cloud</title>
+  <meta name="description" content="How Note-Cloud collects, uses, and protects your data." />
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet" />
   <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       NOTE-CLOUD — "Studio" · legal document
+       Monochrome editorial page. One highlighter-lime accent, reserved
+       for links, focus rings and the compliance callout's rule.
+       Display: Newsreader · UI: Archivo · Data: JetBrains Mono
+       ═══════════════════════════════════════════════════════════════════ */
+
     :root {
-      --bg:#f7f4ee; --surface:#fffefb; --border:rgba(26,23,18,.10);
-      --ink: #1a1712;
-      --accent:#b5502f; --accent-dim:#7a3319; --text:#1a1712; --muted:#756f62;
-      --success:#3a8a5c; --error:#a3402e;
-      --shadow-sm: 3px 3px 0 var(--ink);
+      color-scheme: dark;
+
+      --bg:          #0f0f11;
+      --bg-sunk:     #0a0a0c;
+      --surface:     #17171a;
+      --raised:      #1f1f24;
+      --border:      rgba(255,255,255,.09);
+      --border-firm: rgba(255,255,255,.16);
+
+      --text:        #f2f1ee;
+      --muted:       rgba(242,241,238,.58);
+      --faint:       rgba(242,241,238,.34);
+
+      --accent:      #cdf24a;
+      --accent-soft: rgba(205,242,74,.14);
+      --accent-line: rgba(205,242,74,.42);
+      --on-accent:   #14160b;
+
+      --solid:       #f2f1ee;
+      --on-solid:    #131316;
+
+      --r-xs: 6px;
+      --r-sm: 9px;
+      --r:    13px;
+      --r-lg: 20px;
+
+      --lift-1: 0 1px 2px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
+      --lift-2: 0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.26);
+      --lift-3: 0 8px 24px rgba(0,0,0,.40), 0 32px 80px rgba(0,0,0,.44);
+
+      --ease: cubic-bezier(.22,1,.36,1);
     }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family:'Outfit',system-ui,sans-serif; line-height:1.7; }
-    .wrap { max-width:65ch; margin:0 auto; padding:3.5rem 1.5rem 5rem; }
-    a { color:var(--accent); }
-    h1 { font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:3rem; letter-spacing:-.01em; text-transform:uppercase; line-height:.95; margin:0 0 .4rem; color:var(--text); }
-    h2 { font-family:'Big Shoulders Display', sans-serif; font-weight:700; font-size:1.5rem; letter-spacing:-.005em; margin:2.4rem 0 .6rem; color:var(--accent-dim); }
-    .updated { font-family:'IBM Plex Mono',monospace; color:var(--muted); font-size:.8rem; letter-spacing:.02em; margin-bottom:2.5rem; }
-    p, li { color:var(--text); opacity:.85; font-size:.95rem; line-height:1.7; }
-    ul { padding-left:1.2rem; }
-    .back {
-      display: inline-flex;
-      align-items: center;
-      gap: .35rem;
-      margin-bottom: 2.5rem;
-      padding: .5rem 1rem;
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Archivo', system-ui, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      background: var(--surface);
-      text-decoration: none;
-      font-size: .8rem;
-      font-weight: 600;
-      border: 2px solid var(--ink);
-      border-radius: 4px;
-      box-shadow: var(--shadow-sm);
-      transition: transform .15s, box-shadow .15s, color .15s;
+      min-height: 100dvh;
+      font-size: 15px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
-    .back:hover { color: var(--accent); transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    .box {
-      background: rgba(181,80,47,.06);
-      border: 2px solid var(--ink);
-      border-left: 4px solid var(--accent);
-      border-radius: 0 4px 4px 0;
-      padding: 1.2rem 1.4rem;
+
+    /* Paper grain — breaks the flatness of large empty surfaces */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    ::selection { background: var(--accent-soft); color: var(--text); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: var(--r-xs);
+    }
+
+    .wrap {
+      position: relative; z-index: 1;
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 3rem 1.75rem 7rem;
+    }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem;
+      font-weight: 500;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+
+    /* ── Back ──────────────────────────────────────────────────────────── */
+    .back {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .5rem 1rem .5rem .85rem;
+      margin-bottom: 3.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--muted);
+      font-size: .82rem; font-weight: 500;
+      text-decoration: none;
+      transition: color .18s, border-color .18s, transform .18s var(--ease);
+    }
+    .back:hover { color: var(--text); border-color: var(--accent-line); }
+    .back:active { transform: translateY(1px); }
+    .back svg { flex-shrink: 0; opacity: .7; }
+
+    /* ── Masthead ──────────────────────────────────────────────────────── */
+    .doc-head { margin-bottom: 3rem; }
+    .doc-head .eyebrow { display: block; margin-bottom: .9rem; }
+    h1 {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 300;
+      line-height: 1.05;
+      letter-spacing: -.02em;
+      text-wrap: balance;
+    }
+    .updated {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .7rem;
+      letter-spacing: .06em;
+      color: var(--faint);
+      font-variant-numeric: tabular-nums;
       margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Body ──────────────────────────────────────────────────────────── */
+    h2 {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.6rem;
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: -.01em;
+      color: var(--text);
+      margin: 3rem 0 .85rem;
+    }
+
+    p, li {
+      color: var(--muted);
+      font-size: .95rem;
+      line-height: 1.75;
+      max-width: 68ch;
+    }
+    p + p { margin-top: .9rem; }
+    strong { color: var(--text); font-weight: 600; }
+
+    ul { list-style: none; margin-top: .4rem; }
+    li { position: relative; padding-left: 1.35rem; margin-bottom: .6rem; }
+    li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: .72em;
+      width: 7px; height: 1px;
+      background: var(--accent-line);
+    }
+    li:last-child { margin-bottom: 0; }
+
+    a {
+      color: var(--text);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-line);
+      transition: color .18s, border-color .18s;
+    }
+    a:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Google Limited Use disclosure — compliance callout ────────────── */
+    .callout {
+      margin-top: 1.75rem;
+      padding: 1.75rem 1.75rem 1.6rem;
+      background: var(--surface);
+      border: 1px solid var(--border-firm);
+      border-radius: var(--r-lg);
+      box-shadow: var(--lift-2);
+    }
+    .callout .eyebrow {
+      display: inline-block;
+      margin-bottom: 1rem;
+      padding: .28rem .6rem;
+      color: var(--on-accent);
+      background: var(--accent);
+      border-radius: var(--r-xs);
+    }
+    .callout p { color: var(--text); max-width: none; }
+    .callout ul { margin-top: .9rem; }
+    .callout li { color: var(--muted); max-width: none; }
+    .callout li::before { background: var(--accent); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
     }
   </style>
 </head>
 <body>
+
   <div class="wrap">
-    <a class="back" href="/login">← Back to Note-Cloud</a>
-    <h1>Privacy Policy</h1>
-    <div class="updated">Last updated: July 2, 2026</div>
+
+    <a class="back" href="/login">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      Back to Note-Cloud
+    </a>
+
+    <div class="doc-head">
+      <span class="eyebrow">Legal</span>
+      <h1>Privacy Policy</h1>
+      <div class="updated">Last updated: July 2, 2026</div>
+    </div>
 
     <p>Note-Cloud ("we", "us") turns photos of handwritten notes into typed text and, optionally, sends that text to your Google Docs. This policy explains what we collect, how we use it, and the choices you have.</p>
 
@@ -75,10 +238,11 @@
     </ul>
 
     <h2>Google user data</h2>
-    <div class="box">
-      <p style="margin:0">Note-Cloud's use and transfer of information received from Google APIs adheres to the
+    <div class="callout">
+      <span class="eyebrow">Limited Use disclosure</span>
+      <p>Note-Cloud's use and transfer of information received from Google APIs adheres to the
       <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. Specifically:</p>
-      <ul style="margin-bottom:0">
+      <ul>
         <li>We use Google data only to provide and improve the Google Docs features described here.</li>
         <li>We do <strong>not</strong> transfer or sell Google user data to third parties, except as needed to provide the service or as required by law.</li>
         <li>We do <strong>not</strong> use Google user data for advertising.</li>
@@ -99,6 +263,8 @@
 
     <h2>Contact</h2>
     <p>Questions about this policy? Email <a href="mailto:notecloud26@gmail.com">notecloud26@gmail.com</a>.</p>
+
   </div>
+
 </body>
 </html>

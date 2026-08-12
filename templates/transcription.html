@@ -7,498 +7,623 @@
   <link rel="icon" href="/static/favicon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Outfit:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet" />
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       NOTE-CLOUD — "Studio" · transcription editor
+       A single document on a quiet desk. Monochrome surfaces carry the
+       page; the lone highlighter-lime accent marks only progress, focus,
+       active state and the one numeral that matters.
+       Display: Newsreader · UI: Archivo · Data: JetBrains Mono
+       ═══════════════════════════════════════════════════════════════════ */
+
     :root {
-      --bg:      #f7f4ee;
-      --surface: #fffefb;
-      --border:  rgba(26,23,18,.10);
-      --ink:     #1a1712;
-      --accent:  #b5502f;
-      --accent-dim: #7a3319;
-      --accent2: #e0a622;
-      --text:    #1a1712;
-      --muted:   #756f62;
-      --success: #3a8a5c;
-      --error:   #a3402e;
-      --radius:  6px;
-      --shadow:    5px 5px 0 var(--ink);
-      --shadow-sm: 3px 3px 0 var(--ink);
-      --shadow-lg: 9px 9px 0 var(--ink);
-      --grid:    rgba(26,23,18,.035);
-      --grid-bright: rgba(181,80,47,.22);
-    }
-    body.dark {
-      --bg:        #0c0c10;
-      --surface:   #17161d;
-      --border:    rgba(255,255,255,.09);
-      --ink:       #f2ede1;
-      --accent:    #c96b45;
-      --accent-dim: #9c4f2e;
-      --accent2:   #e0a622;
-      --text:      #f3f2f6;
-      --muted:     rgba(243,242,246,.5);
-      --success:   #3fc191;
-      --error:     #e2685a;
-      --shadow:    5px 5px 0 var(--ink);
-      --shadow-sm: 3px 3px 0 var(--ink);
-      --shadow-lg: 9px 9px 0 var(--ink);
-      --grid:      rgba(255,255,255,.035);
-      --grid-bright: rgba(201,107,69,.28);
-      --clear-bg:  rgba(12,12,16,.92);
-    }
-    body.light {
-      --clear-bg:  rgba(247,244,238,.85);
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Outfit', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      background-image:
-        linear-gradient(var(--grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-      background-size: 40px 40px;
+      /* dark is the default theme; body.light overrides below */
+      --bg:          #0f0f11;
+      --bg-sunk:     #0a0a0c;
+      --surface:     #17171a;
+      --raised:      #1f1f24;
+      --border:      rgba(255,255,255,.09);
+      --border-firm: rgba(255,255,255,.16);
+
+      --text:        #f2f1ee;
+      --muted:       rgba(242,241,238,.58);
+      --faint:       rgba(242,241,238,.34);
+
+      /* the one accent — a highlighter, used sparingly */
+      --accent:      #cdf24a;
+      --accent-soft: rgba(205,242,74,.14);
+      --accent-line: rgba(205,242,74,.42);
+      --on-accent:   #14160b;
+
+      /* primary actions invert the canvas instead of taking a hue */
+      --solid:       #f2f1ee;
+      --on-solid:    #131316;
+
+      --ok:          #5ed39b;
+      --warn:        #f2c14a;
+      --bad:         #f2705d;
+
+      --r-xs: 6px;
+      --r-sm: 9px;
+      --r:    13px;
+      --r-lg: 20px;
+
+      /* shadows tinted to the canvas, never flat black */
+      --lift-1: 0 1px 2px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
+      --lift-2: 0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.26);
+      --lift-3: 0 8px 24px rgba(0,0,0,.40), 0 32px 80px rgba(0,0,0,.44);
+
+      /* page-local: cursor rule-lines + drifting dust */
+      --rule-line:   rgba(255,255,255,.055);
+      --particle-rgb: 242,241,238;
+
+      --ease: cubic-bezier(.22,1,.36,1);
     }
 
-    /* Brighter copy of the grid, revealed only in a circle around the cursor */
+    body.light {
+      --bg:          #faf9f6;
+      --bg-sunk:     #f1f0eb;
+      --surface:     #ffffff;
+      --raised:      #f5f4f0;
+      --border:      rgba(22,22,26,.11);
+      --border-firm: rgba(22,22,26,.20);
+
+      --text:        #16161a;
+      --muted:       rgba(22,22,26,.62);
+      --faint:       rgba(22,22,26,.38);
+
+      --accent:      #6f8f0c;
+      --accent-soft: rgba(111,143,12,.13);
+      --accent-line: rgba(111,143,12,.40);
+      --on-accent:   #ffffff;
+
+      --solid:       #16161a;
+      --on-solid:    #faf9f6;
+
+      --ok:          #1f8a5b;
+      --warn:        #a8760a;
+      --bad:         #c0442f;
+
+      --lift-1: 0 1px 2px rgba(22,22,26,.06), 0 2px 8px rgba(22,22,26,.05);
+      --lift-2: 0 2px 6px rgba(22,22,26,.07), 0 12px 32px rgba(22,22,26,.07);
+      --lift-3: 0 8px 24px rgba(22,22,26,.10), 0 32px 80px rgba(22,22,26,.12);
+
+      --rule-line:   rgba(22,22,26,.06);
+      --particle-rgb: 22,22,26;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Archivo', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      transition: background-color .35s var(--ease), color .35s var(--ease);
+    }
+
+    /* Paper grain — breaks the flatness of large empty surfaces */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 1;
+      pointer-events: none;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    ::selection { background: var(--accent-soft); color: var(--text); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: var(--r-xs);
+    }
+
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { background: none; border: none; cursor: pointer; }
+    a { color: inherit; }
+
+    /* Small uppercase section label — the recurring wayfinding device */
+    .eyebrow {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem;
+      font-weight: 500;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+
+    /* ── Ambient layers ────────────────────────────────────────────────────
+       Ruled paper that only exists where the cursor is, plus slow dust.
+       Both sit under the grain; all page content sits above it. */
     #grid-glow {
-      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
       background-image:
-        linear-gradient(var(--grid-bright) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-bright) 1px, transparent 1px);
-      background-size: 40px 40px;
-      -webkit-mask: radial-gradient(200px circle at var(--mx, -500px) var(--my, -500px),
-                    #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
-              mask: radial-gradient(200px circle at var(--mx, -500px) var(--my, -500px),
-                    #000 0%, rgba(0,0,0,.55) 40%, transparent 72%);
-      opacity: 0; transition: opacity .35s ease;
+        linear-gradient(var(--rule-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--rule-line) 1px, transparent 1px);
+      background-size: 46px 46px;
+      -webkit-mask: radial-gradient(260px circle at var(--mx, -600px) var(--my, -600px),
+                    #000 0%, rgba(0,0,0,.45) 46%, transparent 76%);
+              mask: radial-gradient(260px circle at var(--mx, -600px) var(--my, -600px),
+                    #000 0%, rgba(0,0,0,.45) 46%, transparent 76%);
+      opacity: 0;
+      transition: opacity .5s var(--ease);
     }
     #grid-glow.active { opacity: 1; }
 
-    /* ── Top bar ── */
-    .topbar {
-      position: sticky; top: 0; z-index: 10;
+    #particle-canvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 0;
+      opacity: .4;
+    }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .col {
       width: 100%;
-      background: var(--clear-bg);
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 1.75rem;
+    }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(16px) saturate(1.4);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
       border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: .75rem 1.5rem;
+    }
+    .topbar-in {
       display: flex; align-items: center; gap: 1rem;
+      height: 62px;
     }
     .topbar-back {
-      display: inline-flex; align-items: center; gap: .4rem;
-      color: var(--muted); font-size: .85rem; text-decoration: none;
-      transition: color .15s;
-      flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: .45rem;
+      font-size: .84rem;
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color .18s;
     }
     .topbar-back:hover { color: var(--text); }
-    .topbar-title {
-      font-family: 'Big Shoulders Display', sans-serif;
-      font-size: 1.35rem; font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: -.3px;
-      color: var(--text);
+    .topbar-back svg { transition: transform .2s var(--ease); }
+    .topbar-back:hover svg { transform: translateX(-2px); }
+
+    .topbar-doc {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .62rem; letter-spacing: .16em; text-transform: uppercase;
+      font-variant-numeric: tabular-nums;
+      color: var(--faint);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      flex: 1;
     }
-    #save-btn {
-      flex-shrink: 0;
-      padding: .45rem 1.1rem;
-      background: var(--accent);
-      color: #fff;
-      border: 2px solid var(--ink); border-radius: 6px;
-      font-size: .82rem; font-weight: 700; font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      transition: opacity .15s, transform .15s, box-shadow .15s;
-      display: flex; align-items: center; gap: .4rem;
-      box-shadow: var(--shadow-sm);
-    }
-    #save-btn:hover:not(:disabled) { opacity: 1; transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    #save-btn:active:not(:disabled) { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
-    #save-btn:disabled { opacity: .5; cursor: not-allowed; }
+    @media (max-width: 640px) { .topbar-doc { display: none; } }
+
     #save-status {
-      font-size: .75rem; color: var(--success);
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--ok);
       white-space: nowrap; flex-shrink: 0;
-      opacity: 0; transition: opacity .3s;
+      opacity: 0;
+      transition: opacity .3s var(--ease);
     }
     #save-status.show { opacity: 1; }
 
-    /* ── Page layout ── */
-    .page {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 2.5rem 1.5rem 5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      animation: page-rise .55s cubic-bezier(.16,1,.3,1) both;
+    /* ── Buttons ───────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+      padding: .62rem 1.25rem;
+      border-radius: var(--r-sm);
+      font-size: .86rem; font-weight: 500;
+      cursor: pointer;
+      transition: transform .18s var(--ease), opacity .18s, background .18s, border-color .18s, color .18s;
     }
-    @keyframes page-rise {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .btn:active { transform: translateY(1px); }
+    .btn--solid { background: var(--solid); color: var(--on-solid); }
+    .btn--solid:hover { opacity: .86; }
+    .btn--ghost { border: 1px solid var(--border); color: var(--muted); }
+    .btn--ghost:hover { border-color: var(--accent-line); color: var(--text); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    #save-btn {
+      flex-shrink: 0;
+      padding: .5rem 1.05rem;
+      font-size: .82rem; font-weight: 600;
     }
 
-    /* ── Stats strip ── */
-    .stats-strip {
+    /* ── Document head ─────────────────────────────────────────────────── */
+    main { position: relative; z-index: 2; padding-bottom: 6rem; }
+
+    .doc-head { padding: 4rem 0 2.5rem; }
+    .doc-title {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(2.3rem, 6vw, 3.5rem);
+      font-weight: 400;
+      line-height: 1.06;
+      letter-spacing: -.018em;
+      text-wrap: balance;
+      margin: .7rem 0 1.4rem;
+      max-width: 20ch;
+    }
+    #date-display {
+      display: flex; align-items: center; gap: .9rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .68rem; letter-spacing: .06em;
+      font-variant-numeric: tabular-nums;
+      color: var(--faint);
+      min-height: 1em;
+    }
+    #date-display::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Metrics ledger — hairlines, no boxes ──────────────────────────── */
+    .metrics {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 2px;
-      background: var(--ink);
-      border: 2px solid var(--ink);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3rem;
     }
-    @media (max-width: 600px) { .stats-strip { grid-template-columns: 1fr 1fr; } }
-    .stat-cell {
-      background: var(--surface);
-      padding: 1.25rem 1.5rem;
-      display: flex; flex-direction: column; gap: .3rem;
-      transition: background .2s;
+    .metric {
+      padding: 1.35rem 1.25rem 1.4rem;
+      border-left: 1px solid var(--border);
     }
-    .stat-cell:hover { background: rgba(181,80,47,.06); }
-    .stat-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .65rem; font-weight: 500; letter-spacing: .1em;
-      text-transform: uppercase; color: var(--muted);
+    .metric:first-child { border-left: none; padding-left: 0; }
+    .metric-key {
+      display: block;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .58rem; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: .55rem;
     }
-    .stat-value {
-      font-family: 'Big Shoulders Display', sans-serif;
-      font-size: 1.9rem; font-weight: 800;
+    .metric-val {
+      display: block;
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: -.01em;
       font-variant-numeric: tabular-nums;
-      color: var(--accent); line-height: 1;
     }
-    .stat-sub { font-size: .72rem; color: var(--muted); }
+    /* only the headline numeral takes the accent */
+    .metric-val--key { color: var(--accent); }
+    .metric-note {
+      display: block;
+      font-size: .74rem;
+      color: var(--muted);
+      margin-top: .4rem;
+    }
+    @media (max-width: 640px) {
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+      .metric:nth-child(odd) { border-left: none; padding-left: 0; }
+    }
 
-    /* ── Date header ── */
-    .date-header {
+    /* ── Panels ────────────────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--lift-1);
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .panel-head {
       display: flex; align-items: center; gap: .75rem;
-      font-size: .78rem; color: var(--muted);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
     }
-    .date-header::before {
-      content: '';
-      display: block; flex: 1; height: 1px; background: var(--border);
-    }
-    .date-header::after {
-      content: '';
-      display: block; width: 40px; height: 1px; background: var(--border);
-    }
+    .panel-head .eyebrow { flex: 1; }
+    .panel-body { padding: 1.15rem 1.5rem 1.4rem; }
 
-    /* ── Editor card ── */
-    .editor-card {
-      background: var(--surface);
-      border: 2px solid var(--ink);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-    .editor-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: .85rem 1.25rem .75rem;
-      border-bottom: 2px solid var(--ink);
-      gap: .5rem;
-    }
-    .editor-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .7rem; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--accent);
-      display: inline-flex; align-items: center; gap: .55rem;
-    }
-    .label-dash {
-      display: inline-block; width: 14px; height: 1px;
-      background: var(--accent); opacity: .6;
-    }
+    /* ── Editor ────────────────────────────────────────────────────────── */
     #live-stats {
-      font-size: .72rem; color: var(--muted);
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .66rem;
       font-variant-numeric: tabular-nums;
+      color: var(--faint);
+      white-space: nowrap;
     }
     #editor {
+      display: block;
       width: 100%;
-      min-height: 320px;
-      padding: 1.25rem;
+      min-height: 46vh;
+      padding: 2rem 1.5rem 2.5rem;
       background: transparent;
       border: none; outline: none;
-      font-size: .975rem; line-height: 1.8;
       resize: vertical;
-      font-family: inherit;
+      font-family: 'Archivo', system-ui, sans-serif;
+      font-size: 1.02rem;
+      line-height: 1.85;
       color: var(--text);
     }
+    #editor::placeholder { color: var(--faint); }
 
-    /* ── AI rewrite toolbar ── */
-    .rewrite-card {
-      background: var(--surface);
-      border: 2px solid var(--ink);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-    .rewrite-header {
-      display: flex; align-items: center; gap: .6rem;
-      padding: .85rem 1.25rem;
-      border-bottom: 2px solid var(--ink);
-    }
-    .rewrite-header-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: .7rem; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--accent);
-      flex: 1;
-      display: inline-flex; align-items: center; gap: .55rem;
-    }
+    /* ── AI rewrite ────────────────────────────────────────────────────── */
     #rewrite-status {
-      font-size: .75rem; color: var(--muted);
-      display: flex; align-items: center; gap: .4rem;
-    }
-    .rewrite-dot {
-      width: 5px; height: 5px; border-radius: 50%;
-      background: var(--accent);
-      animation: dot-bounce .9s infinite ease-in-out;
-      display: none;
-    }
-    .rewrite-dot:nth-child(2) { animation-delay: .15s; }
-    .rewrite-dot:nth-child(3) { animation-delay: .30s; }
-    @keyframes dot-bounce {
-      0%,80%,100% { transform: translateY(0); opacity: .4; }
-      40%          { transform: translateY(-4px); opacity: 1; }
-    }
-    #rewrite-status.loading .rewrite-dot { display: inline-block; }
-
-    .rewrite-btns {
-      display: flex; flex-wrap: wrap; gap: .55rem;
-      padding: 1rem 1.25rem;
-    }
-    .rw-btn {
       display: inline-flex; align-items: center; gap: .35rem;
-      padding: .48rem 1rem;
-      background: var(--surface);
-      border: 2px solid var(--ink);
-      border-radius: 6px;
-      font-size: .8rem; font-weight: 600; font-family: 'Outfit', sans-serif;
-      color: var(--text);
+      font-size: .76rem;
+      color: var(--muted);
+      text-align: right;
+    }
+    #rewrite-status-text { margin-left: .1rem; }
+    .rewrite-dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: none;
+      animation: dots 1s ease-in-out infinite;
+    }
+    .rewrite-dot:nth-child(2) { animation-delay: .14s; }
+    .rewrite-dot:nth-child(3) { animation-delay: .28s; }
+    #rewrite-status.loading .rewrite-dot { display: inline-block; }
+    @keyframes dots {
+      0%,80%,100% { opacity: .3; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    .rw-grid { display: flex; flex-wrap: wrap; gap: .45rem; }
+
+    /* Chip-shaped actions — used by both the rewrite styles and the exports */
+    .rw-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .48rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: transparent;
+      font-family: 'Archivo', system-ui, sans-serif;
+      font-size: .8rem; font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      white-space: nowrap;
       cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: border-color .18s, background .18s, color .18s, transform .15s, box-shadow .15s;
+      transition: border-color .18s, color .18s, background .18s, transform .18s var(--ease);
     }
     .rw-btn:hover:not(:disabled) {
-      border-color: var(--ink);
-      background: rgba(181,80,47,.08);
-      color: var(--accent);
-      transform: translate(-2px,-2px);
-      box-shadow: 5px 5px 0 var(--ink);
+      border-color: var(--accent-line);
+      color: var(--text);
+      background: var(--raised);
     }
-    .rw-btn:active:not(:disabled) { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
-    .rw-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: var(--shadow-sm); }
-    .rw-icon { font-size: .85rem; display: inline-flex; align-items: center; }
+    .rw-btn:active:not(:disabled) { transform: translateY(1px); }
+    .rw-btn:disabled { opacity: .38; cursor: not-allowed; }
+    .rw-icon {
+      display: inline-flex; align-items: center;
+      font-size: .82rem;
+      color: var(--faint);
+      transition: color .18s;
+    }
+    .rw-btn:hover:not(:disabled) .rw-icon { color: var(--accent); }
     .rw-icon svg { display: block; }
 
-    /* Rewrite preview panel */
+    /* Rewrite preview */
     #rewrite-preview {
       display: none;
-      border-top: 2px solid var(--ink);
-      padding: 1.25rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-sunk);
+      padding: 1.35rem 1.5rem 1.5rem;
     }
-    #rewrite-preview.show { display: block; }
+    #rewrite-preview.show { display: block; animation: rise .35s var(--ease); }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     .preview-label {
-      font-size: .65rem; font-weight: 700; letter-spacing: .1em;
-      text-transform: uppercase; color: var(--muted); margin-bottom: .75rem;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: .6rem; font-weight: 500;
+      letter-spacing: .16em; text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: .9rem;
     }
+    #preview-style-name { color: var(--accent); }
     #rewrite-text {
-      font-size: .925rem; line-height: 1.8; color: var(--text);
-      white-space: pre-wrap; min-height: 80px;
+      font-size: .95rem;
+      line-height: 1.85;
+      color: var(--text);
+      white-space: pre-wrap;
+      min-height: 72px;
+      padding-left: 1.1rem;
+      border-left: 1px solid var(--accent-line);
     }
     .preview-actions {
-      display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap;
+      display: flex; gap: .5rem; flex-wrap: wrap;
+      margin-top: 1.35rem;
     }
-    .preview-action-btn {
-      padding: .45rem 1rem;
-      border-radius: 6px;
-      font-size: .82rem; font-weight: 700; font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      transition: transform .15s, box-shadow .15s;
-      border: 2px solid var(--ink);
-      box-shadow: var(--shadow-sm);
+
+    /* Upgrade teaser (non-Pro) */
+    .teaser {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1.25rem; flex-wrap: wrap;
+      padding: 1.6rem 1.5rem;
     }
-    .preview-action-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    .preview-action-btn:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
-    #accept-rewrite {
-      background: var(--accent); color: #fff;
+    .teaser-title {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 1.4rem; font-weight: 400;
+      line-height: 1.15; letter-spacing: -.01em;
+      margin: .5rem 0 .3rem;
     }
-    #discard-rewrite {
-      background: var(--surface); color: var(--muted);
-      border: 2px solid var(--ink) !important;
-      border-radius: 6px;
-      padding: .45rem 1rem;
-      font-size: .82rem; font-weight: 700; font-family: 'Outfit', sans-serif;
-      cursor: pointer; transition: transform .15s, box-shadow .15s, color .15s;
-      box-shadow: var(--shadow-sm);
+    .teaser-sub { font-size: .85rem; color: var(--muted); max-width: 42ch; }
+
+    /* ── Accessibility / motion ────────────────────────────────────────── */
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
     }
-    #discard-rewrite:hover { color: var(--text); transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    #discard-rewrite:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
-    .upgrade-cta-btn { transition: transform .15s, box-shadow .15s; }
-    .upgrade-cta-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
-    .upgrade-cta-btn:active { transform: translate(0,0); box-shadow: 1px 1px 0 var(--ink); }
-    /* ── Ambient background (globe + particles + blobs) ── */
-    .noise {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      opacity: .032;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 200px;
+    .skip-link {
+      position: absolute; top: .5rem; left: .5rem;
+      z-index: 40;
+      padding: .55rem 1rem;
+      background: var(--solid); color: var(--on-solid);
+      border-radius: var(--r-sm);
+      font-size: .82rem; text-decoration: none;
+      transform: translateY(-180%);
+      transition: transform .2s var(--ease);
     }
-    .ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-    .amb-blob { position: absolute; border-radius: 50%; filter: blur(48px); animation: amb-float linear infinite; }
-    .amb-blob-1 {
-      width: 70vmax; height: 55vmax; top: -25vmax; left: -10vmax;
-      background: radial-gradient(circle, rgba(181,80,47,.07) 0%, transparent 65%);
-      animation-duration: 20s;
+    .skip-link:focus { transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+      }
     }
-    .amb-blob-2 {
-      width: 55vmax; height: 55vmax; bottom: -20vmax; right: -15vmax;
-      background: radial-gradient(circle, rgba(181,80,47,.05) 0%, transparent 65%);
-      animation-duration: 26s; animation-direction: reverse;
+
+    @media (max-width: 560px) {
+      .col { padding: 0 1.15rem; }
+      .doc-head { padding: 2.75rem 0 2rem; }
+      .panel-head, .panel-body, .teaser { padding-left: 1.15rem; padding-right: 1.15rem; }
+      #editor { padding: 1.5rem 1.15rem 2rem; }
+      #rewrite-preview { padding-left: 1.15rem; padding-right: 1.15rem; }
     }
-    .amb-blob-3 {
-      width: 40vmax; height: 40vmax; top: 40%; left: 30%;
-      background: radial-gradient(circle, rgba(181,80,47,.035) 0%, transparent 65%);
-      animation-duration: 34s;
-    }
-    @keyframes amb-float {
-      0%,100% { transform: translate(0,0) scale(1); }
-      33%      { transform: translate(40px,30px) scale(1.05); }
-      66%      { transform: translate(-30px,20px) scale(.96); }
-    }
-    #particle-canvas {
-      position: fixed; inset: 0; width: 100vw; height: 100vh;
-      pointer-events: none; z-index: 0; opacity: .55;
-    }
-    /* Keep content above the bg layers */
-    .topbar, .page-wrap { position: relative; z-index: 2; }
   </style>
 </head>
 <body>
+<script>(function(){var p=new URLSearchParams(location.search).get('theme');document.body.classList.add(p==='light'?'light':'dark');})();</script>
 
-  <canvas id="particle-canvas"></canvas>
-  <div class="ambient">
-    <div class="amb-blob amb-blob-1"></div>
-    <div class="amb-blob amb-blob-2"></div>
-    <div class="amb-blob amb-blob-3"></div>
-  </div>
-  <div class="noise"></div>
+  <a class="skip-link" href="#editor">Skip to the editor</a>
 
-  <!-- Cursor-follow grid glow -->
+  <!-- Ambient: cursor-follow rule lines + drifting dust -->
   <div id="grid-glow"></div>
+  <canvas id="particle-canvas" aria-hidden="true"></canvas>
 
-  <!-- Top bar -->
-  <div class="topbar">
-    <a class="topbar-back" href="javascript:window.close()" onclick="if(window.history.length>1){window.close()}else{window.location='/'}">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      Close
-    </a>
-    <span class="topbar-title">{{ t.title or 'Transcription' }}</span>
-    <span id="save-status">✓ Saved</span>
-    <button id="save-btn">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-      Save
-    </button>
-  </div>
-
-  <div class="page">
-
-    <!-- Date -->
-    <div class="date-header" id="date-display"></div>
-
-    <!-- Stats -->
-    <div class="stats-strip">
-      <div class="stat-cell">
-        <span class="stat-label">Words</span>
-        <span class="stat-value" id="stat-words">—</span>
-        <span class="stat-sub">in this transcription</span>
-      </div>
-      <div class="stat-cell">
-        <span class="stat-label">Characters</span>
-        <span class="stat-value" id="stat-chars">—</span>
-        <span class="stat-sub">including spaces</span>
-      </div>
-      <div class="stat-cell">
-        <span class="stat-label">Read time</span>
-        <span class="stat-value" id="stat-read">—</span>
-        <span class="stat-sub">at 200 wpm</span>
-      </div>
-      <div class="stat-cell">
-        <span class="stat-label">Sentences</span>
-        <span class="stat-value" id="stat-sents">—</span>
-        <span class="stat-sub">approximate</span>
-      </div>
+  <!-- ══ Top bar ═════════════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="col topbar-in">
+      <a class="topbar-back" href="javascript:window.close()" onclick="if(window.history.length>1){window.close()}else{window.location='/'}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Close
+      </a>
+      <span class="topbar-doc">Note&#8209;Cloud / Doc {{ t.id }}</span>
+      <span id="save-status">Saved</span>
+      <button id="save-btn" class="btn btn--solid">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
     </div>
+  </header>
 
-    <!-- Editor -->
-    <div class="editor-card">
-      <div class="editor-header">
-        <span class="editor-label"><span class="label-dash"></span>Transcription</span>
-        <span id="live-stats"></span>
-      </div>
-      <textarea id="editor" spellcheck="true">{{ t.text or '' }}</textarea>
-    </div>
+  <main>
+    <div class="col">
 
-    <!-- AI Rewrite -->
-    {% if is_pro %}
-    <div class="rewrite-card">
-      <div class="rewrite-header">
-        <span class="rewrite-header-label"><span class="label-dash"></span>AI Rewrite</span>
-        <span id="rewrite-status">
-          <span class="rewrite-dot"></span>
-          <span class="rewrite-dot"></span>
-          <span class="rewrite-dot"></span>
-          <span id="rewrite-status-text">Choose a style below</span>
-        </span>
+      <!-- ══ Document head ═══════════════════════════════════════════════ -->
+      <div class="doc-head">
+        <p class="eyebrow">Transcription</p>
+        <h1 class="doc-title">{{ t.title or 'Transcription' }}</h1>
+        <p id="date-display"></p>
       </div>
-      <div class="rewrite-btns">
-        <button class="rw-btn" data-style="longer"><span class="rw-icon">↕</span> Make longer</button>
-        <button class="rw-btn" data-style="shorter"><span class="rw-icon">↔</span> Make shorter</button>
-        <button class="rw-btn" data-style="casual"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></span> Casual</button>
-        <button class="rw-btn" data-style="professional"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Professional</button>
-        <button class="rw-btn" data-style="formal"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5-10-5z"/><path d="M6 11v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5"/><line x1="22" y1="9" x2="22" y2="15"/></svg></span> Formal</button>
-        <button class="rw-btn" data-style="bullets"><span class="rw-icon">•</span> Bullet points</button>
-        <button class="rw-btn" data-style="simplify"><span class="rw-icon">✨</span> Simplify</button>
-        <button class="rw-btn" data-style="grammar"><span class="rw-icon">✓</span> Fix grammar</button>
-      </div>
-      <div id="rewrite-preview">
-        <div class="preview-label">Preview — <span id="preview-style-name"></span></div>
-        <div id="rewrite-text"></div>
-        <div class="preview-actions">
-          <button class="preview-action-btn" id="accept-rewrite">✓ Use this</button>
-          <button id="discard-rewrite">✕ Discard</button>
+
+      <!-- ══ Metrics ledger ══════════════════════════════════════════════ -->
+      <section class="metrics" aria-label="Document metrics">
+        <div class="metric">
+          <span class="metric-key">Words</span>
+          <span class="metric-val metric-val--key" id="stat-words">—</span>
+          <span class="metric-note">in this document</span>
         </div>
-      </div>
-    </div>
-    {% else %}
-    <div class="rewrite-card" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:1.25rem">
-      <div>
-        <div style="font-weight:700;font-size:.95rem;margin-bottom:.25rem;display:flex;align-items:center;gap:.55rem"><span class="label-dash"></span>AI Rewrite</div>
-        <div style="font-size:.82rem;color:var(--muted)">Rewrite your notes in any style — Pro plan only.</div>
-      </div>
-      <a href="/" class="upgrade-cta-btn" style="display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;background:var(--accent2);color:var(--ink);border:2px solid var(--ink);border-radius:6px;font-size:.82rem;font-weight:700;text-decoration:none;white-space:nowrap;box-shadow:var(--shadow-sm)">Upgrade to Pro</a>
-    </div>
-    {% endif %}
+        <div class="metric">
+          <span class="metric-key">Characters</span>
+          <span class="metric-val" id="stat-chars">—</span>
+          <span class="metric-note">including spaces</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Read time</span>
+          <span class="metric-val" id="stat-read">—</span>
+          <span class="metric-note">at 200 wpm</span>
+        </div>
+        <div class="metric">
+          <span class="metric-key">Sentences</span>
+          <span class="metric-val" id="stat-sents">—</span>
+          <span class="metric-note">approximate</span>
+        </div>
+      </section>
 
-    <!-- Export -->
-    <div class="rewrite-card" id="export-card">
-      <div class="rewrite-header">
-        <span class="rewrite-header-label">Export &amp; share</span>
-      </div>
-      <div class="rewrite-btns">
-        <button class="rw-btn" id="copy-btn"><span class="rw-icon">⧉</span> Copy</button>
-        <button class="rw-btn" id="share-btn"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Share link</button>
-        <a class="rw-btn" id="dl-txt-btn" href="/transcriptions/{{ t.id }}/download/txt" style="text-decoration:none"><span class="rw-icon">↓</span> .txt</a>
-        <a class="rw-btn" id="dl-docx-btn" href="/transcriptions/{{ t.id }}/download/docx" style="text-decoration:none"><span class="rw-icon">↓</span> .docx</a>
-        <button class="rw-btn" id="gdocs-btn"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg></span> Google Docs</button>
-        <button class="rw-btn" id="notion-btn"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" opacity=".12"/><path d="M8 8h1.2l4.8 6.6V8H15v8h-1.2L9 9.4V16H8V8z" fill="currentColor"/></svg></span> Notion</button>
-      </div>
-    </div>
+      <!-- ══ Editor ══════════════════════════════════════════════════════ -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="eyebrow">Editor</span>
+          <span id="live-stats"></span>
+        </div>
+        <label class="visually-hidden" for="editor">Transcription text</label>
+        <textarea id="editor" spellcheck="true">{{ t.text or '' }}</textarea>
+      </section>
 
-  </div>
+      <!-- ══ AI rewrite ══════════════════════════════════════════════════ -->
+      {% if is_pro %}
+      <section class="panel">
+        <div class="panel-head">
+          <span class="eyebrow">AI Rewrite</span>
+          <span id="rewrite-status">
+            <span class="rewrite-dot"></span>
+            <span class="rewrite-dot"></span>
+            <span class="rewrite-dot"></span>
+            <span id="rewrite-status-text">Choose a style below</span>
+          </span>
+        </div>
+        <div class="panel-body">
+          <div class="rw-grid">
+            <button class="rw-btn" data-style="longer"><span class="rw-icon">↕</span> Make longer</button>
+            <button class="rw-btn" data-style="shorter"><span class="rw-icon">↔</span> Make shorter</button>
+            <button class="rw-btn" data-style="casual"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></span> Casual</button>
+            <button class="rw-btn" data-style="professional"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Professional</button>
+            <button class="rw-btn" data-style="formal"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5-10-5z"/><path d="M6 11v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5"/><line x1="22" y1="9" x2="22" y2="15"/></svg></span> Formal</button>
+            <button class="rw-btn" data-style="bullets"><span class="rw-icon">•</span> Bullet points</button>
+            <button class="rw-btn" data-style="simplify"><span class="rw-icon">✦</span> Simplify</button>
+            <button class="rw-btn" data-style="grammar"><span class="rw-icon">✓</span> Fix grammar</button>
+          </div>
+        </div>
+        <div id="rewrite-preview">
+          <div class="preview-label">Preview · <span id="preview-style-name"></span></div>
+          <div id="rewrite-text"></div>
+          <div class="preview-actions">
+            <button class="btn btn--solid" id="accept-rewrite">Use this</button>
+            <button class="btn btn--ghost" id="discard-rewrite">Discard</button>
+          </div>
+        </div>
+      </section>
+      {% else %}
+      <section class="panel">
+        <div class="teaser">
+          <div>
+            <span class="eyebrow">AI Rewrite</span>
+            <h2 class="teaser-title">Rewrite in any voice</h2>
+            <p class="teaser-sub">Longer, shorter, formal, bulleted, grammar-fixed. Eight styles, one click, on the Pro plan.</p>
+          </div>
+          <a href="/" class="btn btn--solid">Upgrade to Pro</a>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- ══ Export ══════════════════════════════════════════════════════ -->
+      <section class="panel">
+        <div class="panel-head">
+          <span class="eyebrow">Export &amp; share</span>
+        </div>
+        <div class="panel-body">
+          <div class="rw-grid">
+            <button class="rw-btn" id="copy-btn"><span class="rw-icon">⧉</span> Copy</button>
+            <button class="rw-btn" id="share-btn"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> Share link</button>
+            <a class="rw-btn" id="dl-txt-btn" href="/transcriptions/{{ t.id }}/download/txt"><span class="rw-icon">↓</span> .txt</a>
+            <a class="rw-btn" id="dl-docx-btn" href="/transcriptions/{{ t.id }}/download/docx"><span class="rw-icon">↓</span> .docx</a>
+            <button class="rw-btn" id="gdocs-btn"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg></span> Google Docs</button>
+            <button class="rw-btn" id="notion-btn"><span class="rw-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" opacity=".12"/><path d="M8 8h1.2l4.8 6.6V8H15v8h-1.2L9 9.4V16H8V8z" fill="currentColor"/></svg></span> Notion</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
 
   <script>
   // ── Cursor-follow grid glow ───────────────────────────────────────────────
@@ -794,10 +919,12 @@
   </script>
 
   <script>
-  // ── Floating accent particles ────────────────────────────────────────────
+  // ── Drifting dust ────────────────────────────────────────────────────────
   (function(){
     const canvas = document.getElementById('particle-canvas');
     const ctx = canvas.getContext('2d');
+    // Colour comes from the theme so the motes read on both canvases.
+    const DUST = getComputedStyle(document.body).getPropertyValue('--particle-rgb').trim() || '242,241,238';
     let W, H;
     function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
     resize(); window.addEventListener('resize', resize);
@@ -818,7 +945,7 @@
         if (p.y < -12 || p.life > p.maxLife){ particles[i] = makeParticle(false); continue; }
         const a = p.alpha * Math.sin(p.life/p.maxLife * Math.PI) * .8;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(181,80,47,${a})`; ctx.fill();
+        ctx.fillStyle = `rgba(${DUST},${a})`; ctx.fill();
       }
     }
     requestAnimationFrame(tick);
