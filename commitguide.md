@@ -469,3 +469,21 @@ Also removes two PNGs and a zip that were already deleted from disk but still tr
 - `main`'s brief two-column (upload/result side-by-side) experiment relied on CSS Grid auto-placement without explicitly pinning every child to column 1, letting the transcribe button and status line drift into column 2; reverted this specific layout for stability.
 
 </details>
+
+## 8/11
+
+<details><summary><strong>8:20PM PDT</strong> &nbsp;·&nbsp; <code>7d958fe</code> &nbsp; Redesign frontend to a calm editorial "Studio" theme with dark/light modes</summary>
+
+**Redesign:**
+- Replaced the neo-brutalist "Field Index" look across all 6 templates (index, login, transcription, share, privacy, terms) with a calm, monochrome surface system. Primary actions invert the canvas (light-on-dark / dark-on-light) instead of taking a hue, and a single highlighter-lime accent is reserved for progress, focus rings, active state, and key numerals — it never competes with the content.
+- Dark is now the default theme; `body.light` supplies the light palette. The choice persists in `localStorage` under `notecloud-theme`, applied by an inline script before paint so there's no flash of the wrong theme.
+- New type stack: Newsreader (display), Archivo (UI), JetBrains Mono (data/numerals) — replacing Big Shoulders Display / Outfit / IBM Plex Mono.
+- Elevation is now three layered shadow tokens (`--lift-1/2/3`) tinted to the canvas rather than flat black, plus a subtle SVG paper-grain overlay — replacing the hard offset drop shadows and the 40px grid background.
+- Softer radius scale (`--r-xs` through `--r-lg`) and a shared `--ease` curve in place of the thick-border/hard-shadow brutalist signature.
+
+**Accessibility:**
+- `login.html`: decorative icons, logos, and inline SVGs marked `aria-hidden="true"`; the error message is now `role="alert" aria-live="polite"` so failed logins are announced.
+
+Untracked files in the working tree (`.agents/`, `.claude/`, `.codex/`, `bugs.md`, `notecloudprod.zip`, `skills-lock.json`) were deliberately left out of this commit.
+
+</details>
