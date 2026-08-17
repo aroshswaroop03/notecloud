@@ -140,6 +140,7 @@ In your EB environment → **Configuration** → **Updates, monitoring, and logg
 | `NOTION_REDIRECT_URI` | `https://note-cloud.com/notion/callback` |
 | `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | from your Apple Developer account (see below) |
 | `APPLE_REDIRECT_URI` | `https://note-cloud.com/auth/apple/callback` |
+| `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASSWORD` / `EMAIL_FROM` | SMTP creds for password-reset and login-2FA codes (see below) |
 
 Click **Apply** and wait for the environment to update.
 
@@ -176,6 +177,20 @@ Click **Apply** and wait for the environment to update.
 > with "Sign in with Apple" enabled and the prod redirect URI above configured, note your
 > Team ID (`APPLE_TEAM_ID`), then create a "Sign in with Apple" key — its Key ID is
 > `APPLE_KEY_ID` and the downloaded `.p8` file's contents are `APPLE_PRIVATE_KEY`.
+>
+> **Email (password reset + login 2FA):** without `EMAIL_HOST` set, both features silently
+> log the code to the server's log instead of emailing it — fine for local dev, unusable in
+> prod. For Gmail: turn on 2-Step Verification, then generate an **App Password**
+> (myaccount.google.com → Security → App passwords) and use that, not the account password.
+>
+> ```env
+> EMAIL_HOST=smtp.gmail.com
+> EMAIL_PORT=587
+> EMAIL_USER=notecloud26@gmail.com
+> EMAIL_PASSWORD=<16-character app password>
+> EMAIL_FROM=NoteCloud <notecloud26@gmail.com>
+> ```
+>
 
 ---
 

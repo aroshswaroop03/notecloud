@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Handwriting Transcriber</title>
   <meta name="description" content="Photograph handwritten notes and get clean, editable text back in seconds." />
-  <link rel="icon" href="/static/favicon.png" type="image/png" />
+  <link rel="icon" href="{{ asset('favicon.png') }}" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet" />
@@ -971,6 +971,12 @@
     .modal-btn.danger-btn:hover { opacity: .88; }
     .modal-error { font-size: .8rem; color: var(--bad); margin-top: .45rem; min-height: 1em; }
     .modal-success { font-size: .8rem; color: var(--ok); margin-top: .45rem; }
+    /* Shown when a plan is cancelled but still inside its paid period */
+    .sub-ending {
+      font-size: .82rem; line-height: 1.5;
+      border-left: 2px solid var(--accent-line);
+      padding-left: .7rem; margin-top: .6rem;
+    }
     .modal-close {
       position: absolute; top: 1rem; right: 1rem;
       width: 28px; height: 28px;
@@ -1769,7 +1775,7 @@
         </button>
 
         <div class="brand">
-          <img src="/static/logo-icon.png" alt="" aria-hidden="true" />
+          <img src="{{ asset('logo-icon.png') }}" alt="" aria-hidden="true" />
           <span class="brand-name">Note<span>·</span>Cloud</span>
         </div>
 
@@ -1807,6 +1813,10 @@
             <button class="dropdown-item" id="open-subscription-btn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
               Subscription
+            </button>
+            <button class="dropdown-item" id="open-feature-request-btn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2z"/></svg>
+              Request a feature
             </button>
             <a class="dropdown-item danger" href="/logout">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2180,13 +2190,47 @@
       {% else %}
       <p>Unlimited transcription with no daily cap.</p>
       {% endif %}
-      {% if tier != 'free' %}
-      <div class="modal-actions" style="margin-top:1.25rem">
-        <button class="modal-btn secondary" id="cancel-sub-btn">Cancel subscription</button>
-      </div>
+      {% if grant_only %}
+      <p class="sub-ending">
+        This access was granted directly, not billed through Stripe — there's no
+        subscription here to cancel.
+      </p>
+      {% elif tier != 'free' %}
+        {% if ending_soon %}
+        <p class="sub-ending">
+          Ending{% if period_end_display %} on {{ period_end_display }}{% endif %} — you keep
+          {{ tier | title }} until then, and won't be charged again.
+        </p>
+        <div class="modal-actions" style="margin-top:1.25rem">
+          <button class="modal-btn primary" id="resume-sub-btn">Keep my subscription</button>
+        </div>
+        {% else %}
+        <div class="modal-actions" style="margin-top:1.25rem">
+          <button class="modal-btn secondary" id="cancel-sub-btn">Cancel subscription</button>
+        </div>
+        {% endif %}
       {% endif %}
       <p class="modal-error" id="cancel-error"></p>
       <p class="modal-success" id="cancel-success"></p>
+    </div>
+  </div>
+
+  <!-- ══ Feature request ══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="feature-request-modal">
+    <div class="modal" style="position:relative">
+      <button class="modal-close" id="close-feature-request-btn" aria-label="Close">✕</button>
+      <h3>Request a feature</h3>
+      <p style="margin-bottom:.9rem;font-size:.85rem;color:var(--muted)">
+        Missing something, or an idea for what NoteCloud should do next? Tell us — we read every one.
+      </p>
+      <textarea class="settings-input" id="feature-request-text" rows="5"
+                maxlength="2000" placeholder="e.g. it'd be great if I could…"
+                style="resize:vertical;min-height:6.5rem;font-family:inherit"></textarea>
+      <div class="modal-actions" style="margin-top:1rem">
+        <button class="modal-btn primary" id="feature-request-submit">Send</button>
+      </div>
+      <p class="modal-error" id="feature-request-error"></p>
+      <p class="modal-success" id="feature-request-success"></p>
     </div>
   </div>
 
@@ -3025,22 +3069,100 @@
     if (subscriptionModal)
       subscriptionModal.addEventListener("click", (e) => { if (e.target === subscriptionModal) subscriptionModal.classList.remove("open"); });
 
+    // Feature request modal
+    const featureRequestModal   = document.getElementById("feature-request-modal");
+    const openFeatureRequestBtn = document.getElementById("open-feature-request-btn");
+    const closeFeatureRequestBtn= document.getElementById("close-feature-request-btn");
+    const featureRequestText    = document.getElementById("feature-request-text");
+    const featureRequestSubmit  = document.getElementById("feature-request-submit");
+    const featureRequestError   = document.getElementById("feature-request-error");
+    const featureRequestSuccess = document.getElementById("feature-request-success");
+
+    if (openFeatureRequestBtn)
+      openFeatureRequestBtn.addEventListener("click", () => {
+        profileDropdown.classList.remove("open");
+        featureRequestError.textContent = "";
+        featureRequestSuccess.textContent = "";
+        featureRequestModal.classList.add("open");
+        featureRequestText.focus();
+      });
+    if (closeFeatureRequestBtn)
+      closeFeatureRequestBtn.addEventListener("click", () => featureRequestModal.classList.remove("open"));
+    if (featureRequestModal)
+      featureRequestModal.addEventListener("click", (e) => { if (e.target === featureRequestModal) featureRequestModal.classList.remove("open"); });
+
+    if (featureRequestSubmit) {
+      featureRequestSubmit.addEventListener("click", async () => {
+        const text = featureRequestText.value.trim();
+        featureRequestError.textContent = "";
+        featureRequestSuccess.textContent = "";
+        if (!text) { featureRequestError.textContent = "Enter what you'd like to see added."; return; }
+        featureRequestSubmit.disabled = true;
+        featureRequestSubmit.textContent = "Sending…";
+        try {
+          const res  = await fetch("/feature-request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ text }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            featureRequestSuccess.textContent = data.message;
+            featureRequestText.value = "";
+            setTimeout(() => featureRequestModal.classList.remove("open"), 1600);
+          } else {
+            featureRequestError.textContent = data.error || "Something went wrong.";
+          }
+        } catch {
+          featureRequestError.textContent = "Network error — is the server running?";
+        } finally {
+          featureRequestSubmit.disabled = false;
+          featureRequestSubmit.textContent = "Send";
+        }
+      });
+    }
+
     // Cancel subscription
     if (cancelSubBtn) {
       cancelSubBtn.addEventListener("click", async () => {
         if (!confirm("Are you sure you want to cancel? You'll keep access until the end of your billing period.")) return;
         cancelSubBtn.textContent = "Cancelling…";
         cancelSubBtn.disabled = true;
+        if (cancelError) cancelError.textContent = "";
         const res  = await fetch("/cancel-subscription", { method: "POST", credentials: "same-origin" });
         const data = await res.json();
         if (data.ok) {
           if (cancelSuccess) { cancelSuccess.textContent = data.message; cancelSuccess.style.display = "block"; }
           cancelSubBtn.style.display = "none";
-          setTimeout(() => window.location.reload(), 2000);
+          // Reload so the panel re-renders in its "ending soon" state. Without
+          // this delay the success message is gone before it can be read.
+          setTimeout(() => window.location.reload(), 1800);
         } else {
           if (cancelError) cancelError.textContent = data.error || "Something went wrong.";
           cancelSubBtn.textContent = "Cancel subscription";
           cancelSubBtn.disabled = false;
+        }
+      });
+    }
+
+    // Undo a pending cancellation
+    const resumeSubBtn = document.getElementById("resume-sub-btn");
+    if (resumeSubBtn) {
+      resumeSubBtn.addEventListener("click", async () => {
+        resumeSubBtn.textContent = "Restoring…";
+        resumeSubBtn.disabled = true;
+        if (cancelError) cancelError.textContent = "";
+        const res  = await fetch("/resume-subscription", { method: "POST", credentials: "same-origin" });
+        const data = await res.json();
+        if (data.ok) {
+          if (cancelSuccess) { cancelSuccess.textContent = data.message; cancelSuccess.style.display = "block"; }
+          resumeSubBtn.style.display = "none";
+          setTimeout(() => window.location.reload(), 1800);
+        } else {
+          if (cancelError) cancelError.textContent = data.error || "Something went wrong.";
+          resumeSubBtn.textContent = "Keep my subscription";
+          resumeSubBtn.disabled = false;
         }
       });
     }
@@ -3095,8 +3217,16 @@
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.switched) {
+        // Existing subscriber changed plan — no checkout, it's already applied.
+        btn.textContent = "Done";
+        if (upgradeError) {
+          upgradeError.style.color = "var(--ok)";
+          upgradeError.textContent = data.message;
+        }
+        setTimeout(() => window.location.reload(), 1800);
       } else {
-        if (upgradeError) upgradeError.textContent = data.message || "Payments coming soon!";
+        if (upgradeError) upgradeError.textContent = data.message || data.error || "Payments coming soon!";
         btn.textContent = origText;
         btn.disabled = false;
       }

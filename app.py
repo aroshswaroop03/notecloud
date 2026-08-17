@@ -15,11 +15,15 @@ import json
 import os
 import re
 import secrets
+import smtplib
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from email.message import EmailMessage
 from functools import wraps
+from urllib.parse import urlparse
 
 import anthropic
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -110,6 +114,23 @@ def handle_429(e):
 _COMPRESSIBLE = ("text/html", "text/css", "application/javascript",
                  "application/json", "image/svg+xml", "text/plain")
 
+@app.template_global()
+def asset(filename):
+    """
+    URL for a file in /static with a cache-busting ?v=<mtime> appended.
+
+    Static responses carry a 30-day max-age (see _optimize_response below), so
+    without this a changed logo or favicon stays stale in browsers that already
+    have it — they never revalidate. Keying on the file's mtime means editing
+    the file is all it takes to invalidate it.
+    """
+    try:
+        version = int(os.path.getmtime(os.path.join(app.static_folder, filename)))
+    except OSError:
+        return f"/static/{filename}"
+    return f"/static/{filename}?v={version}"
+
+
 @app.after_request
 def _optimize_response(resp):
     # Baseline security headers (defense-in-depth):
@@ -151,6 +172,29 @@ def _optimize_response(resp):
 # __file__ is the path to this script. os.path.dirname gets the folder it lives
 # in. We store the database in the same folder as app.py.
 DB_PATH = os.path.join(os.path.dirname(__file__), "scrib_d.db")
+
+# ── Outgoing email ────────────────────────────────────────────────────────────
+# Plain SMTP via the standard library, so any provider works (Gmail app
+# password, SendGrid, Mailgun, SES, Postmark — they all speak SMTP).
+# Leave these unset in dev: send_email() then prints the message to the console
+# instead of sending it, which is enough to run the reset flow end to end.
+EMAIL_HOST     = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT     = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USER     = os.getenv("EMAIL_USER", "")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
+EMAIL_FROM     = os.getenv("EMAIL_FROM", "NoteCloud <no-reply@note-cloud.com>")
+
+# ── Password reset ────────────────────────────────────────────────────────────
+RESET_CODE_TTL_MINUTES = 10   # how long an emailed code stays valid
+RESET_MAX_ATTEMPTS     = 5    # wrong guesses before a code is burned
+
+# ── Login 2FA (email OTP, periodic) ───────────────────────────────────────────
+# Only gates email+password login — Google/Apple sign-in already proves
+# identity through an external provider, so it skips this entirely.
+LOGIN_OTP_TTL_MINUTES  = 10
+LOGIN_OTP_MAX_ATTEMPTS = 5
+TRUSTED_DEVICE_DAYS    = 30    # how long a verified browser skips the code
+TRUSTED_DEVICE_COOKIE  = "td"
 
 # ── Token limits per tier ─────────────────────────────────────────────────────
 # One "token" = one word in the transcription output.
@@ -207,6 +251,181 @@ STRIPE_PRICE_IDS = {
 STRIPE_PRICE_TO_TIER = {v: k[0] for k, v in STRIPE_PRICE_IDS.items() if v}
 if STRIPE_LIBS_AVAILABLE and STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
+
+
+def send_email(to_address, subject, body):
+    """
+    Send a plain-text email. Returns True if it went out, False otherwise.
+
+    With no EMAIL_HOST configured this logs the message instead of sending —
+    that keeps local development working without credentials, and the caller
+    treats both cases as success so behaviour doesn't diverge between dev and
+    production. Never raises: a failure to send must not break the request.
+    """
+    if not EMAIL_HOST:
+        app.logger.info(
+            "email not configured — would have sent to %s:\nSubject: %s\n%s",
+            to_address, subject, body,
+        )
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"]    = EMAIL_FROM
+    msg["To"]      = to_address
+    msg.set_content(body)
+
+    try:
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=15) as smtp:
+            smtp.starttls()
+            if EMAIL_USER:
+                smtp.login(EMAIL_USER, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+        return True
+    except Exception as e:
+        app.logger.error("email send failed to %s: %s", to_address, e)
+        return False
+
+
+def issue_login_otp(user):
+    """
+    Create a login 2FA code, email it, and return the plaintext code — the
+    only place it exists unhashed. Mirrors the password-reset issuance, but
+    into login_otps and with sign-in phrasing so the two flows read as
+    distinct actions to anyone glancing at their inbox.
+    """
+    conn = get_db()
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    now  = datetime.utcnow()
+
+    conn.execute("UPDATE login_otps SET used = 1 WHERE user_id = ? AND used = 0", (user["id"],))
+    conn.execute(
+        """INSERT INTO login_otps (user_id, code_hash, expires_at, created_at)
+           VALUES (?, ?, ?, ?)""",
+        (
+            user["id"],
+            generate_password_hash(code, method="pbkdf2:sha256"),
+            (now + timedelta(minutes=LOGIN_OTP_TTL_MINUTES)).isoformat(),
+            now.isoformat(),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    name = user["first_name"] or "there"
+    send_email(
+        user["email"],
+        "Your NoteCloud sign-in code",
+        f"""Hi {name},
+
+Someone is signing in to your NoteCloud account from a new browser. Your
+sign-in code is:
+
+    {code}
+
+It expires in {LOGIN_OTP_TTL_MINUTES} minutes.
+
+If this wasn't you, change your password — someone else has it.
+
+— NoteCloud
+""",
+    )
+    return code
+
+
+def _trusted_device_serializer():
+    # A distinct salt keeps this signature namespace-separate from Flask's own
+    # session cookie and from any other itsdangerous use, so a token minted
+    # for one purpose can never be replayed as another.
+    return URLSafeTimedSerializer(app.secret_key, salt="trusted-device-v1")
+
+
+def is_trusted_device(user_id):
+    """True if this browser already completed 2FA for this exact account
+    within the last TRUSTED_DEVICE_DAYS. A cookie minted for a different
+    account (shared computer) does not count."""
+    token = request.cookies.get(TRUSTED_DEVICE_COOKIE)
+    if not token:
+        return False
+    try:
+        seen_user_id = _trusted_device_serializer().loads(
+            token, max_age=TRUSTED_DEVICE_DAYS * 86400
+        )
+    except (BadSignature, SignatureExpired):
+        return False
+    return seen_user_id == user_id
+
+
+def mark_device_trusted(resp, user_id):
+    """Set the cookie that lets this exact browser skip 2FA next time."""
+    token = _trusted_device_serializer().dumps(user_id)
+    resp.set_cookie(
+        TRUSTED_DEVICE_COOKIE,
+        token,
+        max_age=TRUSTED_DEVICE_DAYS * 86400,
+        httponly=True,
+        samesite="Lax",
+        secure=os.getenv("FLASK_ENV") == "production",
+    )
+    return resp
+
+
+# Characters the URL spec strips before parsing (tab, CR, LF) — left in place,
+# they let a value like "/\t/evil.com" slip past a naive same-site check and
+# still resolve as "//evil.com" once a browser normalizes it away.
+_URL_STRIP_CHARS = "\t\r\n"
+
+
+def safe_next_path(next_url):
+    """
+    Only allow a same-site relative path for a post-OAuth redirect.
+
+    A raw prefix check (startswith("/") and not startswith("//")) isn't
+    enough on its own: browsers strip tab/CR/LF and normalize a leading
+    backslash to a forward slash when resolving http(s) URLs (WHATWG URL
+    spec), so "/\\evil.com" or "/\t/evil.com" pass that check as strings but
+    still resolve to an attacker-controlled host. Reject anything containing
+    those characters outright, and use urlparse to confirm there's no
+    scheme/host hiding in what's left.
+    """
+    if not next_url:
+        return "/"
+    cleaned = "".join(ch for ch in next_url if ch not in _URL_STRIP_CHARS)
+    if cleaned != next_url or "\\" in cleaned:
+        return "/"
+    parsed = urlparse(cleaned)
+    if parsed.scheme or parsed.netloc:
+        return "/"
+    if not cleaned.startswith("/") or cleaned.startswith("//"):
+        return "/"
+    return cleaned
+
+
+def tier_from_subscription(sub):
+    """Map a subscription's current price back to one of our tier names."""
+    try:
+        return STRIPE_PRICE_TO_TIER.get(sub["items"]["data"][0]["price"]["id"])
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+def subscription_period_end(sub):
+    """
+    Unix timestamp for when the current billing period ends, or None.
+
+    Stripe moved current_period_end off the Subscription and onto each
+    subscription item in the 2025-03-31 API version, so check both rather than
+    assuming whichever version this account happens to be pinned to.
+    """
+    if not sub:
+        return None
+    end = sub.get("current_period_end")
+    if end:
+        return end
+    try:
+        return sub["items"]["data"][0].get("current_period_end")
+    except (KeyError, IndexError, TypeError):
+        return None
 
 # Notion OAuth — set these in .env once you've created a public Notion integration
 NOTION_CLIENT_ID     = os.getenv("NOTION_CLIENT_ID", "")
@@ -312,6 +531,57 @@ def init_db():
     """)
     conn.commit()
 
+    # Password reset codes — one row per emailed code.
+    # The code itself is hashed, never stored in the clear, so a leaked
+    # database can't be used to take over accounts. Rows are consumed on use
+    # and cleaned up as new ones are issued.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            code_hash   TEXT NOT NULL,
+            expires_at  TEXT NOT NULL,   -- ISO timestamp (UTC)
+            attempts    INTEGER DEFAULT 0,
+            used        INTEGER DEFAULT 0,
+            created_at  TEXT NOT NULL
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id)"
+    )
+    conn.commit()
+
+    # Login 2FA codes — same shape as password_resets, kept separate because
+    # the two are semantically different (this one only ever grants a session,
+    # never touches the password), so mixing them would risk one flow's fix
+    # accidentally changing the other's behaviour.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS login_otps (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            code_hash   TEXT NOT NULL,
+            expires_at  TEXT NOT NULL,
+            attempts    INTEGER DEFAULT 0,
+            used        INTEGER DEFAULT 0,
+            created_at  TEXT NOT NULL
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_login_otps_user ON login_otps(user_id)"
+    )
+    conn.commit()
+
+    # Feature requests — one row per submission from the profile dropdown.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS feature_requests (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            text        TEXT NOT NULL,
+            created_at  TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+
     # Migrate any columns missing from older database versions
     migrations = [
         "first_name TEXT", "last_name TEXT", "avatar TEXT",
@@ -365,7 +635,8 @@ def init_db():
         pass
 
     # Stripe billing columns
-    for col in ["stripe_customer_id TEXT", "stripe_subscription_id TEXT", "stripe_cancel_at_period_end INTEGER DEFAULT 0"]:
+    for col in ["stripe_customer_id TEXT", "stripe_subscription_id TEXT", "stripe_cancel_at_period_end INTEGER DEFAULT 0",
+                "stripe_period_end INTEGER"]:
         try:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col}")
             conn.commit()
@@ -554,12 +825,78 @@ def login_post():
         # so an attacker can't tell which emails are registered.
         return jsonify({"error": "Incorrect email or password."}), 401
 
-    # Store identifying info in the session. Flask encrypts this into a cookie
-    # sent to the browser; it comes back with every future request.
+    # Password is correct. On a browser we've already verified for this
+    # account, that's enough — go straight in like before. Anywhere else,
+    # the password alone doesn't create a session; a code has to follow.
+    if is_trusted_device(user["id"]):
+        session["user_id"]    = user["id"]
+        session["user_email"] = user["email"]
+        return jsonify({"ok": True})
+
+    issue_login_otp(user)
+    # Marks which login this code belongs to without granting access — every
+    # route that actually does something still requires session["user_id"],
+    # which is only set once /login/verify-otp succeeds.
+    session["pending_2fa_user_id"] = user["id"]
+    return jsonify({"otp_required": True, "email": user["email"]})
+
+
+@app.route("/login/verify-otp", methods=["POST"])
+@limiter.limit("10 per minute")
+def login_verify_otp():
+    """
+    POST /login/verify-otp  { "code": "123456" }
+    Completes a login that /login left pending on a new device. Trusts this
+    browser for TRUSTED_DEVICE_DAYS afterward so the code isn't asked again
+    on every visit — only when it's a browser we haven't verified before.
+    """
+    user_id = session.get("pending_2fa_user_id")
+    if not user_id:
+        return jsonify({"error": "Nothing to verify — please log in again."}), 400
+
+    data = request.get_json(silent=True) or {}
+    code = (data.get("code") or "").strip()
+    if not code:
+        return jsonify({"error": "Enter the code from your email."}), 400
+
+    conn = get_db()
+    user = conn.execute("SELECT id, email FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        session.pop("pending_2fa_user_id", None)
+        return jsonify({"error": "Nothing to verify — please log in again."}), 400
+
+    row, err = _check_otp(conn, "login_otps", user_id, code, LOGIN_OTP_MAX_ATTEMPTS)
+    conn.close()
+    if err:
+        return jsonify({"error": err}), 400
+
+    session.pop("pending_2fa_user_id", None)
     session["user_id"]    = user["id"]
     session["user_email"] = user["email"]
 
-    return jsonify({"ok": True})
+    resp = jsonify({"ok": True})
+    return mark_device_trusted(resp, user["id"])
+
+
+@app.route("/login/resend-otp", methods=["POST"])
+@limiter.limit("3 per minute; 10 per hour")
+def login_resend_otp():
+    """POST /login/resend-otp — issues a fresh code for the login left
+    pending by /login, retiring whatever code came before it."""
+    user_id = session.get("pending_2fa_user_id")
+    if not user_id:
+        return jsonify({"error": "Nothing to resend — please log in again."}), 400
+
+    conn = get_db()
+    user = conn.execute("SELECT id, email, first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    if not user:
+        session.pop("pending_2fa_user_id", None)
+        return jsonify({"error": "Nothing to resend — please log in again."}), 400
+
+    issue_login_otp(user)
+    return jsonify({"ok": True, "message": "A new code is on its way."})
 
 
 @app.route("/signup", methods=["POST"])
@@ -640,7 +977,206 @@ def signup_post():
     session["user_id"]    = new_id
     session["user_email"] = email
 
+    # This browser just created the account, which is as verified as a device
+    # gets — no reason to challenge its very next login with a 2FA code.
+    resp = jsonify({"ok": True})
+    return mark_device_trusted(resp, new_id)
+
+
+# ── Password reset (emailed one-time code) ────────────────────────────────────
+# Three steps: request a code, check it's right, then set the new password.
+# The middle step exists only so the UI can advance before asking for a
+# password — it grants nothing, and the final step re-verifies the code, so
+# skipping straight to /reset-password is no easier.
+
+def _check_otp(conn, table, user_id, code, max_attempts):
+    """
+    Return the matching live code row from `table` for `user_id`, or
+    (None, error_message). Shared by password reset and login 2FA — both
+    store a hashed, expiring, attempt-limited one-time code and differ only
+    in what a successful check unlocks, which is entirely up to the caller.
+
+    `table` is always one of our own two hardcoded literals, never request
+    input, so building the query with an f-string here is safe.
+
+    Counts a failed attempt against the newest outstanding code so guessing is
+    bounded, and treats expired/used/burnt rows as simply not matching.
+    """
+    row = conn.execute(
+        f"""SELECT * FROM {table}
+            WHERE user_id = ? AND used = 0
+            ORDER BY id DESC LIMIT 1""",
+        (user_id,),
+    ).fetchone()
+
+    if not row:
+        return None, "That code isn't valid. Request a new one."
+
+    if datetime.utcnow() > datetime.fromisoformat(row["expires_at"]):
+        return None, "That code has expired. Request a new one."
+
+    if row["attempts"] >= max_attempts:
+        return None, "Too many incorrect attempts. Request a new code."
+
+    if not check_password_hash(row["code_hash"], code):
+        conn.execute(f"UPDATE {table} SET attempts = attempts + 1 WHERE id = ?", (row["id"],))
+        conn.commit()
+        left = max_attempts - (row["attempts"] + 1)
+        if left <= 0:
+            return None, "Too many incorrect attempts. Request a new code."
+        return None, f"That code isn't right. {left} attempt{'s' if left != 1 else ''} left."
+
+    return row, None
+
+
+def _find_user_by_email(conn, email):
+    return conn.execute(
+        "SELECT id, email, first_name FROM users WHERE email = ?", (email,)
+    ).fetchone()
+
+
+@app.route("/forgot-password", methods=["POST"])
+@limiter.limit("3 per minute; 10 per hour")
+def forgot_password():
+    """
+    POST /forgot-password  { "email": "..." }
+    Emails a 6-digit code if the address has an account.
+
+    Always responds the same way whether or not the account exists — a
+    different response here would turn this into an endpoint for discovering
+    which email addresses are registered.
+    """
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    generic = jsonify({
+        "ok": True,
+        "message": "If that email has an account, a code is on its way.",
+    })
+
+    if not email:
+        return jsonify({"error": "Enter your email address."}), 400
+
+    conn = get_db()
+    user = _find_user_by_email(conn, email)
+    if not user:
+        conn.close()
+        return generic
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    now  = datetime.utcnow()
+
+    # Retire any outstanding codes so only the newest one works.
+    conn.execute("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0", (user["id"],))
+    conn.execute(
+        """INSERT INTO password_resets (user_id, code_hash, expires_at, created_at)
+           VALUES (?, ?, ?, ?)""",
+        (
+            user["id"],
+            generate_password_hash(code, method="pbkdf2:sha256"),
+            (now + timedelta(minutes=RESET_CODE_TTL_MINUTES)).isoformat(),
+            now.isoformat(),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    name = user["first_name"] or "there"
+    send_email(
+        user["email"],
+        "Your NoteCloud password reset code",
+        f"""Hi {name},
+
+Your NoteCloud password reset code is:
+
+    {code}
+
+It expires in {RESET_CODE_TTL_MINUTES} minutes and can only be used once.
+
+If you didn't ask to reset your password you can ignore this email — your
+current password still works and nothing has changed.
+
+— NoteCloud
+""",
+    )
+    return generic
+
+
+@app.route("/verify-reset-code", methods=["POST"])
+@limiter.limit("10 per minute")
+def verify_reset_code():
+    """
+    POST /verify-reset-code  { "email": "...", "code": "123456" }
+    Checks a code without consuming it, so the UI can show the new-password
+    fields before committing. Grants nothing on its own.
+    """
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    code  = (data.get("code") or "").strip()
+
+    if not email or not code:
+        return jsonify({"error": "Enter the code from your email."}), 400
+
+    conn = get_db()
+    user = _find_user_by_email(conn, email)
+    if not user:
+        conn.close()
+        return jsonify({"error": "That code isn't valid. Request a new one."}), 400
+
+    row, err = _check_otp(conn, "password_resets", user["id"], code, RESET_MAX_ATTEMPTS)
+    conn.close()
+    if err:
+        return jsonify({"error": err}), 400
     return jsonify({"ok": True})
+
+
+@app.route("/reset-password", methods=["POST"])
+@limiter.limit("10 per minute")
+def reset_password():
+    """
+    POST /reset-password
+      { "email": "...", "code": "123456", "new_password": "...", "confirm": "..." }
+    Verifies the code once more, sets the new password, and burns the code.
+    """
+    data     = request.get_json(silent=True) or {}
+    email    = (data.get("email") or "").strip().lower()
+    code     = (data.get("code") or "").strip()
+    new_pw   = data.get("new_password") or ""
+    confirm  = data.get("confirm") or ""
+
+    if not email or not code:
+        return jsonify({"error": "Enter the code from your email."}), 400
+    if len(new_pw) < 6:
+        return jsonify({"error": "Password must be at least 6 characters."}), 400
+    if new_pw != confirm:
+        return jsonify({"error": "Those passwords don't match."}), 400
+
+    conn = get_db()
+    user = _find_user_by_email(conn, email)
+    if not user:
+        conn.close()
+        return jsonify({"error": "That code isn't valid. Request a new one."}), 400
+
+    row, err = _check_otp(conn, "password_resets", user["id"], code, RESET_MAX_ATTEMPTS)
+    if err:
+        conn.close()
+        return jsonify({"error": err}), 400
+
+    # has_password is set because this is now a real, self-chosen password —
+    # Google-created accounts start without one, and this is how they get one.
+    conn.execute(
+        "UPDATE users SET password_hash = ?, has_password = 1 WHERE id = ?",
+        (generate_password_hash(new_pw, method="pbkdf2:sha256"), user["id"]),
+    )
+    conn.execute("UPDATE password_resets SET used = 1 WHERE id = ?", (row["id"],))
+    conn.commit()
+    conn.close()
+
+    # Log out any existing sessions on this browser — whoever reset the
+    # password should have to sign in with it.
+    session.clear()
+
+    return jsonify({"ok": True, "message": "Password updated. You can sign in now."})
 
 
 @app.route("/logout")
@@ -667,14 +1203,23 @@ def get_token_status(user):
     """
     today = date.today().isoformat()
     tier  = user["tier"] or "free"
-    base_limit = TIER_LIMITS.get(tier)  # None for pro, undefined for dev
+    used  = user["tokens_today"] if user["last_token_date"] == today else 0
 
-    if user["is_admin"] or tier == "dev" or base_limit is None:
-        used = user["tokens_today"] if user["last_token_date"] == today else 0
+    # Unlimited only for cases we've deliberately granted it: admins, the "dev"
+    # tier, and tiers explicitly mapped to None (pro). An unrecognised tier
+    # falls back to the free limit rather than to unlimited — failing open here
+    # would hand out free unlimited access on any typo or stale tier value.
+    if user["is_admin"] or tier == "dev":
         return {"limit": None, "used": used, "remaining": None, "tier": tier}
 
+    if tier in TIER_LIMITS:
+        base_limit = TIER_LIMITS[tier]
+        if base_limit is None:      # pro
+            return {"limit": None, "used": used, "remaining": None, "tier": tier}
+    else:
+        base_limit = TIER_LIMITS["free"]
+
     daily_limit = base_limit + (user["bonus_tokens"] or 0)
-    used = user["tokens_today"] if user["last_token_date"] == today else 0
     return {
         "limit": daily_limit,
         "used": used,
@@ -690,7 +1235,8 @@ def index():
     conn = get_db()
     user = conn.execute(
         """SELECT first_name, last_name, email, avatar, referral_code,
-                  bonus_tokens, tokens_today, last_token_date, tier, is_admin, has_password
+                  bonus_tokens, tokens_today, last_token_date, tier, is_admin, has_password,
+                  stripe_subscription_id, stripe_cancel_at_period_end, stripe_period_end
            FROM users WHERE id = ?""",
         (session["user_id"],)
     ).fetchone()
@@ -703,6 +1249,23 @@ def index():
 
     status = get_token_status(user)
 
+    # A cancelled-but-not-yet-expired plan still reads as paid in `tier`, so the
+    # subscription panel needs these to tell "active" apart from "ending soon".
+    has_stripe_sub = bool(user["stripe_subscription_id"])
+    ending_soon = bool(user["stripe_cancel_at_period_end"])
+    period_end  = user["stripe_period_end"]
+    period_end_display = (
+        datetime.fromtimestamp(period_end).strftime("%B %-d, %Y") if period_end else None
+    )
+
+    # Owner/dev grants (redeem_code sets is_admin=1 and tier='dev' together —
+    # see the /redeem route) aren't billing subscriptions, so there is nothing
+    # for a "Cancel subscription" button to do. Distinguish that from a paid
+    # tier that was granted manually with no Stripe record behind it (e.g. a
+    # comped account) — that one genuinely can self-downgrade to free, and
+    # /cancel-subscription already supports it.
+    grant_only = (not has_stripe_sub) and (user["is_admin"] or user["tier"] == "dev")
+
     return render_template(
         "index.html",
         user=user,
@@ -713,6 +1276,10 @@ def index():
         referral_bonus_tokens=REFERRAL_BONUS_TOKENS,
         tier_limits=TIER_LIMITS,
         has_password=bool(user["has_password"]),
+        ending_soon=ending_soon,
+        period_end_display=period_end_display,
+        has_stripe_sub=has_stripe_sub,
+        grant_only=grant_only,
     )
 
 
@@ -739,6 +1306,102 @@ def redeem_code():
         return jsonify({"ok": True, "message": "Unlimited uploads unlocked!"})
 
     return jsonify({"error": "That code isn't valid."}), 400
+
+
+@app.route("/feature-request", methods=["POST"])
+@login_required
+@limiter.limit("5 per hour")
+def feature_request():
+    """
+    POST /feature-request  { "text": "..." }
+    Stores a feature request and emails it to the site owner so it isn't
+    only sitting in the database waiting to be queried.
+    """
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+
+    if not text:
+        return jsonify({"error": "Enter what you'd like to see added."}), 400
+    if len(text) > 2000:
+        return jsonify({"error": "That's a bit long — please keep it under 2000 characters."}), 400
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT email, first_name, last_name FROM users WHERE id = ?", (session["user_id"],)
+    ).fetchone()
+    conn.execute(
+        "INSERT INTO feature_requests (user_id, text, created_at) VALUES (?, ?, ?)",
+        (session["user_id"], text, datetime.utcnow().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+    who = f"{(user['first_name'] or '').strip()} {(user['last_name'] or '').strip()}".strip() or "A user"
+    # Best-effort — the request is already saved in the DB either way, so a
+    # failed notification email doesn't lose it, just delays you seeing it.
+    send_email(
+        EMAIL_USER or (user["email"] if user else ""),
+        f"NoteCloud feature request from {who}",
+        f"{who} ({user['email'] if user else 'unknown email'}) submitted a feature request:\n\n{text}",
+    )
+
+    return jsonify({"ok": True, "message": "Thanks — sent. We read every one of these."})
+
+
+def _switch_plan(user_id, subscription_id, price_id, tier):
+    """
+    Move an existing subscription onto `price_id`, prorating the difference.
+
+    Returns a Flask response to send back, or None if the stored subscription
+    is no longer usable and the caller should fall back to a fresh checkout.
+
+    The tier is written here rather than waiting for the webhook: unlike
+    checkout — where the browser redirect proves nothing until Stripe confirms
+    payment — this is our own authenticated API call, so a success response is
+    Stripe confirming the change. The webhook still fires and is idempotent.
+    """
+    try:
+        sub = stripe.Subscription.retrieve(subscription_id)
+    except Exception as e:
+        app.logger.warning("stripe: stored subscription %s unreadable: %s", subscription_id, e)
+        return None
+
+    if sub.get("status") not in ("active", "trialing", "past_due"):
+        return None   # lapsed — let them start a new subscription
+
+    try:
+        item = sub["items"]["data"][0]
+    except (KeyError, IndexError):
+        return None
+
+    if item["price"]["id"] == price_id and not sub.get("cancel_at_period_end"):
+        return jsonify({"error": "You're already on that plan."}), 400
+
+    try:
+        updated = stripe.Subscription.modify(
+            subscription_id,
+            items=[{"id": item["id"], "price": price_id}],
+            proration_behavior="create_prorations",
+            cancel_at_period_end=False,   # switching plans also un-cancels
+        )
+    except Exception as e:
+        app.logger.error("stripe plan switch error: %s", e)
+        return jsonify({"error": "Could not change your plan — please try again."}), 500
+
+    conn = get_db()
+    conn.execute(
+        """UPDATE users SET tier = ?, stripe_cancel_at_period_end = 0, stripe_period_end = ?
+           WHERE id = ?""",
+        (tier_from_subscription(updated) or tier, subscription_period_end(updated), user_id),
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "switched": True,
+        "message": f"You're now on {tier.title()}. Any difference is prorated on your next invoice.",
+    })
 
 
 @app.route("/upgrade", methods=["POST"])
@@ -775,11 +1438,25 @@ def upgrade():
     if not price_id:
         return jsonify({"error": "That plan isn't configured yet."}), 503
 
+    user_id = session["user_id"]
     conn = get_db()
     user = conn.execute(
-        "SELECT email, stripe_customer_id FROM users WHERE id = ?", (session["user_id"],)
+        "SELECT email, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?",
+        (user_id,),
     ).fetchone()
     conn.close()
+
+    # Already subscribed? Move the existing subscription onto the new price
+    # rather than opening a second checkout. Starting a fresh subscription here
+    # would leave the old one live and billing alongside it, and the webhook
+    # would overwrite stripe_subscription_id — orphaning a charge the user can
+    # no longer see or cancel from the UI.
+    if user["stripe_subscription_id"]:
+        switched = _switch_plan(user_id, user["stripe_subscription_id"], price_id, tier)
+        if switched is not None:
+            return switched
+        # Falls through to checkout when the stored subscription is already
+        # gone on Stripe's side (expired, or refunded and deleted).
 
     try:
         checkout_kwargs = {
@@ -812,22 +1489,27 @@ def stripe_webhook():
     the browser controls, since that could be replayed or hit directly.
 
     Configure this URL in the Stripe Dashboard → Developers → Webhooks, and
-    put the signing secret it gives you in STRIPE_WEBHOOK_SECRET.
+    put the signing secret it gives you in STRIPE_WEBHOOK_SECRET. Every event
+    MUST be signature-verified — an unsigned fallback here would let anyone
+    POST a forged checkout.session.completed with an arbitrary
+    client_reference_id and grant themselves Pro for free.
     """
     if not STRIPE_LIBS_AVAILABLE or not STRIPE_SECRET_KEY:
         return jsonify({"error": "Stripe not configured."}), 503
+
+    if not STRIPE_WEBHOOK_SECRET:
+        # A live Price ID doesn't imply a webhook is registered yet (that
+        # secret is only issued once the endpoint is created in the Stripe
+        # Dashboard, or via `stripe listen` for local testing) — refuse
+        # rather than fall back to parsing an unverified body.
+        app.logger.error("stripe webhook hit with STRIPE_WEBHOOK_SECRET unset — refusing unsigned event")
+        return jsonify({"error": "Webhook not configured."}), 503
 
     payload    = request.get_data()
     sig_header = request.headers.get("Stripe-Signature", "")
 
     try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        else:
-            # No signing secret configured yet (e.g. still testing locally) —
-            # parse the payload directly. Set STRIPE_WEBHOOK_SECRET before
-            # going live so forged requests can't grant free access.
-            event = stripe.Event.construct_from(request.get_json(force=True), stripe.api_key)
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
     except Exception as e:
         app.logger.warning("stripe webhook signature/parse error: %s", e)
         return jsonify({"error": "Invalid payload."}), 400
@@ -860,17 +1542,31 @@ def stripe_webhook():
         elif etype == "customer.subscription.updated":
             sub_id = obj.get("id")
             cancel_at_period_end = 1 if obj.get("cancel_at_period_end") else 0
-            conn.execute(
-                "UPDATE users SET stripe_cancel_at_period_end = ? WHERE stripe_subscription_id = ?",
-                (cancel_at_period_end, sub_id),
-            )
+            # Re-derive the tier from whatever price the subscription now
+            # carries — this event is what reports a plan switch, so without it
+            # a Student→Pro change would bill correctly but never actually
+            # grant Pro. Left alone if the price isn't one we recognise.
+            new_tier = tier_from_subscription(obj)
+            if new_tier:
+                conn.execute(
+                    """UPDATE users SET tier = ?, stripe_cancel_at_period_end = ?,
+                       stripe_period_end = ? WHERE stripe_subscription_id = ?""",
+                    (new_tier, cancel_at_period_end, subscription_period_end(obj), sub_id),
+                )
+            else:
+                conn.execute(
+                    """UPDATE users SET stripe_cancel_at_period_end = ?, stripe_period_end = ?
+                       WHERE stripe_subscription_id = ?""",
+                    (cancel_at_period_end, subscription_period_end(obj), sub_id),
+                )
             conn.commit()
 
         elif etype == "customer.subscription.deleted":
             sub_id = obj.get("id")
             conn.execute(
                 """UPDATE users SET tier = 'free', stripe_subscription_id = NULL,
-                   stripe_cancel_at_period_end = 0 WHERE stripe_subscription_id = ?""",
+                   stripe_cancel_at_period_end = 0, stripe_period_end = NULL
+                   WHERE stripe_subscription_id = ?""",
                 (sub_id,),
             )
             conn.commit()
@@ -1296,29 +1992,90 @@ def cancel_subscription():
         "SELECT tier, is_admin, stripe_subscription_id FROM users WHERE id = ?", (user_id,)
     ).fetchone()
 
-    if user["is_admin"] or user["tier"] in ("free", "dev", None):
-        conn.close()
-        return jsonify({"error": "No active subscription to cancel."}), 400
-
+    # A real Stripe subscription is always cancellable, checked before the
+    # grant-based rejection below. Being made an admin doesn't stop a card
+    # being charged, so an admin who genuinely subscribed must still be able
+    # to stop the billing — otherwise their only route out is the Stripe
+    # dashboard, and the app would keep showing them as subscribed.
     if user["stripe_subscription_id"] and STRIPE_LIBS_AVAILABLE and STRIPE_SECRET_KEY:
         try:
-            stripe.Subscription.modify(user["stripe_subscription_id"], cancel_at_period_end=True)
-            conn.execute("UPDATE users SET stripe_cancel_at_period_end = 1 WHERE id = ?", (user_id,))
+            sub = stripe.Subscription.modify(
+                user["stripe_subscription_id"], cancel_at_period_end=True
+            )
+            period_end = subscription_period_end(sub)
+            conn.execute(
+                "UPDATE users SET stripe_cancel_at_period_end = 1, stripe_period_end = ? WHERE id = ?",
+                (period_end, user_id),
+            )
             conn.commit()
             conn.close()
-            return jsonify({"ok": True, "message": "Your plan will end at the current billing period — you'll keep access until then."})
+            return jsonify({
+                "ok": True,
+                "cancel_at_period_end": True,
+                "period_end": period_end,
+                "message": "Your plan will end at the current billing period — you'll keep access until then.",
+            })
         except Exception as e:
             app.logger.error("stripe cancel error: %s", e)
             conn.close()
             return jsonify({"error": "Could not cancel — please try again."}), 500
 
-    # No Stripe subscription on file (e.g. a manually-granted tier) — nothing
-    # to bill, so just downgrade right away.
+    # Nothing billable on file. Admin and dev grants aren't subscriptions, and
+    # free has nothing to cancel, so there's genuinely nothing to do here.
+    if user["is_admin"] or user["tier"] in ("free", "dev", None):
+        conn.close()
+        return jsonify({"error": "No active subscription to cancel."}), 400
+
+    # A paid tier granted manually (no Stripe record) — nothing to bill, so
+    # downgrade right away.
     conn.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
 
     return jsonify({"ok": True, "message": "Subscription cancelled. You've been moved to the free plan."})
+
+
+@app.route("/resume-subscription", methods=["POST"])
+@login_required
+def resume_subscription():
+    """
+    POST /resume-subscription
+    Undoes a pending cancellation — the subscription is still live until the
+    period ends, so clearing cancel_at_period_end simply lets it renew as
+    normal. Only valid while the plan is in the "ending soon" state; once the
+    period actually lapses Stripe deletes the subscription and the user has to
+    go through checkout again.
+    """
+    user_id = session["user_id"]
+    conn = get_db()
+    user = conn.execute(
+        "SELECT stripe_subscription_id, stripe_cancel_at_period_end FROM users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+
+    if not user["stripe_subscription_id"] or not user["stripe_cancel_at_period_end"]:
+        conn.close()
+        return jsonify({"error": "No pending cancellation to undo."}), 400
+
+    if not (STRIPE_LIBS_AVAILABLE and STRIPE_SECRET_KEY):
+        conn.close()
+        return jsonify({"error": "Stripe not configured."}), 503
+
+    try:
+        sub = stripe.Subscription.modify(
+            user["stripe_subscription_id"], cancel_at_period_end=False
+        )
+        conn.execute(
+            "UPDATE users SET stripe_cancel_at_period_end = 0, stripe_period_end = ? WHERE id = ?",
+            (subscription_period_end(sub), user_id),
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True, "message": "Your plan will keep renewing — welcome back."})
+    except Exception as e:
+        app.logger.error("stripe resume error: %s", e)
+        conn.close()
+        return jsonify({"error": "Could not resume — please try again."}), 500
 
 
 @app.route("/profile/upload", methods=["POST"])
@@ -1502,18 +2259,23 @@ def transcribe():
     ).fetchone()
 
     fresh_status = get_token_status(user)
-    if fresh_status["remaining"] is not None and fresh_status["remaining"] < word_count:
-        conn.rollback()
-        conn.close()
-        return jsonify({
-            "error": "limit_reached",
-            "message": f"You've used all {fresh_status['limit']} tokens for today. Upgrade for more, or share your referral code to earn bonus tokens."
-        }), 429
+
+    # The limit was already checked before the transcription ran, so by this
+    # point the work is done and the API call is spent. If the page turned out
+    # to be longer than the remaining budget we still hand it over and charge
+    # up to the cap — discarding it would mean the user loses the result AND
+    # we've burned the call, and a page denser than the daily limit could never
+    # be transcribed at all however many times they retried. The cap still
+    # holds because the pre-check blocks the *next* upload at zero remaining.
+    # Charged separately from word_count so history keeps the true length.
+    tokens_charged = word_count
+    if fresh_status["remaining"] is not None:
+        tokens_charged = min(word_count, fresh_status["remaining"])
 
     if user["last_token_date"] == today_str:
-        new_total = user["tokens_today"] + word_count
+        new_total = user["tokens_today"] + tokens_charged
     else:
-        new_total = word_count  # new day — reset
+        new_total = tokens_charged  # new day — reset
 
     conn.execute(
         "UPDATE users SET tokens_today = ?, last_token_date = ? WHERE id = ?",
@@ -1539,7 +2301,7 @@ def transcribe():
     return jsonify({
         "transcription": transcription,
         "transcription_id": transcription_id,
-        "tokens_used": word_count,
+        "tokens_used": tokens_charged,
         "tokens_remaining": new_status["remaining"],  # None = unlimited
         "tokens_limit": new_status["limit"],
     })
@@ -1881,11 +2643,7 @@ def google_auth():
         prompt="consent",
     )
     session["google_oauth_state"] = state
-    # Only allow same-site relative paths — never redirect off-site.
-    next_url = request.args.get("next", "/")
-    if not next_url.startswith("/") or next_url.startswith("//"):
-        next_url = "/"
-    session["google_oauth_next"] = next_url
+    session["google_oauth_next"] = safe_next_path(request.args.get("next", "/"))
     return redirect(auth_url)
 
 
@@ -1897,9 +2655,7 @@ def google_callback():
         return redirect("/?google_error=not_configured")
 
     state = session.pop("google_oauth_state", None)
-    next_url = session.pop("google_oauth_next", "/")
-    if not next_url.startswith("/") or next_url.startswith("//"):
-        next_url = "/"
+    next_url = safe_next_path(session.pop("google_oauth_next", "/"))
     sep = "&" if "?" in next_url else "?"
 
     if not state or request.args.get("state") != state:
@@ -2056,10 +2812,7 @@ def notion_auth():
     state = secrets.token_urlsafe(24)
     session["notion_oauth_state"] = state
 
-    next_url = request.args.get("next", "/")
-    if not next_url.startswith("/") or next_url.startswith("//"):
-        next_url = "/"
-    session["notion_oauth_next"] = next_url
+    session["notion_oauth_next"] = safe_next_path(request.args.get("next", "/"))
 
     from urllib.parse import urlencode
     params = {
@@ -2076,9 +2829,7 @@ def notion_auth():
 @login_required
 def notion_callback():
     """Handle the OAuth callback, store the workspace token, and redirect back."""
-    next_url = session.pop("notion_oauth_next", "/")
-    if not next_url.startswith("/") or next_url.startswith("//"):
-        next_url = "/"
+    next_url = safe_next_path(session.pop("notion_oauth_next", "/"))
     sep = "&" if "?" in next_url else "?"
 
     if not REQUESTS_AVAILABLE or not NOTION_CLIENT_ID:

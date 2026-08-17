@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Note-Cloud — Handwriting Transcriber</title>
   <meta name="description" content="Photograph handwritten notes and get clean, editable text back in seconds." />
-  <link rel="icon" href="/static/favicon.png" type="image/png" />
+  <link rel="icon" href="{{ asset('favicon.png') }}" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&display=swap" rel="stylesheet" />
@@ -471,6 +471,10 @@
     .tab-btn.active { color: var(--text); }
 
     .form-body { padding: 1.5rem 1.6rem 1.7rem; display: flex; flex-direction: column; gap: 1rem; }
+    /* Author rules beat the browser's built-in [hidden]{display:none} default,
+       so the `display: flex` above would otherwise render this panel even
+       while the hidden attribute is set — this restores that. */
+    .form-body[hidden] { display: none; }
 
     .social-btns { display: flex; flex-direction: column; gap: .55rem; }
     .social-btn {
@@ -554,6 +558,74 @@
       color: var(--bad);
       text-align: center;
     }
+
+    /* ── Password reset ─────────────────────────────────────────────── */
+    /* Reuses #submit-btn's look for the step buttons so the reset flow
+       doesn't read as a different product than the form it replaces. */
+    #reset-body button:not(.link-btn) {
+      width: 100%;
+      margin-top: .35rem;
+      padding: .88rem;
+      background: var(--solid);
+      color: var(--on-solid);
+      border-radius: var(--r-sm);
+      font-size: .92rem; font-weight: 600;
+      transition: opacity .18s, transform .18s var(--ease);
+    }
+    #reset-body button:not(.link-btn):not(:disabled):hover { transform: translateY(-1px); opacity: .9; }
+    #reset-body button:not(.link-btn):disabled { opacity: .45; cursor: not-allowed; }
+
+    .link-btn {
+      display: block;
+      width: 100%;
+      margin-top: .7rem;
+      background: none;
+      font-size: .78rem;
+      color: var(--muted);
+      text-align: center;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color .18s;
+    }
+    .link-btn:hover { color: var(--text); }
+
+    .reset-lead {
+      font-size: .84rem;
+      line-height: 1.55;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .reset-lead strong { color: var(--text); font-weight: 500; }
+
+    /* Wide tracking makes a 6-digit code readable as digits, not a word */
+    .code-input {
+      font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+      font-size: 1.35rem !important;
+      letter-spacing: .5em;
+      text-align: center;
+      text-indent: .5em;  /* offsets the trailing letter-space so it looks centred */
+    }
+
+    #reset-msg, #otp-msg {
+      min-height: 1.2em;
+      margin-top: .7rem;
+      font-size: .82rem;
+      color: var(--bad);
+      text-align: center;
+    }
+    #reset-msg.ok, #otp-msg.ok { color: var(--ok, var(--accent)); }
+    #otp-body button:not(.link-btn) {
+      width: 100%;
+      margin-top: .35rem;
+      padding: .88rem;
+      background: var(--solid);
+      color: var(--on-solid);
+      border-radius: var(--r-sm);
+      font-size: .92rem; font-weight: 600;
+      transition: opacity .18s, transform .18s var(--ease);
+    }
+    #otp-body button:not(.link-btn):not(:disabled):hover { transform: translateY(-1px); opacity: .9; }
+    #otp-body button:not(.link-btn):disabled { opacity: .45; cursor: not-allowed; }
 
     .auth-legal {
       margin-top: 1.15rem;
@@ -639,7 +711,7 @@
         <div class="col">
           <header class="masthead">
             <div class="brand">
-              <img src="/static/logo-icon.png" alt="" aria-hidden="true" />
+              <img src="{{ asset('logo-icon.png') }}" alt="" aria-hidden="true" />
               <span class="brand-name">Note<span>·</span>Cloud</span>
             </div>
             <button class="btn btn--quiet" id="go-login-btn" type="button">Log in</button>
@@ -750,7 +822,7 @@
         <aside class="auth-aside">
           <div>
             <div class="brand">
-              <img src="/static/logo-icon.png" alt="" aria-hidden="true" />
+              <img src="{{ asset('logo-icon.png') }}" alt="" aria-hidden="true" />
               <span class="brand-name">Note<span>·</span>Cloud</span>
             </div>
             <p class="aside-line">A notebook page in, editable text out.</p>
@@ -842,7 +914,71 @@
 
                   <button id="submit-btn" type="submit">Log in</button>
                   <p id="error-msg" role="alert" aria-live="polite"></p>
+                  <button type="button" class="link-btn login-only" id="forgot-link">Forgot your password?</button>
                 </form>
+
+                <!-- Password reset, shown in place of the form above -->
+                <div class="form-body" id="reset-body" hidden>
+                  <!-- Step 1 — which account -->
+                  <div id="reset-step-email">
+                    <p class="reset-lead">
+                      Enter your email and we'll send you a 6-digit code.
+                    </p>
+                    <div class="field">
+                      <label for="reset-email">Email</label>
+                      <input type="email" id="reset-email" placeholder="you@example.com" autocomplete="email"/>
+                    </div>
+                    <button type="button" id="reset-send-btn">Send code</button>
+                  </div>
+
+                  <!-- Step 2 — prove they got the email -->
+                  <div id="reset-step-code" hidden>
+                    <p class="reset-lead">
+                      We sent a code to <strong id="reset-sent-to"></strong>. It expires in 10 minutes.
+                    </p>
+                    <div class="field">
+                      <label for="reset-code">6-digit code</label>
+                      <input type="text" id="reset-code" inputmode="numeric" autocomplete="one-time-code"
+                             maxlength="6" placeholder="000000" class="code-input"/>
+                    </div>
+                    <button type="button" id="reset-verify-btn">Verify code</button>
+                    <button type="button" class="link-btn" id="reset-resend-btn">Send a new code</button>
+                  </div>
+
+                  <!-- Step 3 — new password -->
+                  <div id="reset-step-password" hidden>
+                    <p class="reset-lead">Choose a new password.</p>
+                    <div class="field">
+                      <label for="reset-new">New password</label>
+                      <input type="password" id="reset-new" placeholder="••••••••" autocomplete="new-password"/>
+                    </div>
+                    <div class="field">
+                      <label for="reset-confirm">Confirm password</label>
+                      <input type="password" id="reset-confirm" placeholder="••••••••" autocomplete="new-password"/>
+                    </div>
+                    <button type="button" id="reset-save-btn">Update password</button>
+                  </div>
+
+                  <p id="reset-msg" role="alert" aria-live="polite"></p>
+                  <button type="button" class="link-btn" id="reset-back-link">Back to log in</button>
+                </div>
+
+                <!-- Login 2FA — shown only on a browser we haven't verified before -->
+                <div class="form-body" id="otp-body" hidden>
+                  <p class="reset-lead">
+                    New device — we sent a code to <strong id="otp-sent-to"></strong>.
+                    It expires in 10 minutes.
+                  </p>
+                  <div class="field">
+                    <label for="otp-code">6-digit code</label>
+                    <input type="text" id="otp-code" inputmode="numeric" autocomplete="one-time-code"
+                           maxlength="6" placeholder="000000" class="code-input"/>
+                  </div>
+                  <button type="button" id="otp-verify-btn">Verify and log in</button>
+                  <p id="otp-msg" role="alert" aria-live="polite"></p>
+                  <button type="button" class="link-btn" id="otp-resend-btn">Send a new code</button>
+                  <button type="button" class="link-btn" id="otp-back-link">Back to log in</button>
+                </div>
               </div>
             </div>
 
@@ -937,10 +1073,154 @@
     confirmIn.disabled= !s; referralIn.disabled = !s;
     submitBtn.textContent = s ? 'Create account' : 'Log in';
     passIn.setAttribute('autocomplete', s ? 'new-password' : 'current-password');
+    // "Forgot your password?" only makes sense on the log-in tab
+    document.querySelectorAll('.login-only').forEach(el => {
+      el.style.display = s ? 'none' : '';
+    });
   }
 
-  tabLogin.addEventListener('click',  () => switchTab('login'));
-  tabSignup.addEventListener('click', () => switchTab('signup'));
+  tabLogin.addEventListener('click',  () => { showReset(false); switchTab('login'); });
+  tabSignup.addEventListener('click', () => { showReset(false); switchTab('signup'); });
+
+  // On login, Enter in the email field should move to the password field —
+  // not submit yet, since the browser's default here is to submit the form
+  // immediately (with password still empty) rather than advance focus.
+  // Pressing Enter in the password field already submits natively, no change needed there.
+  emailIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && activeTab === 'login') {
+      e.preventDefault();
+      passIn.focus();
+    }
+  });
+
+  // ── Password reset ────────────────────────────────────────────────────────
+  const resetBody    = document.getElementById('reset-body');
+  const stepEmail    = document.getElementById('reset-step-email');
+  const stepCode     = document.getElementById('reset-step-code');
+  const stepPassword = document.getElementById('reset-step-password');
+  const resetMsg     = document.getElementById('reset-msg');
+  const resetEmailIn = document.getElementById('reset-email');
+  const resetCodeIn  = document.getElementById('reset-code');
+  const sentTo       = document.getElementById('reset-sent-to');
+  const tabBar       = document.querySelector('.tab-bar');
+
+  function say(text, good){
+    resetMsg.textContent = text || '';
+    resetMsg.classList.toggle('ok', !!good);
+  }
+
+  function showReset(on){
+    resetBody.hidden = !on;
+    form.hidden = on;
+    if (tabBar) tabBar.style.display = on ? 'none' : '';
+    if (on){
+      // Carry over whatever they already typed rather than asking twice.
+      resetEmailIn.value = emailIn.value.trim();
+      step('email');
+      resetEmailIn.focus();
+    }
+  }
+
+  function step(which){
+    stepEmail.hidden    = which !== 'email';
+    stepCode.hidden     = which !== 'code';
+    stepPassword.hidden = which !== 'password';
+    say('');
+  }
+
+  async function post(url, payload){
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    });
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  }
+
+  function busy(btn, on, label){
+    btn.disabled = on;
+    btn.textContent = on ? label : btn.dataset.label;
+  }
+
+  document.getElementById('forgot-link').addEventListener('click', () => showReset(true));
+  document.getElementById('reset-back-link').addEventListener('click', () => {
+    showReset(false);
+    switchTab('login');
+  });
+
+  async function sendCode(btn){
+    const email = resetEmailIn.value.trim() || sentTo.textContent;
+    if (!email){ say('Enter your email address.'); return; }
+    busy(btn, true, 'Sending…');
+    try {
+      const { data } = await post('/forgot-password', { email });
+      if (data.error){ say(data.error); return; }
+      sentTo.textContent = email;
+      step('code');
+      say(data.message, true);
+      resetCodeIn.value = '';
+      resetCodeIn.focus();
+    } catch { say('Network error — is the server running?'); }
+    finally { busy(btn, false); }
+  }
+
+  const sendBtn   = document.getElementById('reset-send-btn');
+  const resendBtn = document.getElementById('reset-resend-btn');
+  const verifyBtn = document.getElementById('reset-verify-btn');
+  const saveBtn   = document.getElementById('reset-save-btn');
+  [sendBtn, resendBtn, verifyBtn, saveBtn].forEach(b => b.dataset.label = b.textContent);
+
+  sendBtn.addEventListener('click',   () => sendCode(sendBtn));
+  resendBtn.addEventListener('click', () => sendCode(resendBtn));
+
+  // Digits only — pasting a code with spaces or dashes shouldn't fail
+  resetCodeIn.addEventListener('input', () => {
+    resetCodeIn.value = resetCodeIn.value.replace(/\D/g, '').slice(0, 6);
+  });
+
+  verifyBtn.addEventListener('click', async () => {
+    const code = resetCodeIn.value.trim();
+    if (code.length !== 6){ say('Enter the 6-digit code from your email.'); return; }
+    busy(verifyBtn, true, 'Checking…');
+    try {
+      const { data } = await post('/verify-reset-code', { email: sentTo.textContent, code });
+      if (data.error){ say(data.error); return; }
+      step('password');
+      document.getElementById('reset-new').focus();
+    } catch { say('Network error — is the server running?'); }
+    finally { busy(verifyBtn, false); }
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    const pw = document.getElementById('reset-new').value;
+    const cf = document.getElementById('reset-confirm').value;
+    if (pw.length < 6){ say('Password must be at least 6 characters.'); return; }
+    if (pw !== cf){ say("Those passwords don't match."); return; }
+    busy(saveBtn, true, 'Saving…');
+    try {
+      const { data } = await post('/reset-password', {
+        email: sentTo.textContent, code: resetCodeIn.value.trim(),
+        new_password: pw, confirm: cf,
+      });
+      if (data.error){
+        say(data.error);
+        // An expired or burnt code can't be fixed from this step.
+        if (/expired|new one|attempts/i.test(data.error)) step('code');
+        return;
+      }
+      say(data.message, true);
+      setTimeout(() => {
+        showReset(false);
+        switchTab('login');
+        emailIn.value = sentTo.textContent;
+        passIn.focus();
+        errorMsg.style.color = 'var(--ok, var(--accent))';
+        errorMsg.textContent = 'Password updated — sign in with your new password.';
+      }, 1400);
+    } catch { say('Network error — is the server running?'); }
+    finally { busy(saveBtn, false); }
+  });
   fNameIn.disabled = true; lNameIn.disabled = true;
   confirmIn.disabled = true; referralIn.disabled = true;
 
@@ -965,6 +1245,8 @@
       const data = await res.json();
       if (data.ok){
         window.location.href = '/';
+      } else if (data.otp_required){
+        showOtp(data.email);
       } else {
         errorMsg.textContent = data.error || 'Something went wrong.';
         authCard.classList.add('shake');
@@ -976,6 +1258,70 @@
       submitBtn.classList.remove('loading'); submitBtn.disabled = false; submitBtn.textContent = orig;
     }
   });
+
+  // ── Login 2FA (new-device email code) ───────────────────────────────────
+  const otpBody    = document.getElementById('otp-body');
+  const otpSentTo  = document.getElementById('otp-sent-to');
+  const otpCodeIn  = document.getElementById('otp-code');
+  const otpMsg     = document.getElementById('otp-msg');
+  const otpVerify  = document.getElementById('otp-verify-btn');
+  const otpResend  = document.getElementById('otp-resend-btn');
+
+  function otpSay(text, good){
+    otpMsg.textContent = text || '';
+    otpMsg.classList.toggle('ok', !!good);
+  }
+
+  function showOtp(email){
+    otpSentTo.textContent = email;
+    otpCodeIn.value = '';
+    otpSay('');
+    form.hidden = true;
+    if (tabBar) tabBar.style.display = 'none';
+    otpBody.hidden = false;
+    otpCodeIn.focus();
+  }
+
+  function hideOtp(){
+    otpBody.hidden = true;
+    form.hidden = false;
+    if (tabBar) tabBar.style.display = '';
+  }
+
+  otpCodeIn.addEventListener('input', () => {
+    otpCodeIn.value = otpCodeIn.value.replace(/\D/g, '').slice(0, 6);
+  });
+
+  otpVerify.addEventListener('click', async () => {
+    const code = otpCodeIn.value.trim();
+    if (code.length !== 6){ otpSay('Enter the 6-digit code from your email.'); return; }
+    const origLabel = otpVerify.textContent;
+    otpVerify.disabled = true; otpVerify.textContent = 'Checking…';
+    try {
+      const res  = await fetch('/login/verify-otp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin', body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (data.ok){ window.location.href = '/'; return; }
+      otpSay(data.error || 'Something went wrong.');
+    } catch { otpSay('Network error — is the server running?'); }
+    finally { otpVerify.disabled = false; otpVerify.textContent = origLabel; }
+  });
+
+  otpResend.addEventListener('click', async () => {
+    const origLabel = otpResend.textContent;
+    otpResend.disabled = true; otpResend.textContent = 'Sending…';
+    try {
+      const res  = await fetch('/login/resend-otp', { method: 'POST', credentials: 'same-origin' });
+      const data = await res.json();
+      otpSay(data.message || data.error, !!data.ok);
+      if (data.ok) otpCodeIn.value = '';
+    } catch { otpSay('Network error — is the server running?'); }
+    finally { otpResend.disabled = false; otpResend.textContent = origLabel; }
+  });
+
+  document.getElementById('otp-back-link').addEventListener('click', hideOtp);
 
   // ── Scroll reveal ─────────────────────────────────────────────────────────
   // Fail-open: sections are visible by default and only get .reveal-armed once
